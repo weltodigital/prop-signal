@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Ink on paper, with one accent used sparingly for movement and money. */
+  --color-paper: #fbfaf8;
+  --color-card: #ffffff;
+  --color-ink: #17181a;
+  --color-muted: #5c6068;
+  --color-line: #e3e1dc;
+  --color-accent: #1f5f4f;
+  --color-accent-soft: #eaf2ef;
+  --color-warn: #8a5300;
+  --color-warn-soft: #fdf3e3;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures everywhere a price or percentage appears. */
+.nums {
+  font-variant-numeric: tabular-nums;
+}

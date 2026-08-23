@@ -1,0 +1,1112 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PropertyData API",
+    "description": "Comprehensive UK property market data API. Provides prices, rents, sold prices, crime statistics, flood risk, planning applications, and much more. Note: This schema includes our 30 most popular endpoints. For access to all endpoints, use the API directly or our MCP Server. Most endpoints cost 1 credit per call; each operation's description notes its cost. Full documentation for all endpoints, including credit costs and error codes: https://propertydata.co.uk/api/markdown (see also https://propertydata.co.uk/llms.txt).",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.propertydata.co.uk"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["error"] },
+          "code": { "type": "string", "description": "PropertyData error code, e.g. X02" },
+          "message": { "type": "string" },
+          "process_time": { "type": "string" }
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Error response. Common codes: X02 missing key (400), X03 invalid key (422), X04 credit limit exceeded (403), X06/X07 missing or invalid location input (400/422), X08 insufficient data for location (404), X13 free trial limit exceeded (403), X14 rate limited (429), X20 server busy, retry after 60 seconds (503).",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/sold-prices-per-sqf": {
+      "get": {
+        "operationId": "getSoldPricesPerSqf",
+        "summary": "Get local property sold prices per square foot",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "points",
+            "in": "query",
+            "description": "Number of comparable properties",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "min_sqf",
+            "in": "query",
+            "description": "Minimum square footage filter",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "max_sqf",
+            "in": "query",
+            "description": "Maximum square footage filter",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/prices": {
+      "get": {
+        "operationId": "getPrices",
+        "summary": "Get live local asking prices",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode (full, sector or district)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "bedrooms",
+            "in": "query",
+            "description": "Filter by number of bedrooms (0-10)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Property type (flat, terraced_house, semi-detached_house, detached_house, house)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "points",
+            "in": "query",
+            "description": "Number of comparable properties to analyse (15-100, default 20)",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/rents": {
+      "get": {
+        "operationId": "getRents",
+        "summary": "Get live local long-let asking rents",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "bedrooms",
+            "in": "query",
+            "description": "Filter by number of bedrooms",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Property type (flat, terraced_house, semi-detached_house, detached_house, house)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "points",
+            "in": "query",
+            "description": "Number of comparable properties",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/title": {
+      "get": {
+        "operationId": "getTitle",
+        "summary": "Get address, type and ownership information by title number",
+        "description": "Costs 1 credit per call. For leasehold titles, also returns registered leases with the lease term and years remaining: registeredLeases has one entry per lease per address, and distinctLeases de-duplicates to one entry per lease (keyed by lease_id) with the addresses it covers.",
+        "parameters": [
+          {
+            "name": "title_number",
+            "in": "query",
+            "description": "Land Registry title number",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/crime": {
+      "get": {
+        "operationId": "getCrime",
+        "summary": "Get local crime statistics",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "description": "Search radius in kilometres (0.1-3, default 0.4)",
+            "schema": { "type": "number" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/planning-applications": {
+      "get": {
+        "operationId": "getPlanningApplications",
+        "summary": "Get local planning applications",
+        "description": "Costs 1 credit per 10 results.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "Full UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "description": "Filter by application category (project type). Comma-separated. One or more of: home improvement, small residential, medium residential, large residential, mixed, tree.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "application_type",
+            "in": "query",
+            "description": "Filter by application type. Comma-separated. One or more of: full planning application, householder planning application, change of use, listed building consent, lawful development, advertisement consent, tree preservation order, utilities, environmental impact, non-material amendment, discharge of conditions. Defaults to all except advertisement consent, tree preservation order, non-material amendment and discharge of conditions.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "max_age",
+            "in": "query",
+            "description": "Maximum age of applications in days (14-1500)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "decision_rating",
+            "in": "query",
+            "description": "Filter by outcome (positive, negative, neutral)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "max_radius",
+            "in": "query",
+            "description": "Search radius in miles (0.01-2)",
+            "schema": { "type": "number" }
+          },
+          {
+            "name": "results",
+            "in": "query",
+            "description": "Number of results to return (10-200)",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/flood-risk": {
+      "get": {
+        "operationId": "getFloodRisk",
+        "summary": "Get flood risk assessment for English locations",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "Full UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/council-tax": {
+      "get": {
+        "operationId": "getCouncilTax",
+        "summary": "Get council tax information for a postcode",
+        "description": "Costs 1 credit per call.",
+        "description": "Returns council tax by band (A-H, plus I for Wales) and individual property bands. Not available in Northern Ireland.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "Full UK postcode",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/yields": {
+      "get": {
+        "operationId": "getYields",
+        "summary": "Determine local rental yields",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/schools": {
+      "get": {
+        "operationId": "getSchools",
+        "summary": "Get nearby schools",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/build-cost": {
+      "get": {
+        "operationId": "getBuildCost",
+        "summary": "Calculate building costs for construction",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/household-income": {
+      "get": {
+        "operationId": "getHouseholdIncome",
+        "summary": "Get average household income for an area",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/valuation-sale": {
+      "get": {
+        "operationId": "getValuationSale",
+        "summary": "Get sale valuation for a property",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "Full UK postcode",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "internal_area",
+            "in": "query",
+            "description": "Internal area in square feet",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "property_type",
+            "in": "query",
+            "description": "Property type (flat, terraced_house, semi-detached_house, detached_house, house)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "construction_date",
+            "in": "query",
+            "description": "Construction date or period",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "bedrooms",
+            "in": "query",
+            "description": "Number of bedrooms",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "bathrooms",
+            "in": "query",
+            "description": "Number of bathrooms",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "finish_quality",
+            "in": "query",
+            "description": "Finish quality",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "estimate": {
+                          "type": "integer",
+                          "description": "The estimated sale price in GBP"
+                        },
+                        "margin": {
+                          "type": "integer",
+                          "description": "Margin for error in GBP. Varies by confidence: 5% (high), 10% (medium), 20% (low)"
+                        },
+                        "confidence": {
+                          "type": "string",
+                          "enum": ["high", "medium", "low"],
+                          "description": "Confidence level based on availability of nearby comparable data"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/demographics": {
+      "get": {
+        "operationId": "getDemographics",
+        "summary": "Get local population demographics data",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/area-type": {
+      "get": {
+        "operationId": "getAreaType",
+        "summary": "Determine area type (rural or urban)",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/prices-per-sqf": {
+      "get": {
+        "operationId": "getPricesPerSqf",
+        "summary": "Get live local asking prices per square foot",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "points",
+            "in": "query",
+            "description": "Number of comparable properties",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "min_sqf",
+            "in": "query",
+            "description": "Minimum square footage filter",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "max_sqf",
+            "in": "query",
+            "description": "Maximum square footage filter",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/internet-speed": {
+      "get": {
+        "operationId": "getInternetSpeed",
+        "summary": "Get internet speeds for a UK postcode",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "Full UK postcode",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/sold-prices": {
+      "get": {
+        "operationId": "getSoldPrices",
+        "summary": "Get local property sold prices",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "bedrooms",
+            "in": "query",
+            "description": "Filter by number of bedrooms",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Property type (flat, terraced_house, semi-detached_house, detached_house, house)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "points",
+            "in": "query",
+            "description": "Number of comparable properties",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "max_age",
+            "in": "query",
+            "description": "Maximum age of sold prices in months",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/demand": {
+      "get": {
+        "operationId": "getDemand",
+        "summary": "Determine local property sales demand",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/growth": {
+      "get": {
+        "operationId": "getGrowth",
+        "summary": "Get up to 7-year capital growth data",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/uprn-title": {
+      "get": {
+        "operationId": "getUprnTitle",
+        "summary": "Lookup a title number from a UPRN",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "uprn",
+            "in": "query",
+            "description": "Unique Property Reference Number",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/uprn": {
+      "get": {
+        "operationId": "getUprn",
+        "summary": "Get property information from UPRN including structured address parts",
+        "description": "Costs 10 credits per call.",
+        "parameters": [
+          {
+            "name": "uprn",
+            "in": "query",
+            "description": "Unique Property Reference Number",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response with address, addressParts (secondary, primary, street, town, district, postcode), lat, lng, description, useClass, optional transaction/EPC/council tax data, and registeredLeases (each with a lease_id and the registered term plus parsed term_years, term_start_date, term_end_date and calculated years_remaining)" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/uprns": {
+      "get": {
+        "operationId": "getUprns",
+        "summary": "Find UPRNs in a given postcode area with structured address parts",
+        "description": "Costs 1 credit per 10 results.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "w3w",
+            "in": "query",
+            "description": "what3words address",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "results",
+            "in": "query",
+            "description": "Max number of results (10-200, default 10)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "strict",
+            "in": "query",
+            "description": "Only return UPRNs within the provided postcode (true/false)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response with array of UPRNs including address, addressParts (secondary, primary, street, town, district, postcode), lat, lng, classificationCode, classificationCodeDesc" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/address-match-uprn": {
+      "get": {
+        "operationId": "getAddressMatchUprn",
+        "summary": "Match an address to its UPRN",
+        "description": "Costs 10 credits per call.",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "description": "Full UK property address including postcode",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/sourced-properties": {
+      "get": {
+        "operationId": "getSourcedProperties",
+        "summary": "Find investment properties on specialist sourcing lists",
+        "description": "Costs 1 credit per 10 results.",
+        "parameters": [
+          {
+            "name": "list",
+            "in": "query",
+            "description": "Property sourcing list ID (e.g. unmodernised-properties, repossessed-properties, reduced-properties, high-yield-properties, auction-properties). Comma-separate to search multiple lists in one call, with results merged, de-duplicated and sorted by distance",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "description": "Search radius in miles (1-200, default 40)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "standardised_type",
+            "in": "query",
+            "description": "Filter by property type (flat, terraced_house, semi-detached_house, detached_house). Comma-separate to include multiple, prefix with ! to exclude",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "max_age",
+            "in": "query",
+            "description": "Only return properties listed within the last N days",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "exclude_sstc",
+            "in": "query",
+            "description": "Set to 1 to exclude properties sold subject to contract",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "results",
+            "in": "query",
+            "description": "Max number of results (10-500, default 10)",
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page of results to return, using results as the page size (page x results cannot exceed 500, default 1)",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/energy-efficiency": {
+      "get": {
+        "operationId": "getEnergyEfficiency",
+        "summary": "Get energy efficiency (EPC) scores and ratings for properties in a postcode",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "Full UK postcode",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/conservation-area": {
+      "get": {
+        "operationId": "getConservationArea",
+        "summary": "Check whether a postcode is within a conservation area",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "town",
+            "in": "query",
+            "description": "UK town name",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/listed-buildings": {
+      "get": {
+        "operationId": "getListedBuildings",
+        "summary": "Get local listed buildings",
+        "description": "Costs 1 credit per call.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "grade",
+            "in": "query",
+            "description": "Filter by listing grade (I, II* or II)",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "listed_after",
+            "in": "query",
+            "description": "Filter to buildings listed after a year, format YYYY e.g. 1975",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/freeholds": {
+      "get": {
+        "operationId": "getFreeholds",
+        "summary": "Get local freehold titles with headline info",
+        "description": "Costs 1 credit per 10 results.",
+        "parameters": [
+          {
+            "name": "postcode",
+            "in": "query",
+            "description": "UK postcode",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "description": "Latitude,longitude coordinates",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "results",
+            "in": "query",
+            "description": "Max number of results to return. Default 10, min 10, max 200; each 10 results costs 1 credit",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/account/credits": {
+      "get": {
+        "operationId": "getAccountCredits",
+        "summary": "Get API account information: credits used, credits remaining etc",
+        "description": "Free: costs 0 credits.",
+        "responses": {
+          "200": { "description": "Successful response" },
+          "4XX": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  }
+}

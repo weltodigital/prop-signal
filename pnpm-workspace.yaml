@@ -1,0 +1,4 @@
+# esbuild's postinstall only unpacks its prebuilt binary. Allowed explicitly so
+# installs are not interactive.
+allowBuilds:
+  esbuild: true
