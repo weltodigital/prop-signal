@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { clientEnv } from '@/lib/env'
 
 /** Paths that require a signed-in user. */
-const PROTECTED_PREFIXES = ['/dashboard', '/account', '/subscribe', '/admin']
+const PROTECTED_PREFIXES = ['/dashboard', '/onboarding', '/account', '/subscribe', '/admin']
 
 /**
  * Refreshes the Supabase session on every request and bounces anonymous

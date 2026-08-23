@@ -14,16 +14,17 @@ our own week-on-week diffing.
 | --- | --- | --- |
 | 1 | Schema, RLS, magic-link auth, Stripe checkout, portal and webhooks | Done |
 | 2 | The credit wrapper — the only module allowed to call PropertyData | Done |
-| 3 | Onboarding, and the first-run backfill | Not started |
+| 3 | Onboarding, and the first-run backfill | Done |
 | 4 | The weekly pipeline | Not started |
 | 5 | Scoring | Not started |
 | 6 | Subscriber app | Not started |
 | 7 | Publishing the week's five | Not started |
 | 8 | Admin export for the newsletter | Not started |
 
-Nothing sources yet. A subscriber can sign up, pay, and reach an empty dashboard. The
-wrapper that will do the sourcing is built and tested, but nothing calls it — the
-pipeline that does arrives in Phase 4.
+Nothing sources yet. A subscriber can sign up, pay, answer the two questions and reach a
+dashboard that tells them their first list is not built. The wrapper that will do the
+sourcing is built and tested, but nothing calls it — the pipeline that does arrives in
+Phase 4.
 
 ## Stack
 
@@ -88,7 +89,22 @@ That calls `/account/credits`, which is free, and prints the account's credit po
 alongside the limits configured locally. Raise `PROPERTYDATA_RATE_LIMIT_PER_10S` only to
 match the plan you are actually on; the default of 4 is the floor across all plans.
 
-### 4. Run it
+### 4. Sourcing lists
+
+PropertyData publish five list ids by way of example and not the rest. `strategy_lists`
+carries those five enabled, and the three the brief names — short lease, slow to sell,
+large plot — disabled, because their ids are a guess until the API says otherwise.
+
+```bash
+pnpm propertydata:lists                              # dry run, spends nothing
+pnpm propertydata:lists --spend --email you@example.com
+```
+
+Probing costs about one credit per list, recorded against the account you name. A
+confirmed list is enabled and appears on the onboarding form; one the API rejects is
+disabled, so it fails here rather than in the middle of a Sunday run.
+
+### 5. Run it
 
 ```bash
 pnpm dev
@@ -112,6 +128,23 @@ pnpm build       # production build
 `tests/rls.test.ts` proves one user cannot read another user's rows. It skips unless
 Supabase credentials are present, so point it at a **development** project and run it
 before anything ships — it creates and deletes users.
+
+## Onboarding
+
+Two questions: where (a full UK postcode and a radius), and which strategies. A third,
+optional, narrows the results by price, bedrooms and type — applied to the payload after
+it arrives, so it costs nothing and can be changed as often as the user likes.
+
+The limits are constraints rather than form validation. One area per user is a unique
+index on `owner_id`. The radius is capped at 40 miles by a `CHECK`, well short of the 200
+the API would allow. Strategies are checked against `strategy_lists` by a trigger, so an
+id that is not on offer cannot be stored even by a direct database write.
+
+Changing the postcode, radius or strategies resets `backfill_completed_at`, because a new
+area's standing inventory has never been shown to that user and their next list should
+draw on all of it. That costs credits, so it is capped at three changes per allowance
+period and the counter is visible on the account page. Changing only the optional filters
+is uncapped, because it cannot surface anything new.
 
 ## The credit wrapper
 

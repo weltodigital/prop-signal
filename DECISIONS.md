@@ -158,3 +158,66 @@ in the Next build instead of aliasing it away.
 same window, short enough to expire before the next Sunday. Valuations and area demand
 are 30 days, because they move over months and are shared across every candidate in an
 area — that entry saves more credits than any other in the table.
+
+## Phase 3 — onboarding
+
+### Unverified list ids are stored but not offered
+
+PropertyData's documentation names five sourcing lists by way of example and does not
+publish the rest, and the marketing copy mentions thirty-six. The five documented ids are
+enabled. Short lease, slow to sell and large plot — named in the brief, and strongly
+implied by the conditional response fields PropertyData document (`years_remaining`,
+`months_on_market`, `plot_size_acres`) — are stored disabled with a guessed id.
+`pnpm propertydata:lists` probes them against the live API and enables what is confirmed.
+A guessed slug that reaches a subscriber's Sunday run is a failed run; a guessed slug
+sitting disabled in a table costs nothing.
+
+### The user table is not the profile table
+
+`accounts` is the person. `search_profiles` is what they are looking for. Naming the
+first one `profiles` in Phase 1 would have made every later sentence ambiguous, which is
+why it was not.
+
+### One area per user is a unique index
+
+Not a check in a server action. `search_profiles.owner_id` is `unique`, the radius is a
+`CHECK` capped at 40 miles, and the strategies are validated by a trigger against
+`strategy_lists`. The brief asks for usage limits enforced at the pipeline rather than
+the UI, and the database is one better than either.
+
+### Radius stops at 40 miles
+
+The API allows 200. Nobody drives two hundred miles to view a terrace, and a wider search
+is both more credits and a worse list. Forty is generous for the stated audience.
+
+### Changing the search resets the backfill, and is therefore capped
+
+A new postcode, a wider radius or another strategy all bring inventory the user has never
+been shown, so the next run should draw on all of it exactly as their first did. That is
+the most expensive thing this product does, so it is capped at three per allowance period
+with the counter shown. Changing only the price, bedroom or type filters resets nothing
+and is uncapped — those are applied to the payload after it arrives and cannot surface
+anything new.
+
+The reset happens in a database trigger rather than in application code, so a search
+change made any other way still schedules the backfill it implies.
+
+### `backfill_completed_at` is not writable by the user
+
+RLS lets a subscriber update their own search profile, but the column grant covers only
+the seven fields the form owns. The backfill and last-run timestamps belong to the
+pipeline. Without that, a user could tell us the backfill had already run.
+
+### Optional filters are applied after the payload arrives
+
+`/sourced-properties` accepts `standardised_type`, so filtering at the API would return
+fewer results and cost fewer credits. We do not, because the weekly diff needs to see
+everything in the area to detect events — a property filtered out at the API is a
+property whose price reduction we never observe. The saving is not worth the blind spot.
+
+### Types the browser needs live in their own module
+
+`search-profile.ts` imports `server-only`, so the form cannot import from it.
+`search-profile.types.ts` holds the constants and types with no guard, and the server
+module re-exports them. The alternative was dropping the guard from a module that talks
+to the database with the service role.

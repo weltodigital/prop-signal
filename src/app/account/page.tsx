@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
+import { countSearchChanges, getSearchProfile, listStrategies, SEARCH_CHANGE_LIMIT } from '@/lib/search-profile'
+import { ButtonLink } from '@/components/ui'
 import { AppShell } from '@/components/app-shell'
 import { Button, Card, Notice } from '@/components/ui'
 
@@ -22,7 +24,11 @@ function formatDate(iso: string | null): string {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso))
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saved?: string }>
+}) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -33,9 +39,26 @@ export default async function AccountPage() {
   const state = await getSubscriptionState()
   const subscription = state.subscription
 
+  const [profile, strategies, changesUsed, params] = await Promise.all([
+    state.active ? getSearchProfile() : Promise.resolve(null),
+    state.active ? listStrategies() : Promise.resolve([]),
+    state.active ? countSearchChanges(user.id) : Promise.resolve(0),
+    searchParams,
+  ])
+
+  const strategyLabels = new Map(strategies.map((s) => [s.id, s.label]))
+
   return (
     <AppShell email={user.email}>
       <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
+
+      {params.saved === '1' ? (
+        <div className="mt-6">
+          <Notice title="Saved">
+            <p>Your search is updated. It takes effect on the next run.</p>
+          </Notice>
+        </div>
+      ) : null}
 
       <Card className="mt-8">
         <h2 className="text-base font-medium">Plan</h2>
@@ -100,9 +123,49 @@ export default async function AccountPage() {
 
       <Card className="mt-6">
         <h2 className="text-base font-medium">Area and strategy</h2>
-        <p className="mt-3 text-sm text-muted">
-          Not set up yet. These questions arrive with sourcing, and they are the only two you will be asked.
-        </p>
+
+        {profile ? (
+          <>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between gap-4 border-b border-line pb-3">
+                <dt className="text-muted">Area</dt>
+                <dd className="font-medium">
+                  {profile.postcode}, within {profile.radiusMiles}{' '}
+                  {profile.radiusMiles === 1 ? 'mile' : 'miles'}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4 border-b border-line pb-3">
+                <dt className="text-muted">Strategies</dt>
+                <dd className="max-w-[60%] text-right font-medium">
+                  {profile.strategies.map((id) => strategyLabels.get(id) ?? id).join(', ')}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">Changes used this month</dt>
+                <dd className="nums font-medium">
+                  {changesUsed} of {SEARCH_CHANGE_LIMIT}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="mt-6">
+              <ButtonLink href="/onboarding" variant="secondary">
+                Change area or strategy
+              </ButtonLink>
+            </div>
+          </>
+        ) : state.active ? (
+          <>
+            <p className="mt-3 text-sm text-muted">You have not answered the two questions yet.</p>
+            <div className="mt-6">
+              <ButtonLink href="/onboarding">Set up my search</ButtonLink>
+            </div>
+          </>
+        ) : (
+          <p className="mt-3 text-sm text-muted">
+            Set up once you subscribe. There are two questions, and they are the only two you will be asked.
+          </p>
+        )}
       </Card>
 
       <Card className="mt-6">
