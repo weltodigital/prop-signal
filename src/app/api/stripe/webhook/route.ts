@@ -8,7 +8,7 @@ import { serverEnv } from '@/lib/env'
 
 export const runtime = 'nodejs'
 // The raw body is needed for signature verification, so this route is never
-// cached or pre-rendered. It is also excluded from the session middleware.
+// cached or pre-rendered. It is also excluded from the session proxy.
 export const dynamic = 'force-dynamic'
 
 const HANDLED = new Set<string>([

@@ -26,10 +26,11 @@ if (!configured) {
 type Tenant = { id: string; email: string; client: SupabaseClient }
 
 suite('row level security', () => {
-  const admin = createClient(url!, serviceKey!, { auth: { persistSession: false, autoRefreshToken: false } })
   const stamp = Math.random().toString(36).slice(2, 10)
   const password = `test-${stamp}-Aa1!`
 
+  // Built lazily: the describe body still runs when the suite is skipped.
+  let admin: SupabaseClient
   let alice: Tenant
   let bob: Tenant
 
@@ -51,6 +52,7 @@ suite('row level security', () => {
   }
 
   beforeAll(async () => {
+    admin = createClient(url!, serviceKey!, { auth: { persistSession: false, autoRefreshToken: false } })
     alice = await makeTenant('alice')
     bob = await makeTenant('bob')
 
