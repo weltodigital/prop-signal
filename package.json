@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "stripe:setup": "tsx scripts/stripe-setup.ts"
+    "stripe:setup": "tsx scripts/stripe-setup.ts",
+    "run:purge": "tsx --conditions=react-server scripts/purge-expired-payloads.ts",
+    "propertydata:check": "tsx --conditions=react-server scripts/propertydata-check.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

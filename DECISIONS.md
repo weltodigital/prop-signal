@@ -81,3 +81,80 @@ Same behaviour, new filename.
 The subscribe page goes straight to checkout. `trialing` is treated as entitled so a
 promotional trial can be turned on in Stripe later without a code change, but nothing
 here creates one.
+
+## Phase 2 — the credit wrapper
+
+### The 60-day rule is enforced three times
+
+A `CHECK` constraint on `api_cache`, a view the read path goes through, and a purge job.
+The constraint is the one that matters: it makes the bad row impossible to write rather
+than merely unlikely. The view catches a row that got in some other way — a migration, a
+restore, a dropped constraint. The purge deletes them. Belt, braces and a second belt,
+because the cost of getting this wrong is the API licence rather than a bug report.
+
+### `api_cache` has no index on its contents
+
+No GIN index, no expression indexes over the payload. PropertyData permit a per-user
+response cache and forbid a searchable copy of their data, and the difference between
+those two things is exactly whether you can query into the payload. Keeping it opaque is
+what makes the distinction real rather than a claim.
+
+### Image fields are stripped in the wrapper, before storage
+
+Listing photographs carry no rights. `stripImageFields` runs on every response before it
+is cached, so an image URL never reaches the database at all. Doing it at the render
+layer would have left the URLs sitting in `api_cache` for sixty days.
+
+### The API key travels in a header
+
+PropertyData accept it as a query parameter, a bearer token or `X-API-Key`. The header,
+because a URL ends up in logs, error messages and stack traces, and a query parameter
+would ride along with it.
+
+### The allowance is read once per run and re-read before any refusal
+
+Reading `credits_remaining` on every call would be a database round trip per candidate.
+The wrapper reads it once and decrements locally — but if the local figure says refuse,
+it re-reads before turning anyone away. An optimisation must never be the reason someone
+is told no.
+
+### Spend is derived from `usage_events`, never stored
+
+`credit_allowances` holds the cap and the period. What has been spent is summed from the
+ledger. A stored counter can drift from the ledger; a derived one cannot.
+
+### A fatal error aborts the run rather than retrying
+
+X04, X05, X13 and X03 mean the account is out of credits, cancelled, or the key is
+wrong. Retrying costs a round trip and cannot succeed, so the first one trips
+`RunBudget.abort()` and every later call in that run refuses without touching the
+network. X14 and X20 are the opposite case and are retried, honouring `Retry-After`.
+
+### The rate limiter is in-process
+
+A token bucket inside the client, defaulting to 4 requests per 10 seconds, which is the
+floor across all plans. The weekly pipeline is one run in one process, so in-process is
+the right scope for v1. If a second process ever calls the API concurrently this stops
+being sufficient and the X14 retry is the backstop. Noted here so the assumption is
+visible when that changes.
+
+### `/account/credits` lives inside the wrapper even though it is free
+
+It belongs to no user and spends nothing, so it does not go through the client's cache
+and ledger path. It sits in `src/lib/propertydata/account.ts` anyway, so "nothing outside
+this directory touches PropertyData" stays literally true and the boundary test can be
+absolute rather than having an exception in it.
+
+### CLI scripts run with `--conditions=react-server`
+
+`server-only` throws when imported outside a React Server Component, which is what makes
+it a useful guard — and which also breaks any Node script importing a guarded module.
+The `react-server` condition resolves it to its empty build. That keeps the guard intact
+in the Next build instead of aliasing it away.
+
+### TTLs are chosen around the Sunday run
+
+`/sourced-properties` is three days: long enough to cover a retry or a re-run inside the
+same window, short enough to expire before the next Sunday. Valuations and area demand
+are 30 days, because they move over months and are shared across every candidate in an
+area — that entry saves more credits than any other in the table.

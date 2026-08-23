@@ -56,6 +56,44 @@ export function serverEnv(): z.infer<typeof serverSchema> {
   return cachedServerEnv
 }
 
+/**
+ * PropertyData configuration.
+ *
+ * Kept apart from serverEnv() on purpose. The web app does not call
+ * PropertyData and must not fail to boot because a key for the weekly pipeline
+ * is missing. Only the credit wrapper reads this.
+ */
+const propertyDataSchema = z.object({
+  PROPERTYDATA_API_KEY: z.string().min(1),
+  PROPERTYDATA_BASE_URL: z.string().url().default('https://api.propertydata.co.uk'),
+  /**
+   * Requests per ten seconds. Plans allow 4 to 24. The default is the floor,
+   * because being slow costs nothing and being fast costs a wasted round trip.
+   */
+  PROPERTYDATA_RATE_LIMIT_PER_10S: z.coerce.number().int().min(1).max(24).default(4),
+  /**
+   * Hard ceiling on what one pipeline run may spend for one user. The budget is
+   * roughly 100 credits per user per week, so this leaves room for a bad week
+   * without leaving room for a runaway loop.
+   */
+  PROPERTYDATA_RUN_CREDIT_CEILING: z.coerce.number().int().min(1).default(150),
+})
+
+export type PropertyDataEnv = z.infer<typeof propertyDataSchema>
+
+let cachedPropertyDataEnv: PropertyDataEnv | null = null
+
+export function propertyDataEnv(): PropertyDataEnv {
+  if (typeof window !== 'undefined') {
+    throw new Error('propertyDataEnv() was reached from the browser. The PropertyData key is server-side only.')
+  }
+  if (cachedPropertyDataEnv) return cachedPropertyDataEnv
+  const parsed = propertyDataSchema.safeParse(process.env)
+  if (!parsed.success) fail('PropertyData', parsed.error)
+  cachedPropertyDataEnv = parsed.data
+  return cachedPropertyDataEnv
+}
+
 /** Absolute URL for a path, for Stripe redirects and magic-link callbacks. */
 export function siteUrl(path = '/'): string {
   const base = clientEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
