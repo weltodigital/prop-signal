@@ -221,3 +221,97 @@ property whose price reduction we never observe. The saving is not worth the bli
 `search-profile.types.ts` holds the constants and types with no guard, and the server
 module re-exports them. The alternative was dropping the guard from a module that talks
 to the database with the service role.
+
+## Phase 4 and 5 — the pipeline and scoring
+
+### The diff is pure, and takes its own observation time
+
+`diffListing` has no database and no clock. The observation time is passed in, because
+what an event carries is the retrieval date of the data behind it, not the moment the
+code ran. That is also what makes fifty-two weeks of runs testable in a few milliseconds,
+which is what `tests/weekly-mechanic.test.ts` does.
+
+### Events carry a dedupe key made from the values, not the date
+
+A price reduction's key is `price:250000:220000`. Observe the same move in two runs and
+it is one event, because it is one thing that happened. A days-on-market crossing keys on
+the mark rather than the day count, so a property sitting at 130 days does not generate a
+fresh event every Sunday. Only the events with no natural value — a return to market,
+going under offer, disappearing — key on the date, because those genuinely can recur.
+
+### Material is a short list
+
+A price reduction of at least 5%, a return to market, or crossing a days-on-market mark.
+A £500 trim on a £250,000 house is recorded and is not material. Going under offer is
+recorded and is not material: it is going, not coming. First sighting is material,
+because the user has never been shown it.
+
+Everything is recorded either way. The timeline needs the full history; the list needs
+only the part worth interrupting someone for.
+
+### "Never twice for the same event" is enforced in two places
+
+`qualifies()` refuses an event id that already appears against an impression, and
+`deal_impressions` has a unique index on `(owner_id, property_id, qualifying_event_id)`
+plus a partial unique index for the never-seen case. The application rule is the one that
+runs; the index is the one that holds if the rule is ever wrong.
+
+### Quality and movement are added, and share a ceiling
+
+Both weight sets total 100. Adding rather than blending is what lets a mediocre property
+that just dropped 12% outrank a good one that has not moved. Giving them the same ceiling
+means neither wins by construction — an exceptional property still beats a small move,
+and there is a test asserting that too, because it is the honest limit of the premise.
+
+### A missing figure scores zero, not an average
+
+No rent estimate means no yield points and a factor that says "No rent estimate held".
+Substituting an average would invent a number and hide that we do not have one. Omitting
+rather than estimating is the rule everywhere in this product.
+
+### Enrichment is capped, and the cap is logged
+
+Twenty-five candidates, two credits each, which makes it the largest line in a run. They
+are chosen by how much the property moved rather than by how good it looks, because a
+property that moved is the one we might actually publish. When the cap truncates, the run
+logs how many were dropped — a short list must never read as full coverage.
+
+### Enrichment is keyed on postcode, type and bedrooms
+
+Every property sharing those three shares one valuation call. In a dense area that turns
+twenty-five properties into a handful of calls, and the cache does the rest for thirty
+days. It is the single largest credit saving in the design.
+
+### `properties` is per-owner and has no index on its contents
+
+The only lookup is `(owner_id, property_key)`. No index on address, postcode or price. An
+index over those is exactly what would turn a per-user record into the searchable copy of
+PropertyData's data that their terms forbid.
+
+### Every stored figure carries its observation date
+
+`properties` holds the latest observation, not the current truth, and the dashboard
+prints "Observed 7 June 2026" beside the price. That is the condition under which derived
+material may be kept indefinitely, and it is also just honest — we know what we saw and
+when, not what is true now.
+
+### A Sunday run publishes into Monday; everything else publishes into its own week
+
+`weekOf` sends a Sunday-night run to the Monday after it, because that is when the
+subscriber reads it, and every other day to the Monday of its own week. The first version
+pushed a midweek manual refresh into next week, which a test caught.
+
+### One profile failing does not take the batch down
+
+`runWeekly` catches per profile. Each profile's `pipeline_runs` row records its own
+status, credits and error, so a batch of thirty with one failure is twenty-nine published
+lists and one recorded failure rather than nothing.
+
+### The field names are read through alias lists
+
+PropertyData publish neither a full example response nor the list of sourcing lists.
+Rather than guess one key per field, `listing.ts` reads each through an ordered alias
+list and keeps the raw payload. `pnpm propertydata:sample` prints what a real response
+actually contains and flags anything unmapped. Correcting it is a one-file change.
+
+This is the largest piece of guesswork in the build. It is contained on purpose.

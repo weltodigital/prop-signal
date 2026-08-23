@@ -15,16 +15,15 @@ our own week-on-week diffing.
 | 1 | Schema, RLS, magic-link auth, Stripe checkout, portal and webhooks | Done |
 | 2 | The credit wrapper — the only module allowed to call PropertyData | Done |
 | 3 | Onboarding, and the first-run backfill | Done |
-| 4 | The weekly pipeline | Not started |
-| 5 | Scoring | Not started |
+| 4 | The weekly pipeline | Done |
+| 5 | Scoring | Done |
 | 6 | Subscriber app | Not started |
 | 7 | Publishing the week's five | Not started |
 | 8 | Admin export for the newsletter | Not started |
 
-Nothing sources yet. A subscriber can sign up, pay, answer the two questions and reach a
-dashboard that tells them their first list is not built. The wrapper that will do the
-sourcing is built and tested, but nothing calls it — the pipeline that does arrives in
-Phase 4.
+The pipeline is written and covered by tests, but it has never been run against the live
+API — there is no key yet. A subscriber can sign up, pay, answer the two questions and
+reach a dashboard that waits for the first run.
 
 ## Stack
 
@@ -177,17 +176,82 @@ price. It is enforced in three places, and all three are tested.
 Derived material — events, scores, aggregates — is kept permanently and is not touched
 by any of this. It is a dated historical observation, not an answer about the present.
 
-## Running the weekly pipeline
+## The weekly pipeline
 
-Arrives in Phase 4. It will run as `pnpm run:weekly`, and on Vercel Cron at Sunday
-22:00. The daily cache purge is already wired up in `vercel.json`.
+Sunday 22:00, one cron, one profile at a time.
+
+```bash
+pnpm run:weekly              # every subscriber
+pnpm run:weekly --owner <id> # one of them
+pnpm run:weekly --dry        # list what would run, spend nothing
+```
+
+Per profile: call `/sourced-properties` with the profile's lists, postcode and radius;
+filter on price, bedrooms and type from the returned payload; diff against what was last
+observed and write the events; enrich a capped number of candidates with sale valuation,
+rent valuation and area demand; score, rank, select, publish.
+
+Budget is roughly 100 credits per profile per week and the ceiling aborts rather than
+overspending. Actuals are logged per run and stored on `pipeline_runs`.
+
+### The core mechanic
+
+Every run diffs against the last one and writes events. Events are permanent, dated, and
+marked as historical observations. A property qualifies for a user's five when either it
+has never been shown to them and scores above threshold, or a new material event has
+fired since it was last shown to them.
+
+Material means a price reduction of at least 5%, a return to market, or crossing a
+days-on-market mark. A £500 trim on a £250,000 house is recorded and is not material.
+Going under offer is recorded and is not material — it is going, not coming.
+
+`deal_impressions` records what was shown and the event that justified it, with a unique
+index on `(owner_id, property_id, qualifying_event_id)`. That is what stops the same
+property returning on the strength of a move it was already shown for.
+
+`tests/weekly-mechanic.test.ts` runs fifty-two weeks against one property and asserts it
+appears exactly when something happened to it.
+
+### Scoring
+
+Pure functions in `src/lib/pipeline/scoring.ts`. `quality()` takes the listing and its
+enrichment; `movement()` takes the events. They are added rather than blended, so a
+mediocre property that just dropped 12% can outrank a good one that has not moved. Both
+have the same ceiling, so neither dominates by construction. Weights are versioned and
+every stored score records its version. No LLM anywhere in this path.
+
+A factor with no data behind it scores nothing rather than an assumed average, and the
+breakdown says which. Omitting beats estimating.
+
+### Thin weeks
+
+Some weeks a quiet area will not produce five that qualify. The run publishes fewer and
+`weekly_selections.thin_reason` says so in one sentence. The list is never padded — the
+entire product is that we filtered.
+
+### Field names
+
+PropertyData do not publish a full example `/sourced-properties` response, so
+`src/lib/pipeline/listing.ts` reads every field through an alias list rather than a single
+guessed key.
+
+```bash
+pnpm propertydata:sample --email you@example.com --postcode "M1 1AE"
+```
+
+That prints the field names a real response contains and flags any the pipeline does not
+read. Correct the alias lists from its output, in one place. One credit.
 
 ## Deploying
 
 Vercel, connected to this repository. Set every variable from `.env.example` in the
-project settings, with `NEXT_PUBLIC_SITE_URL` pointing at the real domain. `CRON_SECRET` is what the cron endpoints authenticate against; Vercel sets it for you
-when you add it as an environment variable. Add a
-Stripe webhook endpoint for `https://YOUR_DOMAIN/api/stripe/webhook` subscribed to
+project settings, with `NEXT_PUBLIC_SITE_URL` pointing at the real domain.
+
+`vercel.json` declares two crons: the weekly run at Sunday 22:00, and the cache purge
+daily at 03:00. Both authenticate against `CRON_SECRET`, which Vercel sends as a bearer
+token once you add it as an environment variable.
+
+Add a Stripe webhook endpoint for `https://YOUR_DOMAIN/api/stripe/webhook` subscribed to
 `checkout.session.completed`, `customer.subscription.updated` and
 `customer.subscription.deleted`, and copy its signing secret into
 `STRIPE_WEBHOOK_SECRET`.

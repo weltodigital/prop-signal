@@ -14,7 +14,9 @@
     "stripe:setup": "tsx scripts/stripe-setup.ts",
     "run:purge": "tsx --conditions=react-server scripts/purge-expired-payloads.ts",
     "propertydata:check": "tsx --conditions=react-server scripts/propertydata-check.ts",
-    "propertydata:lists": "tsx --conditions=react-server scripts/propertydata-lists.ts"
+    "propertydata:lists": "tsx --conditions=react-server scripts/propertydata-lists.ts",
+    "run:weekly": "tsx --conditions=react-server scripts/run-weekly.ts",
+    "propertydata:sample": "tsx --conditions=react-server scripts/propertydata-sample.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
