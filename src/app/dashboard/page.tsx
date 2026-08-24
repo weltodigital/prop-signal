@@ -4,6 +4,7 @@ import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
 import { AppShell } from '@/components/app-shell'
 import { DealCard } from '@/components/deal-card'
+import { MarkSeen } from '@/components/mark-seen'
 import { EmptyState, Notice } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -19,6 +20,10 @@ export default async function DashboardPage({
 }) {
   const { email, profile } = await requireSubscriber('/dashboard')
   const [week, params] = await Promise.all([getCurrentWeek(), searchParams])
+
+  // Read before the marker is cleared, so this render still shows it. The
+  // clearing happens in MarkSeen, on the visit rather than on publish.
+  const unseen = week !== null && week.seenAt === null
 
   return (
     <AppShell email={email}>
@@ -38,6 +43,11 @@ export default async function DashboardPage({
           they saw last time. */}
       {week ? (
         <p className="mt-2 text-sm text-muted">
+          {unseen ? (
+            <span className="mr-2 rounded-full bg-accent px-2 py-0.5 text-xs tracking-wide text-white uppercase">
+              New
+            </span>
+          ) : null}
           Published {formatDate(week.publishedAt)}
           {week.kind === 'backfill'
             ? '. Drawn from everything standing in your area, not only what appeared this week.'
@@ -74,7 +84,7 @@ export default async function DashboardPage({
 
       <div className="mt-8 space-y-4">
         {week && week.deals.length > 0 ? (
-          week.deals.map((deal) => <DealCard key={deal.propertyId} deal={deal} />)
+          week.deals.map((deal) => <DealCard key={deal.propertyId} deal={deal} isNew={unseen} />)
         ) : profile.backfillCompletedAt === null ? (
           <EmptyState title="Your first list is not built yet">
             <p>
@@ -98,6 +108,8 @@ export default async function DashboardPage({
           </EmptyState>
         )}
       </div>
+
+      {unseen && week ? <MarkSeen runId={week.runId} /> : null}
     </AppShell>
   )
 }

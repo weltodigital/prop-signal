@@ -34,6 +34,7 @@ suite('row level security', () => {
   let alice: Tenant
   let bob: Tenant
   const propertyIds = new Map<string, string>()
+  const runIds = new Map<string, string>()
 
   async function makeTenant(label: string): Promise<Tenant> {
     const email = `rls-${label}-${stamp}@propsignal.test`
@@ -92,6 +93,25 @@ suite('row level security', () => {
       if (propertyError || !property) throw new Error(`Could not seed property: ${propertyError?.message}`)
 
       propertyIds.set(tenant.id, property.id)
+
+      // A published week each, so the unseen marker has something to clear.
+      const { data: run, error: runError } = await admin
+        .from('pipeline_runs')
+        .insert({ batch_id: crypto.randomUUID(), owner_id: tenant.id, kind: 'weekly', status: 'completed' })
+        .select('id')
+        .single()
+      if (runError || !run) throw new Error(`Could not seed run: ${runError?.message}`)
+
+      const { error: selectionError } = await admin.from('weekly_selections').insert({
+        owner_id: tenant.id,
+        run_id: run.id,
+        kind: 'weekly',
+        week_of: new Date().toISOString().slice(0, 10),
+        deal_count: 5,
+      })
+      if (selectionError) throw new Error(`Could not seed selection: ${selectionError.message}`)
+
+      runIds.set(tenant.id, run.id)
     }
   })
 
@@ -99,6 +119,8 @@ suite('row level security', () => {
     for (const tenant of [alice, bob]) {
       if (!tenant) continue
       await admin.from('watchlist').delete().eq('owner_id', tenant.id)
+      await admin.from('weekly_selections').delete().eq('owner_id', tenant.id)
+      await admin.from('pipeline_runs').delete().eq('owner_id', tenant.id)
       await admin.from('properties').delete().eq('owner_id', tenant.id)
       await admin.from('subscriptions').delete().eq('owner_id', tenant.id)
       await admin.from('billing_customers').delete().eq('owner_id', tenant.id)
@@ -271,5 +293,58 @@ suite('row level security', () => {
     const { data } = await bob.client.from('properties').select('id')
 
     expect(data?.map((row) => row.id)).toEqual([propertyIds.get(bob.id)])
+  })
+  it('lets a user mark their own week as seen', async () => {
+    const { error } = await alice.client
+      .from('weekly_selections')
+      .update({ seen_at: new Date().toISOString() })
+      .eq('run_id', runIds.get(alice.id))
+
+    expect(error).toBeNull()
+
+    const { data } = await admin
+      .from('weekly_selections')
+      .select('seen_at')
+      .eq('run_id', runIds.get(alice.id))
+      .single()
+
+    expect(data?.seen_at).not.toBeNull()
+  })
+
+  it('refuses every other column on that table', async () => {
+    // seen_at is granted at the column level. Without that grant the update
+    // policy alone would let a subscriber rewrite their own deal count and the
+    // stated reason a week was thin.
+    const { error } = await alice.client
+      .from('weekly_selections')
+      .update({ thin_reason: 'forged', deal_count: 99 })
+      .eq('run_id', runIds.get(alice.id))
+
+    expect(error).not.toBeNull()
+
+    const { data } = await admin
+      .from('weekly_selections')
+      .select('deal_count, thin_reason')
+      .eq('run_id', runIds.get(alice.id))
+      .single()
+
+    expect(data?.deal_count).toBe(5)
+    expect(data?.thin_reason).toBeNull()
+  })
+
+  it('refuses to let a user mark somebody else week as seen', async () => {
+    const { data: updated } = await bob.client
+      .from('weekly_selections')
+      .update({ seen_at: new Date().toISOString() })
+      .eq('run_id', runIds.get(alice.id))
+      .select('run_id')
+
+    expect(updated).toEqual([])
+  })
+
+  it('hides one user published weeks from another', async () => {
+    const { data } = await bob.client.from('weekly_selections').select('run_id')
+
+    expect(data?.map((row) => row.run_id)).toEqual([runIds.get(bob.id)])
   })
 })

@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import mark from '@/assets/prop-signal-mark.png'
+import { hasUnseenWeek } from '@/lib/deals'
 import { countUnread } from '@/lib/watchlist'
 
 const NAV = [
@@ -12,9 +13,8 @@ const NAV = [
 ] as const
 
 export async function AppShell({ email, children }: { email: string; children: ReactNode }) {
-  // Events on watched properties that the user has not read. Derived from the
-  // diff the run already wrote, so counting them costs nothing.
-  const unread = await countUnread()
+  // Both derived from rows the run already wrote, so the markers cost nothing.
+  const [unread, unseenWeek] = await Promise.all([countUnread(), hasUnseenWeek()])
 
   return (
     <div className="min-h-screen">
@@ -31,6 +31,12 @@ export async function AppShell({ email, children }: { email: string; children: R
             {NAV.map((item) => (
               <Link key={item.href} href={item.href} className="text-muted hover:text-ink">
                 {item.label}
+                {item.href === '/dashboard' && unseenWeek ? (
+                  <span
+                    className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle"
+                    aria-label="A new list you have not looked at"
+                  />
+                ) : null}
                 {item.href === '/watchlist' && unread > 0 ? (
                   <span
                     className="nums ml-1.5 rounded-full bg-accent px-1.5 py-0.5 text-xs text-white"

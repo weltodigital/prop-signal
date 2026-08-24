@@ -18,7 +18,7 @@ our own week-on-week diffing.
 | 4 | The weekly pipeline | Done |
 | 5 | Scoring | Done |
 | 6 | Subscriber app — the five, timelines, archive, watchlist, calculator | Done |
-| 7 | Publishing the week's five | Not started |
+| 7 | Delivery — the run date, the unseen marker, in-app only | Done |
 | 8 | Admin export for the newsletter | Not started |
 
 The pipeline is written and covered by tests, but it has never been run against the live
@@ -58,6 +58,27 @@ estimated value — labelled as a starting point, and a figure we do not hold
 starts empty rather than at an average. `tests/stack.test.ts` checks the
 mortgage maths against the annuity formula and pins the awkward cases: a zero
 rate, a refinance that pulls more out than went in, a top-up.
+
+### Delivery, and why there is no email
+
+Nothing is sent. The week's five appear in the dashboard when the Sunday run
+completes, and everything the subscriber would have been emailed is in the app.
+
+- The list carries the date it was published, so a returning visitor can tell a
+  fresh list from the one they read last Monday.
+- A week nobody has opened is marked new — on the list, on each deal, and as a
+  dot in the navigation. The marker is cleared on the visit rather than on
+  publish, so a list sitting unread on Monday still says so on Thursday.
+- Events on watched properties surface in the watchlist, not as a push.
+
+`weekly_selections` is the single source of truth for what was published and
+when, and it carries an unused `notified_at`. An email or push channel is a
+reader of that table: it can be added without the pipeline changing at all.
+
+Clearing the marker is the one write a subscriber makes to that table, and the
+database restricts it to that one column — `grant update (seen_at)`, so the
+policy alone cannot be leaned on to protect the deal count or the stated reason
+a week was thin. `tests/rls.test.ts` asserts both halves.
 
 ### What the interface will not do
 

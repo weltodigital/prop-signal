@@ -346,10 +346,35 @@ export async function listPublishedWeeks(): Promise<WeekSummary[]> {
   }))
 }
 
+/**
+ * Whether the most recent published week has not been looked at yet.
+ *
+ * One indexed row. Read on every page for the marker in the navigation, so it
+ * asks for the seen flag and nothing else.
+ */
+export async function hasUnseenWeek(): Promise<boolean> {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from('weekly_selections')
+    .select('seen_at')
+    .order('published_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return Boolean(data) && data?.seen_at === null
+}
+
 /** Clears the unseen marker. The only column a user may write on that table. */
 export async function markWeekSeen(runId: string): Promise<void> {
   const supabase = await createClient()
-  await supabase.from('weekly_selections').update({ seen_at: new Date().toISOString() }).eq('run_id', runId)
+  // Only if it is still unset, so revisiting a week does not keep moving the
+  // date on which it was first read.
+  await supabase
+    .from('weekly_selections')
+    .update({ seen_at: new Date().toISOString() })
+    .eq('run_id', runId)
+    .is('seen_at', null)
 }
 
 // ---------------------------------------------------------------------------

@@ -15,12 +15,19 @@ import { WatchButton } from '@/components/watch-button'
  * PropertyData terms, so we link to the advert and describe the property in
  * words.
  */
-export function DealCard({ deal }: { deal: PublishedDeal }) {
+export function DealCard({ deal, isNew = false }: { deal: PublishedDeal; isNew?: boolean }) {
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-accent">{deal.headline}</p>
+          <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-accent">
+            {isNew ? (
+              <span className="rounded-full bg-accent px-2 py-0.5 text-xs tracking-wide text-white uppercase">
+                New
+              </span>
+            ) : null}
+            {deal.headline}
+          </p>
           <h3 className="mt-1 text-lg font-medium">
             <Link href={`/property/${deal.propertyId}`} className="hover:text-accent">
               {deal.address ?? 'Address not held'}

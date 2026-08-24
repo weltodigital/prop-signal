@@ -431,3 +431,21 @@ reads, and it went stale the moment `listing.ts` gained `price_history`, `sqf`,
 `reduced_by` and the rest. It reported nine unmapped fields when four were.
 `ALIASES` is now exported and the tool derives the set from it, so the report
 cannot drift from the thing it is reporting on.
+
+### The unseen marker is cleared by a server action, not during render
+
+Marking a week seen is a write, and a page render is the wrong place for one:
+pages render more than once, and `after()` in a Server Component cannot read
+cookies — which is exactly what binds the write to the signed-in user. The
+alternative was the service-role client, but `admin.ts` says never in a page and
+it is right to.
+
+So a component that renders nothing calls a server function once on mount. The
+cookie-bound client applies row level security as usual. With JavaScript off the
+marker never clears, which is the safe direction to fail: the user is told there
+is something new for longer than necessary, rather than a fresh list arriving
+unannounced.
+
+The update is conditional on `seen_at` still being null, so revisiting a week
+does not keep moving the date on which it was first read.
+
