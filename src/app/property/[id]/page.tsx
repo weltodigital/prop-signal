@@ -6,6 +6,7 @@ import { markReadAction } from '@/app/watchlist/actions'
 import { formatBedrooms, formatDate, formatListName, formatMoney, formatShortDate } from '@/lib/format'
 import { AppShell } from '@/components/app-shell'
 import { Button, Card } from '@/components/ui'
+import { RiskFlags } from '@/components/risk-flags'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
 import { StackIt } from '@/components/stack-it'
@@ -76,6 +77,19 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       <section className="mt-8">
         <Card>
           <StackedNumbers property={property} />
+
+          {property.latest?.epc || property.latest?.councilTaxBand ? (
+            <p className="mt-3 text-sm text-muted">
+              {property.latest.epc
+                ? `EPC ${property.latest.epc.rating}${property.latest.epc.score === null ? '' : ` (${property.latest.epc.score})`}`
+                : null}
+              {property.latest.epc && property.latest.councilTaxBand ? ' · ' : null}
+              {property.latest.councilTaxBand ? `Council tax band ${property.latest.councilTaxBand}` : null}
+              <span> — matched to this address when it was last published.</span>
+            </p>
+          ) : null}
+
+          {property.latest ? <RiskFlags risks={property.latest.risks} /> : null}
 
           <div className="mt-5 border-t border-line pt-4 text-sm">
             {property.listingUrl ? (

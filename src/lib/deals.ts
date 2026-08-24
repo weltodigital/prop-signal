@@ -21,6 +21,13 @@ import { describeEvent } from '@/lib/pipeline/qualification'
 /** One line of the score, as the scoring module wrote it. */
 export type ScoreFactor = { label: string; points: number; detail: string }
 
+/**
+ * Something that should stop a subscriber, recorded as it stood when the
+ * property was published. Stated rather than scored — a penalty would need a
+ * magnitude nobody can defend.
+ */
+export type Risk = { label: string; detail: string }
+
 /** The enrichment, all of it dated by `enrichedAt`. Null until enriched. */
 export type DealEnrichment = {
   estimatedValue: number | null
@@ -64,6 +71,10 @@ export type PublishedDeal = PropertySnapshot & {
   scoreVersion: string
   qualityFactors: ScoreFactor[]
   movementFactors: ScoreFactor[]
+  /** Flags carried with the impression, as they stood when it was published. */
+  risks: Risk[]
+  epc: { rating: string; score: number | null } | null
+  councilTaxBand: string | null
   /** Whether the signed-in user has starred it. */
   watched: boolean
 }
@@ -171,6 +182,26 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function asRisks(value: unknown): Risk[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const record = entry as Record<string, unknown>
+    if (typeof record.label !== 'string') return []
+
+    return [{ label: record.label, detail: typeof record.detail === 'string' ? record.detail : '' }]
+  })
+}
+
+function asEpc(value: unknown): { rating: string; score: number | null } | null {
+  if (!value || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (typeof record.rating !== 'string') return null
+
+  return { rating: record.rating, score: asNumber(record.score) }
+}
+
 function asFactors(value: unknown): ScoreFactor[] {
   if (!Array.isArray(value)) return []
 
@@ -267,6 +298,9 @@ async function loadWeek(selection: SelectionRow): Promise<PublishedWeek> {
         scoreVersion: impression.score_version,
         qualityFactors: asFactors(breakdown.quality),
         movementFactors: asFactors(breakdown.movement),
+        risks: asRisks(breakdown.risks),
+        epc: asEpc(breakdown.epc),
+        councilTaxBand: typeof breakdown.councilTaxBand === 'string' ? breakdown.councilTaxBand : null,
         watched: watched.has(impression.property_id),
       },
     ]
@@ -432,6 +466,9 @@ export type PropertyDetail = PropertySnapshot & {
     qualityScore: number
     movementScore: number
     scoreVersion: string
+    risks: Risk[]
+    epc: { rating: string; score: number | null } | null
+    councilTaxBand: string | null
   } | null
 }
 
@@ -520,6 +557,10 @@ export async function getPropertyDetail(propertyId: string): Promise<PropertyDet
           qualityScore: Number(latest.quality_score),
           movementScore: Number(latest.movement_score),
           scoreVersion: latest.score_version,
+          risks: asRisks(latestBreakdown.risks),
+          epc: asEpc(latestBreakdown.epc),
+          councilTaxBand:
+            typeof latestBreakdown.councilTaxBand === 'string' ? latestBreakdown.councilTaxBand : null,
         }
       : null,
   }

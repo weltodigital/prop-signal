@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { diffListing, type PreviousObservation, type PropertyEvent } from '@/lib/pipeline/events'
 import { normaliseListing } from '@/lib/pipeline/listing'
-import { movement, quality, type Enrichment } from '@/lib/pipeline/scoring'
+import { movement, quality, type AreaContext, type Enrichment } from '@/lib/pipeline/scoring'
 import { qualifies, type PriorImpression, type StoredEvent } from '@/lib/pipeline/qualification'
 
 /**
@@ -12,7 +12,20 @@ import { qualifies, type PriorImpression, type StoredEvent } from '@/lib/pipelin
  * something happened to it, and is not shown again until something else does.
  */
 
-const ENRICHMENT: Enrichment = { estimatedValue: 260_000, estimatedRent: 1_150, areaDemandRating: 65 }
+/**
+ * A property good enough to clear the threshold on quality alone, so that what
+ * this file tests is the mechanic rather than the scoring. £1,500 on £250,000
+ * at 25% down and 5.5% interest only clears about £340 a month.
+ */
+const ENRICHMENT: Enrichment = { estimatedValue: 260_000, estimatedRent: 1_500, areaDemandRating: 65 }
+
+/** The area figures the run shares across every candidate in a search. */
+const AREA: AreaContext = {
+  soldPricePerSqFt: 300,
+  localGrossYieldPercent: 5.5,
+  floodRisk: 'Very Low',
+  leaseholdShare: 0.1,
+}
 
 /** A standing record of one user's dealings with one property. */
 class Ledger {
@@ -45,6 +58,7 @@ function listing(price: number, daysOnMarket: number, state: 'listed' | 'sstc' =
   return {
     ...normaliseListing({
       id: 'pd-1',
+      sqf: 900,
       address: '12 Example Street',
       postcode: 'M14 5TP',
       price,
@@ -70,7 +84,7 @@ function runWeek(
 ): { shown: boolean; headline: string | null } {
   ledger.record(diffListing(current, previous, at))
 
-  const q = quality(current, ENRICHMENT)
+  const q = quality(current, ENRICHMENT, AREA)
   const m = movement(ledger.events, at)
   const verdict = qualifies({
     events: ledger.events,

@@ -276,10 +276,65 @@ property returning on the strength of a move it was already shown for.
 `tests/weekly-mechanic.test.ts` runs fifty-two weeks against one property and asserts it
 appears exactly when something happened to it.
 
+### Area-level enrichment
+
+Six endpoints, one credit each, called once per run and shared by every
+candidate in the search. Twenty-five properties cost the same as one.
+
+| Endpoint | What it gives |
+| --- | --- |
+| `/sold-prices-per-sqf` | Completed £/sq ft nearby, and the tenure of each sale |
+| `/yields` | The local gross yield to judge this property against |
+| `/energy-efficiency` | EPC per address, matchable to the property |
+| `/council-tax` | Band per address, and the band D reference |
+| `/flood-risk` | The band, worded |
+| `/growth` | Capital growth over one year and five |
+
+Field names were confirmed against live responses on 2026-08-24. PropertyData
+document the parameters for these and not the response bodies, so
+`pnpm propertydata:area --spend` prints what actually comes back and
+`src/lib/pipeline/area.ts` reads through alias-tolerant helpers, the same way
+`listing.ts` does.
+
+`/build-cost` is deliberately not called. It requires an internal area, which
+makes it per-property rather than per-area, and at one credit each that is the
+wrong side of the budget.
+
+EPC and council tax arrive as a list of addresses within the postcode, so they
+are matched to the property by reducing both sides to letters and digits and
+requiring one to contain the other in order. A near miss matches nothing — a
+wrong EPC is worse than none.
+
 ### Scoring
 
-Pure functions in `src/lib/pipeline/scoring.ts`. `quality()` takes the listing and its
-enrichment; `movement()` takes the events. They are added rather than blended, so a
+Pure functions in `src/lib/pipeline/scoring.ts`. `quality()` takes the listing, its
+enrichment and the area figures; `movement()` takes the events.
+
+Quality asks whether the property makes money, not whether it looks respectable.
+
+| Factor | Weight |
+| --- | --- |
+| Net monthly cashflow, at 25% down and 5.5% interest only, after 20% of rent in costs | 30 |
+| Asking £/sq ft against nearby completed sales | 25 |
+| This property's gross yield against the local benchmark | 15 |
+| Local sales demand | 15 |
+| On a list that implies work | 15 |
+
+Cashflow replaced gross yield in v2. A 4% gross yield reads as unremarkable and
+loses money every month at 5.5% borrowing, and the old score rewarded it. The
+figure comes from `stack()`, the same arithmetic as the calculator on the
+property page, so the score and the number a subscriber can reproduce cannot
+disagree.
+
+Sold prices per square foot replaced the sale valuation for the same reason a
+reduction should only be counted once. A property reduced twice is "below the
+estimate" partly because the estimate follows the asking price down, which let
+one reduction earn points in quality and again in movement.
+
+Risks are stated rather than scored. An EPC of F or G, flood risk above low, or
+an area where most sales are leasehold appear next to the property and do not
+move the ranking. Working out how many points an EPC of F is worth against a
+12% reduction would mean inventing a number. They are added rather than blended, so a
 mediocre property that just dropped 12% can outrank a good one that has not moved. Both
 have the same ceiling, so neither dominates by construction. Weights are versioned and
 every stored score records its version. No LLM anywhere in this path.

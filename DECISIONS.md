@@ -449,3 +449,48 @@ unannounced.
 The update is conditional on `seen_at` still being null, so revisiting a week
 does not keep moving the date on which it was first read.
 
+### Cashflow replaced gross yield, and it changes which properties qualify
+
+Gross yield banded 4% to 10%, so a 4% yield scored nothing and a 5% scored a
+little. At 5.5% borrowing both lose money every month. The score was rewarding
+properties that cannot wash their face.
+
+It now scores net monthly cashflow under stated finance — 25% down, 5.5%
+interest only, 20% of rent in costs — computed by `stack()`, which is the same
+function behind the calculator on the property page. The score and the figure a
+subscriber can reproduce cannot disagree, because they are the same code.
+
+The assumptions are versioned with the weights. Change them and the scores mean
+something different, so `SCORE_VERSION` moves too. This is v2.
+
+Recalibrating `weekly-mechanic.test.ts` showed the effect: the property that
+fixture had used since Phase 4 stopped qualifying, because £1,150 rent on a
+£250,000 house clears about £61 a month. That is the correct answer and the
+fixture was wrong.
+
+### Sold prices per square foot, because the valuation was double-counting
+
+`/valuation-sale` follows the asking price. A property reduced twice reads as
+"below the estimate" partly because of the reductions, so one move earned
+points in quality and again in movement.
+
+`/sold-prices-per-sqf` is completed transactions and owes nothing to what anyone
+is currently asking. It costs the same one credit, is keyed on the postcode so
+the whole search shares it, and it carries the tenure of each comparable sale —
+the only tenure signal anywhere in this API.
+
+The valuation is still fetched and still shown, because "8% below the estimate"
+is useful context. It is no longer scored.
+
+### Risks are stated, never scored
+
+EPC below E cannot legally be let. Flood risk above low shows up in the premium.
+An area where nine in ten sales are leasehold hides a service charge this
+product cannot see.
+
+None of them score. A penalty needs a magnitude, and there is no defensible
+answer to how many points an EPC of F is worth against a 12% reduction. They
+appear next to the property under "worth knowing before you call" and the
+subscriber weighs them, which is the same principle as scoring nothing for a
+figure we do not hold.
+

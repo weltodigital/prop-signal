@@ -4,6 +4,7 @@ import { formatBedrooms, formatListName } from '@/lib/format'
 import { Card } from '@/components/ui'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
+import { RiskFlags } from '@/components/risk-flags'
 import { WatchButton } from '@/components/watch-button'
 
 /**
@@ -54,6 +55,17 @@ export function DealCard({ deal, isNew = false }: { deal: PublishedDeal; isNew?:
       <div className="mt-5">
         <StackedNumbers property={deal} />
       </div>
+
+      {deal.epc || deal.councilTaxBand ? (
+        <p className="mt-3 text-sm text-muted">
+          {deal.epc ? `EPC ${deal.epc.rating}${deal.epc.score === null ? '' : ` (${deal.epc.score})`}` : null}
+          {deal.epc && deal.councilTaxBand ? ' · ' : null}
+          {deal.councilTaxBand ? `Council tax band ${deal.councilTaxBand}` : null}
+          <span> — matched to this address, not to the postcode.</span>
+        </p>
+      ) : null}
+
+      <RiskFlags risks={deal.risks} />
 
       {deal.lists.length ? (
         <p className="mt-4 flex flex-wrap gap-2">

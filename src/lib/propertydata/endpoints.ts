@@ -20,6 +20,15 @@ export type EndpointName =
   | 'valuation-rent'
   | 'demand'
   | 'demand-rent'
+  // Area-level, one call per profile postcode per run. Every candidate in the
+  // same search shares them, so the cache turns twenty-five lookups into one.
+  | 'sold-prices-per-sqf'
+  | 'yields'
+  | 'energy-efficiency'
+  | 'flood-risk'
+  | 'council-tax'
+  | 'growth'
+  | 'build-cost'
   | 'account/credits'
 
 export type EndpointSpec = {
@@ -80,6 +89,53 @@ export const ENDPOINTS: Record<EndpointName, EndpointSpec> = {
     ttlMs: 30 * DAY_MS,
     cost: 1,
     reason: 'Area-level and slow, as above.',
+  },
+  // --- Area-level enrichment ------------------------------------------------
+  // All one credit, all keyed on the profile's postcode rather than on a
+  // property, so a run pays for each of these once however many candidates it
+  // scores. The TTLs are long because none of these move week to week.
+  'sold-prices-per-sqf': {
+    path: '/sold-prices-per-sqf',
+    ttlMs: 45 * DAY_MS,
+    cost: 1,
+    reason:
+      'Completed sales, published with a lag measured in months. This is the comparable that is independent of what anyone is currently asking, which is the point of preferring it to a valuation.',
+  },
+  yields: {
+    path: '/yields',
+    ttlMs: 45 * DAY_MS,
+    cost: 1,
+    reason: 'A local yield benchmark moves with the market, not with the week.',
+  },
+  'energy-efficiency': {
+    path: '/energy-efficiency',
+    ttlMs: 60 * DAY_MS,
+    cost: 1,
+    reason: 'EPC certificates last ten years. This is capped by the 60-day storage limit rather than by how fast it changes.',
+  },
+  'flood-risk': {
+    path: '/flood-risk',
+    ttlMs: 60 * DAY_MS,
+    cost: 1,
+    reason: 'Flood zones are redrawn on a timescale of years.',
+  },
+  'council-tax': {
+    path: '/council-tax',
+    ttlMs: 60 * DAY_MS,
+    cost: 1,
+    reason: 'Set once a year, in April.',
+  },
+  growth: {
+    path: '/growth',
+    ttlMs: 60 * DAY_MS,
+    cost: 1,
+    reason: 'Multi-year capital growth. A week makes no difference to it.',
+  },
+  'build-cost': {
+    path: '/build-cost',
+    ttlMs: 60 * DAY_MS,
+    cost: 1,
+    reason: 'Build costs move with materials and labour, over quarters.',
   },
   'account/credits': {
     path: '/account/credits',

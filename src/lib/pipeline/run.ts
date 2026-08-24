@@ -11,7 +11,17 @@ import {
   type PreviousObservation,
   type PropertyEvent,
 } from './events'
-import { DEFAULT_WEIGHTS, movement, quality, rank, SCORE_VERSION, type Enrichment } from './scoring'
+import {
+  matchAddress,
+  readCouncilTax,
+  readEpc,
+  readFloodRisk,
+  readGrowth,
+  readLocalYield,
+  readSoldComparables,
+  type AreaInsights,
+} from './area'
+import { DEFAULT_WEIGHTS, movement, quality, rank, risks, SCORE_VERSION, type Enrichment } from './scoring'
 import {
   DEFAULT_QUALIFICATION,
   describeEvent,
@@ -217,10 +227,15 @@ export async function runProfile(options: {
         dropped: filtered.length - enrichmentTargets.length,
       })
     }
+    // Area-level, one call per endpoint per run. Every candidate in this search
+    // shares them, so twenty-five properties cost the same as one.
+    const area = await loadAreaInsights(client, profile.postcode, observedAt)
+
     const enrichment = await enrichCandidates(client, enrichmentTargets, profile.postcode)
     summary.candidatesEnriched = enrichment.size
 
     await persistEnrichment(supabase, profile.owner_id, propertyIds, enrichment, observedAt)
+    await persistAreaInsights(supabase, profile.owner_id, profile.id, run.id, area)
 
     // --- 5. Score, qualify, rank -------------------------------------------
     const history = await loadHistory(supabase, profile.owner_id, [...propertyIds.values()])
@@ -232,14 +247,44 @@ export async function runProfile(options: {
       const propertyEvents = history.events.get(propertyId) ?? []
       const impressions = history.impressions.get(propertyId) ?? []
 
-      const q = quality(listing, enrichment.get(enrichmentKey(listing, profile.postcode)) ?? EMPTY_ENRICHMENT, DEFAULT_WEIGHTS)
+      const address = listing.preciseAddress ?? listing.address
+      const epcRow = matchAddress(area.epcByAddress, address)
+      const epc = epcRow ? { rating: epcRow.rating, score: epcRow.score } : null
+      const taxRow = matchAddress(area.taxBandByAddress, address)
+
+      const areaContext = {
+        soldPricePerSqFt: area.sold.averagePricePerSqFt,
+        localGrossYieldPercent: area.localGrossYieldPercent,
+        floodRisk: area.floodRisk,
+        leaseholdShare: area.sold.leaseholdShare,
+      }
+
+      const q = quality(
+        listing,
+        enrichment.get(enrichmentKey(listing, profile.postcode)) ?? EMPTY_ENRICHMENT,
+        areaContext,
+        DEFAULT_WEIGHTS,
+      )
       const m = movement(propertyEvents, observedAt, DEFAULT_WEIGHTS)
       const total = Number((q.score + m.score).toFixed(2))
 
       const verdict = qualifies({ events: propertyEvents, impressions, totalScore: total }, DEFAULT_QUALIFICATION)
       if (!verdict.qualifies) return []
 
-      return [{ candidate: { listing, propertyId, verdict }, quality: q, movement: m }]
+      return [
+        {
+          candidate: {
+            listing,
+            propertyId,
+            verdict,
+            epc,
+            councilTaxBand: taxRow?.band ?? null,
+            risks: risks(areaContext, epc),
+          },
+          quality: q,
+          movement: m,
+        },
+      ]
     })
 
     const ranked = rank(scored)
@@ -747,7 +792,14 @@ async function loadHistory(
 }
 
 type SelectedCandidate = {
-  candidate: { listing: Listing; propertyId: string; verdict: { event: StoredEvent | null } }
+  candidate: {
+    listing: Listing
+    propertyId: string
+    verdict: { event: StoredEvent | null }
+    epc: { rating: string; score: number | null } | null
+    councilTaxBand: string | null
+    risks: Array<{ label: string; detail: string }>
+  }
   quality: { score: number; factors: unknown[] }
   movement: { score: number; factors: unknown[] }
   total: number
@@ -781,6 +833,12 @@ async function publish(
         headline: describeEvent(entry.candidate.verdict.event),
         quality: entry.quality.factors,
         movement: entry.movement.factors,
+        // What was true about this property when it was published. Kept with
+        // the impression rather than on `properties`, because it is part of
+        // why this was shown and should not be rewritten by a later run.
+        epc: entry.candidate.epc,
+        councilTaxBand: entry.candidate.councilTaxBand,
+        risks: entry.candidate.risks,
       },
     }))
 
@@ -820,4 +878,132 @@ async function countCacheHits(supabase: SupabaseClient, runId: string): Promise<
     .eq('outcome', 'served_from_cache')
 
   return count ?? 0
+}
+
+// ---------------------------------------------------------------------------
+// Area-level enrichment.
+// ---------------------------------------------------------------------------
+
+/**
+ * The six area endpoints, called once per run.
+ *
+ * Each one is wrapped on its own. A postcode outside England has no flood risk
+ * and a thin area has no sold comparables, and neither is a reason to lose the
+ * other five. A failure costs nothing — PropertyData do not charge for a call
+ * they reject.
+ *
+ * `/build-cost` is deliberately absent. It requires an internal area, which
+ * makes it per-property rather than per-area, and at one credit each that is
+ * the wrong side of the budget.
+ */
+async function loadAreaInsights(
+  client: ReturnType<typeof createPropertyDataClient>,
+  postcode: string,
+  observedAt: Date,
+): Promise<AreaInsights> {
+  const insights: AreaInsights = {
+    postcode,
+    observedAt: observedAt.toISOString(),
+    sold: {
+      averagePricePerSqFt: null,
+      rangeLow: null,
+      rangeHigh: null,
+      transactions: null,
+      latestSale: null,
+      leaseholdShare: null,
+    },
+    localGrossYieldPercent: null,
+    floodRisk: null,
+    council: null,
+    councilRating: null,
+    councilTaxBandD: null,
+    growth1YearPercent: null,
+    growth5YearPercent: null,
+    epcByAddress: [],
+    taxBandByAddress: [],
+  }
+
+  async function attempt(name: string, run: () => Promise<void>): Promise<void> {
+    try {
+      await run()
+    } catch (error) {
+      log('area_endpoint_unavailable', {
+        endpoint: name,
+        postcode,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  await attempt('sold-prices-per-sqf', async () => {
+    const response = await client.call<unknown>('sold-prices-per-sqf', { postcode })
+    insights.sold = readSoldComparables(response.data)
+  })
+
+  await attempt('yields', async () => {
+    const response = await client.call<unknown>('yields', { postcode })
+    insights.localGrossYieldPercent = readLocalYield(response.data)
+  })
+
+  await attempt('energy-efficiency', async () => {
+    const response = await client.call<unknown>('energy-efficiency', { postcode })
+    insights.epcByAddress = readEpc(response.data)
+  })
+
+  await attempt('flood-risk', async () => {
+    const response = await client.call<unknown>('flood-risk', { postcode })
+    insights.floodRisk = readFloodRisk(response.data)
+  })
+
+  await attempt('council-tax', async () => {
+    const response = await client.call<unknown>('council-tax', { postcode })
+    const tax = readCouncilTax(response.data)
+    insights.council = tax.council
+    insights.councilRating = tax.rating
+    insights.councilTaxBandD = tax.bandD
+    insights.taxBandByAddress = tax.byAddress
+  })
+
+  await attempt('growth', async () => {
+    const response = await client.call<unknown>('growth', { postcode })
+    const growth = readGrowth(response.data)
+    insights.growth1YearPercent = growth.oneYear
+    insights.growth5YearPercent = growth.fiveYear
+  })
+
+  return insights
+}
+
+async function persistAreaInsights(
+  supabase: SupabaseClient,
+  ownerId: string,
+  profileId: string,
+  runId: string,
+  area: AreaInsights,
+): Promise<void> {
+  const { error } = await supabase.from('area_insights').upsert(
+    {
+      owner_id: ownerId,
+      profile_id: profileId,
+      run_id: runId,
+      postcode: area.postcode,
+      observed_at: area.observedAt,
+      sold_price_per_sqf: area.sold.averagePricePerSqFt === null ? null : Math.round(area.sold.averagePricePerSqFt),
+      sold_price_per_sqf_low: area.sold.rangeLow === null ? null : Math.round(area.sold.rangeLow),
+      sold_price_per_sqf_high: area.sold.rangeHigh === null ? null : Math.round(area.sold.rangeHigh),
+      sold_transactions: area.sold.transactions,
+      sold_latest: area.sold.latestSale,
+      leasehold_share: area.sold.leaseholdShare,
+      local_gross_yield_pct: area.localGrossYieldPercent,
+      flood_risk: area.floodRisk,
+      council: area.council,
+      council_rating: area.councilRating,
+      council_tax_band_d: area.councilTaxBandD,
+      growth_1y_pct: area.growth1YearPercent,
+      growth_5y_pct: area.growth5YearPercent,
+    },
+    { onConflict: 'owner_id,run_id' },
+  )
+
+  if (error) log('area_insights_write_failed', { run_id: runId, message: error.message })
 }

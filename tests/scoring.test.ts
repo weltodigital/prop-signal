@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_WEIGHTS, movement, quality, rank, SCORE_VERSION, type Enrichment } from '@/lib/pipeline/scoring'
+import {
+  DEFAULT_WEIGHTS,
+  movement,
+  netMonthlyCashflow,
+  quality,
+  rank,
+  risks,
+  SCORE_VERSION,
+  type AreaContext,
+  type Enrichment,
+} from '@/lib/pipeline/scoring'
 import { normaliseListing, type Listing } from '@/lib/pipeline/listing'
 import type { PropertyEvent } from '@/lib/pipeline/events'
 
@@ -21,6 +31,16 @@ function enrichment(overrides: Partial<Enrichment> = {}): Enrichment {
   return { estimatedValue: 220_000, estimatedRent: 1_100, areaDemandRating: 60, ...overrides }
 }
 
+function area(overrides: Partial<AreaContext> = {}): AreaContext {
+  return {
+    soldPricePerSqFt: 300,
+    localGrossYieldPercent: 6,
+    floodRisk: 'Very Low',
+    leaseholdShare: 0.2,
+    ...overrides,
+  }
+}
+
 function event(overrides: Partial<PropertyEvent> = {}): PropertyEvent {
   return {
     type: 'price_reduced',
@@ -36,55 +56,95 @@ function event(overrides: Partial<PropertyEvent> = {}): PropertyEvent {
 
 describe('quality', () => {
   it('stamps the version on every score', () => {
-    expect(quality(listing(), enrichment()).version).toBe(SCORE_VERSION)
+    expect(quality(listing(), enrichment(), area()).version).toBe(SCORE_VERSION)
   })
 
   it('gives a factor for every input, so the breakdown is complete', () => {
-    const score = quality(listing(), enrichment())
+    const score = quality(listing(), enrichment(), area())
     expect(score.factors.map((f) => f.label)).toEqual([
-      'Gross yield',
-      'Price against comparables',
+      'Monthly cashflow',
+      'Price against nearby sales',
+      'Yield against the area',
       'Local demand',
       'Room to add value',
     ])
   })
 
-  it('scores a higher yield above a lower one', () => {
-    const high = quality(listing({ price: 150_000 }), enrichment({ estimatedRent: 1_100 }))
-    const low = quality(listing({ price: 400_000 }), enrichment({ estimatedRent: 1_100 }))
+  it('scores what is left each month, not the gross yield', () => {
+    // £150,000 at 25% down is a £112,500 loan. At 5.5% interest only that is
+    // £515 a month, against £1,100 rent less 20% costs.
+    const clears = quality(listing({ price: 150_000 }), enrichment({ estimatedRent: 1_100 }), area())
+    const loses = quality(listing({ price: 400_000 }), enrichment({ estimatedRent: 1_100 }), area())
 
-    expect(high.score).toBeGreaterThan(low.score)
+    expect(clears.score).toBeGreaterThan(loses.score)
+    expect(loses.factors.find((f) => f.label === 'Monthly cashflow')?.points).toBe(0)
   })
 
-  it('rewards a price below the estimate and not one above it', () => {
-    const under = quality(listing({ price: 170_000 }), enrichment({ estimatedValue: 220_000 }))
-    const over = quality(listing({ price: 250_000 }), enrichment({ estimatedValue: 220_000 }))
+  it('scores nothing for a property that does not wash its face', () => {
+    // The failure the old gross yield hid: a 4.4% gross yield reads as
+    // unremarkable and loses money every month at 5.5% borrowing.
+    expect(netMonthlyCashflow(300_000, 1_100)).toBeLessThan(0)
 
-    const underFactor = under.factors.find((f) => f.label === 'Price against comparables')
-    const overFactor = over.factors.find((f) => f.label === 'Price against comparables')
+    const score = quality(listing({ price: 300_000 }), enrichment({ estimatedRent: 1_100 }), area())
+    const cashflow = score.factors.find((f) => f.label === 'Monthly cashflow')
+
+    expect(cashflow?.points).toBe(0)
+    expect(cashflow?.detail).toContain('Loses')
+  })
+
+  it('prices against what sold nearby, not against the asking price', () => {
+    // 600 sq ft at £300 locally is £180,000. Asking £150,000 is under it.
+    const under = quality(listing({ price: 150_000, sqf: 600 }), enrichment(), area({ soldPricePerSqFt: 300 }))
+    const over = quality(listing({ price: 240_000, sqf: 600 }), enrichment(), area({ soldPricePerSqFt: 300 }))
+
+    const underFactor = under.factors.find((f) => f.label === 'Price against nearby sales')
+    const overFactor = over.factors.find((f) => f.label === 'Price against nearby sales')
 
     expect(underFactor?.points).toBeGreaterThan(0)
     expect(overFactor?.points).toBe(0)
     expect(overFactor?.detail).toContain('above')
   })
 
-  it('scores nothing rather than an assumed average when a figure is missing', () => {
-    const score = quality(listing(), { estimatedValue: null, estimatedRent: null, areaDemandRating: null })
-    const yieldFactor = score.factors.find((f) => f.label === 'Gross yield')
+  it('says which figure is missing rather than assuming one', () => {
+    const score = quality(listing(), { estimatedValue: null, estimatedRent: null, areaDemandRating: null }, area())
+    const cashflow = score.factors.find((f) => f.label === 'Monthly cashflow')
 
-    expect(yieldFactor?.points).toBe(0)
-    expect(yieldFactor?.detail).toBe('No rent estimate held')
+    expect(cashflow?.points).toBe(0)
+    expect(cashflow?.detail).toBe('No rent estimate held')
+
+    const noArea = quality(listing({ sqf: 600 }), enrichment(), {
+      soldPricePerSqFt: null,
+      localGrossYieldPercent: null,
+      floodRisk: null,
+      leaseholdShare: null,
+    })
+    expect(noArea.factors.find((f) => f.label === 'Price against nearby sales')?.detail).toBe(
+      'No local sold prices held',
+    )
+    expect(noArea.factors.find((f) => f.label === 'Yield against the area')?.detail).toBe(
+      'No local yield benchmark held',
+    )
+  })
+
+  it('measures the yield against the area rather than against a fixed band', () => {
+    const strong = quality(listing({ price: 150_000 }), enrichment({ estimatedRent: 1_100 }), area({ localGrossYieldPercent: 6 }))
+    const ordinary = quality(listing({ price: 150_000 }), enrichment({ estimatedRent: 1_100 }), area({ localGrossYieldPercent: 12 }))
+
+    const strongFactor = strong.factors.find((f) => f.label === 'Yield against the area')
+    const ordinaryFactor = ordinary.factors.find((f) => f.label === 'Yield against the area')
+
+    expect(strongFactor?.points).toBeGreaterThan(ordinaryFactor?.points ?? 0)
   })
 
   it('states the figure behind every factor so it can be argued with', () => {
-    for (const factor of quality(listing(), enrichment()).factors) {
+    for (const factor of quality(listing(), enrichment(), area()).factors) {
       expect(factor.detail.length).toBeGreaterThan(0)
     }
   })
 
   it('credits a property on a list that implies work', () => {
-    const needsWork = quality(listing({ lists: ['unmodernised-properties'] }), enrichment())
-    const plain = quality(listing({ lists: ['high-yield-properties'] }), enrichment())
+    const needsWork = quality(listing({ lists: ['unmodernised-properties'] }), enrichment(), area())
+    const plain = quality(listing({ lists: ['high-yield-properties'] }), enrichment(), area())
 
     expect(needsWork.score).toBeGreaterThan(plain.score)
   })
@@ -156,18 +216,27 @@ describe('ranking', () => {
   })
 
   it('still lets an exceptional property beat a small move, which is the honest limit of that', () => {
-    // Movement is not a trump card. A property 21% under its estimate on an 8%
-    // yield beats one that shaved 12% off an unremarkable asking price. If this
-    // ever stops being true the weights have gone wrong, not this test.
+    // Movement is not a trump card. A property clearing £284 a month on a yield
+    // a third above the area beats one that shaved 12% off an asking price it
+    // cannot let profitably. If this stops being true the weights have gone
+    // wrong, not this test.
     const mover = {
       candidate: 'mover',
-      quality: quality(listing({ price: 200_000 }), { estimatedValue: 205_000, estimatedRent: 800, areaDemandRating: 40 }),
+      quality: quality(
+        listing({ price: 200_000 }),
+        { estimatedValue: 205_000, estimatedRent: 800, areaDemandRating: 40 },
+        area(),
+      ),
       movement: movement([event({ magnitude: -12, observedAt: NOW })], NOW),
     }
 
     const exceptional = {
       candidate: 'exceptional',
-      quality: quality(listing({ price: 150_000 }), { estimatedValue: 190_000, estimatedRent: 1_000, areaDemandRating: 70 }),
+      quality: quality(
+        listing({ price: 150_000 }),
+        { estimatedValue: 190_000, estimatedRent: 1_000, areaDemandRating: 70 },
+        area(),
+      ),
       movement: movement([], NOW),
     }
 
@@ -216,5 +285,40 @@ describe('no LLM in this path', () => {
     const b = quality(listing(), enrichment())
 
     expect(a).toEqual(b)
+  })
+})
+
+describe('risks, which are stated rather than scored', () => {
+  it('flags a property that cannot legally be let', () => {
+    const found = risks(area(), { rating: 'F', score: 30 })
+
+    expect(found).toHaveLength(1)
+    expect(found[0]?.label).toBe('EPC F')
+    expect(found[0]?.detail).toContain('Cannot be let')
+  })
+
+  it('warns about a rating that passes today and would not under the C minimum', () => {
+    expect(risks(area(), { rating: 'D', score: 60 })[0]?.detail).toContain('C minimum')
+  })
+
+  it('says nothing about a good rating', () => {
+    expect(risks(area(), { rating: 'B', score: 85 })).toEqual([])
+  })
+
+  it('flags flood risk above low, and not at or below it', () => {
+    expect(risks(area({ floodRisk: 'High' }), null)).toHaveLength(1)
+    expect(risks(area({ floodRisk: 'Very Low' }), null)).toEqual([])
+    expect(risks(area({ floodRisk: 'Low' }), null)).toEqual([])
+  })
+
+  it('warns that a leasehold area hides costs this product cannot see', () => {
+    const found = risks(area({ leaseholdShare: 0.9 }), null)
+
+    expect(found[0]?.label).toBe('Leasehold area')
+    expect(found[0]?.detail).toContain('service charge')
+  })
+
+  it('holds its tongue when nothing is known', () => {
+    expect(risks({ soldPricePerSqFt: null, localGrossYieldPercent: null, floodRisk: null, leaseholdShare: null }, null)).toEqual([])
   })
 })
