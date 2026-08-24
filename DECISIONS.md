@@ -315,3 +315,81 @@ list and keeps the raw payload. `pnpm propertydata:sample` prints what a real re
 actually contains and flags anything unmapped. Correcting it is a one-file change.
 
 This is the largest piece of guesswork in the build. It is contained on purpose.
+
+## Verified against the live API — 24 August 2026
+
+Nine credits spent replacing guesses with facts. What changed as a result.
+
+### An error costs no credits, which makes discovery cheap
+
+A rejected call — invalid list id, radius too wide — returns 4XX and charges nothing.
+That turned two problems into free ones: the maximum radius per list was found by asking
+for progressively less until a call succeeded (one credit each, at the end), and the
+correct id for the large-plot list was found by trying eight candidates of which seven
+were rejected for nothing.
+
+### Seven of eight guessed list ids were right
+
+`unmodernised-properties`, `reduced-properties`, `repossessed-properties`,
+`high-yield-properties`, `auction-properties`, `short-lease-properties` and
+`slow-to-sell-properties` all exist. The eighth is `large-plot` — singular, no suffix,
+the only one that breaks the pattern. Guessing it would not have worked.
+
+### Lists have their own maximum radius
+
+`unmodernised-properties` and `slow-to-sell-properties` reject anything over 30 miles
+with error 1103; `large-plot` is verified to 20. The first probe reported both of the
+first two as unconfirmed because it asked for 40 — the lists were fine, the question was
+wrong.
+
+A profile's radius is now clamped three ways: the form narrows the options as strategies
+are ticked, a database trigger refuses a profile whose radius exceeds what its strategies
+allow, and the run clamps again before calling. The last one matters because a list's
+limit can change after somebody has saved.
+
+### `price_history` is the most valuable field in the payload
+
+Each sourced property carries PropertyData's own dated price history —
+`[{date, price}, ...]`. That means a property's reductions are known the first time we
+ever see it rather than only from what we happen to observe week by week.
+
+The opening backfill can now say "reduced 20% in July" about a property it has never seen
+before, instead of "new to your area". Each step becomes its own event, dated when the
+change happened, with `learned_at` recording when we found out, and keyed on the two
+prices so a step we learn from history and later observe ourselves is one event.
+
+### Recency was measuring when we looked, not when the property moved
+
+`first_seen` is dated at run time. It was feeding the recency factor, so every property
+on a backfill scored full marks for the crime of being discovered. Recency is now computed
+only over the events that actually earn movement points. A test comparing a two-year-old
+reduction against a two-day-old one caught it.
+
+### A property already past a days-on-market mark now says so on first sight
+
+With no previous observation there is nothing to have crossed from, so a property 702 days
+unsold produced no crossing at all — and "140 days unsold" is one of the headlines this
+product exists to write. The event is now emitted on first sight, dated by working
+backwards from the day count: 702 days on the market means 365 was passed 337 days ago.
+Stamping it with today would have reintroduced the recency bug in another form.
+
+### The payload carries floor area, so valuations can be about the property
+
+`sqf` is passed to `/valuation-sale` as `internal_area`. It costs nothing and is the
+difference between valuing a postcode and valuing this property. It is deliberately not
+part of the enrichment cache key — including it would make almost every property unique
+and turn a handful of calls back into twenty-five.
+
+### Fields that do not exist
+
+No bathrooms, no agent, no first-listed date. The pipeline reads them if they ever appear
+and shows "Not held" rather than a guess. `lists` appears only when several lists are
+queried together. `image_url` never arrives here at all, because the wrapper strips image
+fields before anything is stored — which is the point of doing it there rather than at
+the point of display.
+
+### Server secrets are split by what needs them
+
+`serverEnv()` bundled Supabase with Stripe, so the pipeline could not run without Stripe
+keys it never uses. Now `supabaseAdminEnv()`, `stripeEnv()` and `propertyDataEnv()` are
+separate. A missing Stripe key stops checkout and nothing else.

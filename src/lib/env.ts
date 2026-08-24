@@ -14,8 +14,19 @@ const clientSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url(),
 })
 
-const serverSchema = z.object({
+/**
+ * Server secrets, split by what needs them.
+ *
+ * Kept apart deliberately. The weekly pipeline needs Supabase and PropertyData
+ * and has no business failing because a Stripe key is unset; the checkout route
+ * needs Stripe and has no business failing because the PropertyData key is. One
+ * combined object made every job depend on every secret.
+ */
+const supabaseAdminSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+})
+
+const stripeSchema = z.object({
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
   STRIPE_PRICE_ID: z.string().min(1),
@@ -43,17 +54,32 @@ export function clientEnv(): z.infer<typeof clientSchema> {
   return cachedClientEnv
 }
 
-let cachedServerEnv: z.infer<typeof serverSchema> | null = null
-
-export function serverEnv(): z.infer<typeof serverSchema> {
+function assertServerSide(what: string): void {
   if (typeof window !== 'undefined') {
-    throw new Error('serverEnv() was reached from the browser. This is a bug — server secrets must never be imported into client code.')
+    throw new Error(`${what} was reached from the browser. This is a bug — server secrets must never be imported into client code.`)
   }
-  if (cachedServerEnv) return cachedServerEnv
-  const parsed = serverSchema.safeParse(process.env)
-  if (!parsed.success) fail('server', parsed.error)
-  cachedServerEnv = parsed.data
-  return cachedServerEnv
+}
+
+let cachedSupabaseAdminEnv: z.infer<typeof supabaseAdminSchema> | null = null
+
+export function supabaseAdminEnv(): z.infer<typeof supabaseAdminSchema> {
+  assertServerSide('supabaseAdminEnv()')
+  if (cachedSupabaseAdminEnv) return cachedSupabaseAdminEnv
+  const parsed = supabaseAdminSchema.safeParse(process.env)
+  if (!parsed.success) fail('Supabase service role', parsed.error)
+  cachedSupabaseAdminEnv = parsed.data
+  return cachedSupabaseAdminEnv
+}
+
+let cachedStripeEnv: z.infer<typeof stripeSchema> | null = null
+
+export function stripeEnv(): z.infer<typeof stripeSchema> {
+  assertServerSide('stripeEnv()')
+  if (cachedStripeEnv) return cachedStripeEnv
+  const parsed = stripeSchema.safeParse(process.env)
+  if (!parsed.success) fail('Stripe', parsed.error)
+  cachedStripeEnv = parsed.data
+  return cachedStripeEnv
 }
 
 /**
@@ -84,9 +110,7 @@ export type PropertyDataEnv = z.infer<typeof propertyDataSchema>
 let cachedPropertyDataEnv: PropertyDataEnv | null = null
 
 export function propertyDataEnv(): PropertyDataEnv {
-  if (typeof window !== 'undefined') {
-    throw new Error('propertyDataEnv() was reached from the browser. The PropertyData key is server-side only.')
-  }
+  assertServerSide('propertyDataEnv()')
   if (cachedPropertyDataEnv) return cachedPropertyDataEnv
   const parsed = propertyDataSchema.safeParse(process.env)
   if (!parsed.success) fail('PropertyData', parsed.error)

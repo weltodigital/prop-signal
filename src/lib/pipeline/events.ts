@@ -1,4 +1,4 @@
-import type { Listing, ListingState } from './listing'
+import type { Listing, ListingState, PriceHistoryEntry } from './listing'
 
 /**
  * The diff. Everything depends on this being right.
@@ -60,6 +60,61 @@ export const DEFAULT_THRESHOLDS: EventThresholds = {
   daysOnMarketMarks: [60, 90, 120, 180, 270, 365],
 }
 
+/**
+ * Events derived from PropertyData's own dated price history.
+ *
+ * A property that appeared months ago can lead this week's list because
+ * something changed — and the history means we know what changed before we
+ * have watched it for a single week. Without this the opening backfill can
+ * only say "new to your area" about a property that has been reduced twice
+ * since 2024.
+ *
+ * Each event is dated with the date of the change itself, which is a dated
+ * historical observation and is exactly what may be kept indefinitely.
+ * `learnedAt` records when we found out, so the two are never confused.
+ *
+ * The dedupe key matches the one a live diff produces for the same move, so a
+ * reduction we learn from history and then observe ourselves is one event.
+ */
+export function eventsFromPriceHistory(
+  history: PriceHistoryEntry[],
+  learnedAt: Date,
+  thresholds: EventThresholds = DEFAULT_THRESHOLDS,
+): PropertyEvent[] {
+  const events: PropertyEvent[] = []
+
+  for (let i = 1; i < history.length; i += 1) {
+    const before = history[i - 1]
+    const after = history[i]
+    if (!before || !after || before.price === after.price) continue
+
+    const change = percentChange(before.price, after.price)
+    const reduced = after.price < before.price
+
+    const observedAt = new Date(`${after.date}T00:00:00.000Z`)
+    if (Number.isNaN(observedAt.getTime())) continue
+
+    events.push({
+      type: reduced ? 'price_reduced' : 'price_increased',
+      observedAt,
+      previousValue: { price: before.price, on: before.date },
+      currentValue: {
+        price: after.price,
+        on: after.date,
+        // Says plainly where this came from and when we learned it, so the
+        // timeline can label it rather than implying we watched it happen.
+        source: 'price_history',
+        learned_at: learnedAt.toISOString(),
+      },
+      magnitude: change,
+      isMaterial: reduced && Math.abs(change) >= thresholds.materialReductionPercent,
+      dedupeKey: `price:${before.price}:${after.price}`,
+    })
+  }
+
+  return events
+}
+
 function percentChange(from: number, to: number): number {
   if (from === 0) return 0
   return Number((((to - from) / from) * 100).toFixed(2))
@@ -86,19 +141,31 @@ export function diffListing(
   thresholds: EventThresholds = DEFAULT_THRESHOLDS,
 ): PropertyEvent[] {
   if (!previous) {
-    return [
-      {
-        type: 'first_seen',
-        observedAt,
-        previousValue: null,
-        currentValue: { price: listing.price, state: listing.state, days_on_market: listing.daysOnMarket },
-        magnitude: null,
-        // A first sighting is material: the user has never been shown it, so it
-        // is a reason to put it in front of them.
-        isMaterial: true,
-        dedupeKey: 'first_seen',
-      },
-    ]
+    const firstSeen: PropertyEvent = {
+      type: 'first_seen',
+      observedAt,
+      previousValue: null,
+      currentValue: { price: listing.price, state: listing.state, days_on_market: listing.daysOnMarket },
+      magnitude: null,
+      // A first sighting is material: the user has never been shown it, so it
+      // is a reason to put it in front of them.
+      isMaterial: true,
+      dedupeKey: 'first_seen',
+    }
+
+    // The history comes with the payload, so a property's past is known on the
+    // first run rather than after weeks of watching. These are dated when they
+    // happened, so the recency decay in scoring treats them as the old news
+    // they are, while the headline can still say what actually moved.
+    const history = eventsFromPriceHistory(listing.priceHistory, observedAt, thresholds)
+
+    // A property 702 days unsold has already passed every mark. Without this it
+    // would produce no crossing at all, because there is no previous
+    // observation to have crossed from — and "140 days unsold" is one of the
+    // headlines this product exists to write.
+    const stale = staleOnFirstSight(listing, observedAt, thresholds)
+
+    return stale ? [firstSeen, ...history, stale] : [firstSeen, ...history]
   }
 
   const events: PropertyEvent[] = []
@@ -169,6 +236,41 @@ export function diffListing(
   }
 
   return events
+}
+
+/**
+ * The days-on-market mark a property had already passed the first time we saw it.
+ *
+ * Dated by working backwards from the day count PropertyData give us, rather
+ * than stamped with today. A property 702 days on the market crossed 365 some
+ * 337 days ago, and saying so is both true and what stops the recency score
+ * treating every stale listing on a backfill as fresh news.
+ */
+export function staleOnFirstSight(
+  listing: Listing,
+  observedAt: Date,
+  thresholds: EventThresholds = DEFAULT_THRESHOLDS,
+): PropertyEvent | null {
+  const days = listing.daysOnMarket
+  const mark = crossedMark(days, thresholds.daysOnMarketMarks)
+  if (days === null || mark === null) return null
+
+  const crossedAt = new Date(observedAt.getTime() - (days - mark) * 86_400_000)
+
+  return {
+    type: 'days_on_market_crossed',
+    observedAt: crossedAt,
+    previousValue: null,
+    currentValue: {
+      days_on_market: days,
+      mark,
+      source: 'days_on_market',
+      learned_at: observedAt.toISOString(),
+    },
+    magnitude: mark,
+    isMaterial: true,
+    dedupeKey: `dom:${mark}`,
+  }
 }
 
 /**

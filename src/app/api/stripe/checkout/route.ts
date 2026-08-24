@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/client'
 import { getOrCreateCustomer } from '@/lib/stripe/customer'
 import { getSubscriptionState } from '@/lib/subscription'
-import { serverEnv } from '@/lib/env'
+import { stripeEnv } from '@/lib/env'
 import { absoluteUrl } from '@/lib/origin'
 
 export const runtime = 'nodejs'
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   const session = await stripe().checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
-    line_items: [{ price: serverEnv().STRIPE_PRICE_ID, quantity: 1 }],
+    line_items: [{ price: stripeEnv().STRIPE_PRICE_ID, quantity: 1 }],
     success_url: await absoluteUrl('/dashboard?checkout=complete'),
     cancel_url: await absoluteUrl('/subscribe?checkout=cancelled'),
     allow_promotion_codes: true,

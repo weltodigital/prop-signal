@@ -161,10 +161,24 @@ export async function runProfile(options: {
 
   try {
     // --- 1. Pull the area --------------------------------------------------
+    // Some lists reject a radius over 30 or 20 miles with error 1103, so the
+    // call is clamped to the smallest maximum across the lists being asked for.
+    // Saved profiles are constrained the same way by a database trigger; this
+    // is the second lock, for a list whose limit changed after someone saved.
+    const radius = await allowedRadius(supabase, profile)
+    if (radius < profile.radius_miles) {
+      log('radius_clamped', {
+        run_id: run.id,
+        requested: profile.radius_miles,
+        used: radius,
+        strategies: profile.strategies,
+      })
+    }
+
     const sourced = await client.call<unknown>('sourced-properties', {
       list: profile.strategies.join(','),
       postcode: profile.postcode,
-      radius: profile.radius_miles,
+      radius,
       results: isBackfill ? BACKFILL_PAGE_SIZE : WEEKLY_PAGE_SIZE,
     })
 
@@ -363,6 +377,24 @@ export async function runWeekly(options: {
   return { batchId, summaries }
 }
 
+/**
+ * The widest radius every chosen list will accept.
+ *
+ * PropertyData enforce a maximum per list and reject the whole call when it is
+ * exceeded, so one narrow list caps the search rather than failing it.
+ */
+async function allowedRadius(supabase: SupabaseClient, profile: ProfileRow): Promise<number> {
+  const { data, error } = await supabase
+    .from('strategy_lists')
+    .select('max_radius_miles')
+    .in('id', profile.strategies)
+
+  if (error || !data?.length) return profile.radius_miles
+
+  const smallest = Math.min(...data.map((row) => row.max_radius_miles))
+  return Math.min(profile.radius_miles, smallest)
+}
+
 // ---------------------------------------------------------------------------
 // Persistence
 // ---------------------------------------------------------------------------
@@ -428,7 +460,11 @@ async function diffAndPersist(
           last_run_id: runId,
           ...(previous ? {} : { first_observed_at: observedAt.toISOString() }),
           address: listing.address,
+          precise_address: listing.preciseAddress,
           postcode: listing.postcode,
+          internal_area_sqft: listing.internalAreaSqFt,
+          reduced_by_percent: listing.reducedByPercent,
+          days_since_price_change: listing.daysSincePriceChange,
           price: listing.price,
           bedrooms: listing.bedrooms,
           bathrooms: listing.bathrooms,
@@ -509,7 +545,12 @@ async function writeEvents(
 
 const EMPTY_ENRICHMENT: Enrichment = { estimatedValue: null, estimatedRent: null, areaDemandRating: null }
 
-/** Enrichment is shared by every property with the same postcode, type and beds. */
+/**
+ * Enrichment is shared by every property the valuation would treat the same:
+ * one postcode, one type, one bedroom count. Floor area is deliberately not
+ * part of the key — including it would make almost every property unique and
+ * turn a handful of calls back into twenty-five.
+ */
 function enrichmentKey(listing: Listing, fallbackPostcode: string): string {
   const postcode = listing.postcode ?? fallbackPostcode
   return `${postcode}|${listing.propertyType ?? ''}|${listing.bedrooms ?? ''}`.toLowerCase()
@@ -571,6 +612,10 @@ async function enrichCandidates(
     const attributes: Record<string, unknown> = { postcode }
     if (listing.bedrooms !== null) attributes.bedrooms = listing.bedrooms
     if (listing.propertyType) attributes.property_type = listing.propertyType
+    // The payload carries the floor area, and /valuation-sale takes it. Passing
+    // it costs nothing and is the difference between valuing a postcode and
+    // valuing this property.
+    if (listing.internalAreaSqFt !== null) attributes.internal_area = listing.internalAreaSqFt
 
     let estimatedValue: number | null = null
     let estimatedRent: number | null = null

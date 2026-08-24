@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { clientEnv, serverEnv } from '@/lib/env'
+import { clientEnv, supabaseAdminEnv } from '@/lib/env'
 
 /**
  * Service-role Supabase client. Bypasses RLS entirely.
@@ -12,7 +12,7 @@ import { clientEnv, serverEnv } from '@/lib/env'
  * checked yourself — RLS is not doing it for you here.
  */
 export function createAdminClient() {
-  return createSupabaseClient(clientEnv().NEXT_PUBLIC_SUPABASE_URL, serverEnv().SUPABASE_SERVICE_ROLE_KEY, {
+  return createSupabaseClient(clientEnv().NEXT_PUBLIC_SUPABASE_URL, supabaseAdminEnv().SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }

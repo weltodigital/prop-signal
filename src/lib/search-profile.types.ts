@@ -28,6 +28,8 @@ export type StrategyList = {
   label: string
   description: string
   verified: boolean
+  /** The API rejects a wider search than this for this list. */
+  maxRadiusMiles: number
 }
 
 export type SearchProfile = {

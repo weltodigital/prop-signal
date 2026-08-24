@@ -4,7 +4,7 @@ import { stripe } from '@/lib/stripe/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ownerIdForCustomer } from '@/lib/stripe/customer'
 import { toSubscriptionRecord } from '@/lib/stripe/subscription-record'
-import { serverEnv } from '@/lib/env'
+import { stripeEnv } from '@/lib/env'
 
 export const runtime = 'nodejs'
 // The raw body is needed for signature verification, so this route is never
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe().webhooks.constructEvent(raw, signature, serverEnv().STRIPE_WEBHOOK_SECRET)
+    event = stripe().webhooks.constructEvent(raw, signature, stripeEnv().STRIPE_WEBHOOK_SECRET)
   } catch (error) {
     // An unverified body is never parsed, stored, or acted on.
     log('signature_rejected', { message: error instanceof Error ? error.message : 'unknown' })

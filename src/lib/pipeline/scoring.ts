@@ -74,6 +74,15 @@ function round(value: number): number {
   return Number(value.toFixed(2))
 }
 
+/**
+ * The event types that earn movement points.
+ *
+ * `first_seen` is absent deliberately. It is dated when *we* looked, not when
+ * the property did anything, so counting it towards recency would give every
+ * property on a backfill a full recency score for having been found.
+ */
+const MOVEMENT_TYPES = new Set(['price_reduced', 'returned_to_market', 'days_on_market_crossed'])
+
 /** Lists that imply the property needs work, and so carries margin. */
 const CONDITION_LISTS = new Set([
   'unmodernised-properties',
@@ -207,8 +216,12 @@ export function movement(
   }
 
   // --- Recency -------------------------------------------------------------
-  if (events.length) {
-    const newest = Math.max(...events.map((event) => event.observedAt.getTime()))
+  // Measured over the events that actually scored, so it answers "how recently
+  // did this move" rather than "how recently did we run".
+  const scoring = events.filter((event) => MOVEMENT_TYPES.has(event.type))
+
+  if (scoring.length) {
+    const newest = Math.max(...scoring.map((event) => event.observedAt.getTime()))
     const daysAgo = Math.max(0, (observedAt.getTime() - newest) / 86_400_000)
     // This week is worth everything; a month ago is worth nothing.
     const points = round((1 - band(daysAgo, 0, 28)) * w.recency)

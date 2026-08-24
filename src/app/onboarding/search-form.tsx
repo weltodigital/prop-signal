@@ -36,6 +36,14 @@ export function SearchForm({
   searchChangeLimit: number
 }) {
   const [state, formAction] = useActionState<OnboardingState, FormData>(saveSearch, { status: 'idle' })
+  // PropertyData cap the radius per list and reject the whole call above it, so
+  // the options narrow as strategies are ticked rather than failing on Sunday.
+  const [chosen, setChosen] = useState<string[]>(profile?.strategies ?? [])
+  const maxRadius = Math.min(
+    ...strategies.filter((s) => chosen.includes(s.id)).map((s) => s.maxRadiusMiles),
+    Math.max(...RADIUS_OPTIONS),
+  )
+
   const [showOptional, setShowOptional] = useState(
     Boolean(profile?.minPrice || profile?.maxPrice || profile?.minBedrooms || profile?.propertyTypes?.length),
   )
@@ -84,13 +92,18 @@ export function SearchForm({
               defaultValue={profile?.radiusMiles ?? 10}
               className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             >
-              {RADIUS_OPTIONS.map((miles) => (
+              {RADIUS_OPTIONS.filter((miles) => miles <= maxRadius).map((miles) => (
                 <option key={miles} value={miles}>
                   {miles} {miles === 1 ? 'mile' : 'miles'}
                 </option>
               ))}
             </select>
             <FieldError message={errors.radiusMiles} />
+            {maxRadius < Math.max(...RADIUS_OPTIONS) ? (
+              <p className="mt-1.5 text-sm text-muted">
+                Capped at {maxRadius} miles by one of the strategies you have chosen.
+              </p>
+            ) : null}
           </div>
         </div>
       </Card>
@@ -114,11 +127,23 @@ export function SearchForm({
                 name="strategies"
                 value={strategy.id}
                 defaultChecked={profile?.strategies.includes(strategy.id) ?? false}
+                onChange={(event) =>
+                  setChosen((current) =>
+                    event.target.checked
+                      ? [...current, strategy.id]
+                      : current.filter((id) => id !== strategy.id),
+                  )
+                }
                 className="mt-0.5 size-4 accent-accent"
               />
               <span>
                 <span className="block text-sm font-medium">{strategy.label}</span>
                 <span className="block text-sm text-muted">{strategy.description}</span>
+                {strategy.maxRadiusMiles < Math.max(...RADIUS_OPTIONS) ? (
+                  <span className="mt-0.5 block text-sm text-muted">
+                    Searches up to {strategy.maxRadiusMiles} miles.
+                  </span>
+                ) : null}
               </span>
             </label>
           ))}

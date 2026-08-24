@@ -3,25 +3,34 @@ import { createHash } from 'node:crypto'
 /**
  * Turning a `/sourced-properties` result into the shape the pipeline works in.
  *
- * PropertyData's published documentation names only a handful of the fields a
- * sourced property carries — `type`, `type_standardised`, `lists`,
- * `years_remaining`, `highest_offer`, `reduced_by`, `months_on_market`,
- * `plot_size_acres` and `image_url` — and does not show a full example
- * response. Everything else here is read through an alias list rather than a
- * single guessed key, so a reasonable naming is picked up whichever it turns
- * out to be.
+ * The alias lists below were confirmed against a live response on 2026-08-24
+ * (`pnpm propertydata:sample`). A real sourced property carries:
  *
- * `pnpm propertydata:sample` prints the field names a real response actually
- * uses. Correct the alias lists below from its output, in one place, and the
- * rest of the pipeline does not change.
+ *   address  precise_address  postcode  lat  lng  distance_to
+ *   price  price_history  reduced_by  days_since_price_change
+ *   bedrooms  sqf  type  type_standardised
+ *   days_on_market  sstc  id  url  summary
+ *
+ * Notably absent: bathrooms, agent, and any first-listed date. `lists` appears
+ * only when several lists are queried together. `image_url` is documented but
+ * never reaches here — the wrapper strips image fields before anything is
+ * stored, which is the point of doing it there.
+ *
+ * The first alias in each list is the confirmed name; the rest are kept as a
+ * cushion in case PropertyData rename something.
  */
 
 export type ListingState = 'listed' | 'sstc' | 'withdrawn'
+
+/** One dated entry from PropertyData's own price history for a listing. */
+export type PriceHistoryEntry = { date: string; price: number }
 
 export type Listing = {
   /** Stable identity for this property within one user's record. */
   key: string
   address: string | null
+  /** The full address where the payload carries one; often absent. */
+  preciseAddress: string | null
   postcode: string | null
   price: number | null
   bedrooms: number | null
@@ -32,6 +41,20 @@ export type Listing = {
   state: ListingState
   daysOnMarket: number | null
   firstListedAt: string | null
+  /** Internal area in square feet. Sharpens the sale valuation when present. */
+  internalAreaSqFt: number | null
+  /** Total reduction from the original asking price, as a percentage. */
+  reducedByPercent: number | null
+  /** Days since the asking price last moved. */
+  daysSincePriceChange: number | null
+  /**
+   * PropertyData's own dated price history, oldest first.
+   *
+   * This is the most valuable field in the payload. It means a property's
+   * reductions are known the first time we ever see it, rather than only from
+   * whatever we happen to observe week by week.
+   */
+  priceHistory: PriceHistoryEntry[]
   /** Which sourcing lists this property appeared on. */
   lists: string[]
   /** Everything else, kept so a later mapping fix can be applied retroactively. */
@@ -41,6 +64,7 @@ export type Listing = {
 const ALIASES = {
   id: ['id', 'property_id', 'listing_id', 'reference', 'ref'],
   address: ['address', 'display_address', 'full_address', 'title'],
+  preciseAddress: ['precise_address', 'full_address'],
   postcode: ['postcode', 'post_code', 'outcode', 'postcode_district'],
   price: ['price', 'asking_price', 'current_price', 'listed_price'],
   bedrooms: ['bedrooms', 'beds', 'num_bedrooms', 'bedroom_count'],
@@ -51,7 +75,11 @@ const ALIASES = {
   sstc: ['sstc', 'is_sstc', 'sold_stc', 'under_offer'],
   daysOnMarket: ['days_on_market', 'days_listed', 'listed_days'],
   monthsOnMarket: ['months_on_market', 'months_listed'],
-  firstListed: ['first_listed', 'first_listed_date', 'listed_date', 'date_listed', 'first_seen'],
+  firstListed: ['first_listed', 'first_listed_date', 'listed_date', 'date_listed'],
+  internalArea: ['sqf', 'internal_area', 'floor_area', 'sq_ft'],
+  reducedBy: ['reduced_by', 'reduction_percent'],
+  daysSincePriceChange: ['days_since_price_change', 'days_since_reduction'],
+  priceHistory: ['price_history', 'prices', 'history'],
   lists: ['lists', 'list', 'sourcing_lists'],
 } as const
 
@@ -98,6 +126,29 @@ function asDate(value: unknown): string | null {
   return new Date(parsed).toISOString().slice(0, 10)
 }
 
+/**
+ * Reads `price_history`, which arrives as `[{date, price}, ...]`.
+ *
+ * Sorted oldest first and stripped of anything unreadable, so the caller can
+ * walk consecutive pairs without checking each one.
+ */
+export function asPriceHistory(value: unknown): PriceHistoryEntry[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') return []
+      const record = entry as Record<string, unknown>
+
+      const date = asDate(record.date ?? record.on ?? record.changed_at)
+      const price = asNumber(record.price ?? record.value ?? record.amount)
+      if (!date || price === null) return []
+
+      return [{ date, price }]
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
 function asList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String).filter(Boolean)
   const text = asText(value)
@@ -132,6 +183,7 @@ export function normaliseListing(raw: Record<string, unknown>): Listing {
   return {
     key: propertyKey(raw),
     address: asText(pick(raw, ALIASES.address)),
+    preciseAddress: asText(pick(raw, ALIASES.preciseAddress)),
     postcode: asText(pick(raw, ALIASES.postcode)),
     price: asNumber(pick(raw, ALIASES.price)),
     bedrooms: asNumber(pick(raw, ALIASES.bedrooms)),
@@ -144,6 +196,10 @@ export function normaliseListing(raw: Record<string, unknown>): Listing {
     // count is absent. Approximate, and only ever used against a threshold.
     daysOnMarket: daysOnMarket ?? (monthsOnMarket === null ? null : Math.round(monthsOnMarket * 30.44)),
     firstListedAt: asDate(pick(raw, ALIASES.firstListed)),
+    internalAreaSqFt: asNumber(pick(raw, ALIASES.internalArea)),
+    reducedByPercent: asNumber(pick(raw, ALIASES.reducedBy)),
+    daysSincePriceChange: asNumber(pick(raw, ALIASES.daysSincePriceChange)),
+    priceHistory: asPriceHistory(pick(raw, ALIASES.priceHistory)),
     lists: asList(pick(raw, ALIASES.lists)),
     raw,
   }

@@ -26,7 +26,7 @@ export async function listStrategies(): Promise<StrategyList[]> {
 
   const { data, error } = await supabase
     .from('strategy_lists')
-    .select('id, label, description, verified_at')
+    .select('id, label, description, verified_at, max_radius_miles')
     .eq('enabled', true)
     .order('sort_order', { ascending: true })
 
@@ -37,6 +37,7 @@ export async function listStrategies(): Promise<StrategyList[]> {
     label: row.label,
     description: row.description,
     verified: row.verified_at !== null,
+    maxRadiusMiles: row.max_radius_miles,
   }))
 }
 
