@@ -4,14 +4,20 @@
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* Ink on paper, with one accent used sparingly for movement and money. */
-  --color-paper: #fbfaf8;
+  /* Taken from the logo. Navy carries the weight and does the work on
+     buttons and headings; cyan is bright enough to mark a thing and too
+     bright to read, so it is never asked to hold text. */
+  --color-paper: #f7f9fb;
   --color-card: #ffffff;
-  --color-ink: #17181a;
-  --color-muted: #5c6068;
-  --color-line: #e3e1dc;
-  --color-accent: #1f5f4f;
-  --color-accent-soft: #eaf2ef;
+  --color-ink: #0d1b2f;
+  --color-muted: #5a6a80;
+  --color-line: #e2e8f0;
+
+  --color-accent: #112c54;
+  --color-accent-soft: #eaf1f9;
+  --color-highlight: #00b1db;
+  --color-highlight-deep: #0080a0;
+
   --color-warn: #8a5300;
   --color-warn-soft: #fdf3e3;
 }
@@ -30,4 +36,11 @@ body {
 /* Tabular figures everywhere a price or percentage appears. */
 .nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Marketing headlines. Tight tracking at large sizes, which is what stops a
+   big sentence-case heading reading as loose. */
+.display {
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
