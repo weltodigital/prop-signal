@@ -104,13 +104,48 @@ suite('row level security', () => {
     expect(data?.map((r) => r.owner_id)).toEqual([alice.id])
   })
 
-  it('refuses a client-side write to subscriptions', async () => {
-    const { error } = await alice.client
+  it('lets nobody extend their own subscription', async () => {
+    // The attack this guards: a subscriber pushing their own period end into
+    // the future to keep access without paying.
+    //
+    // With no UPDATE policy on the table, Postgres matches zero rows rather
+    // than raising, so PostgREST reports success with an empty result. The
+    // assertion that matters is that nothing changed, not that an error came
+    // back — an earlier version of this test checked for the error and would
+    // have passed just as happily if the write had gone through.
+    const { data: touched, error } = await alice.client
       .from('subscriptions')
       .update({ status: 'active', current_period_end: '2099-01-01T00:00:00Z' })
       .eq('id', `sub_rls_${alice.id}`)
+      .select()
 
-    expect(error).not.toBeNull()
+    expect(error).toBeNull()
+    expect(touched).toEqual([])
+
+    const { data: after } = await admin
+      .from('subscriptions')
+      .select('current_period_end')
+      .eq('id', `sub_rls_${alice.id}`)
+      .single()
+
+    expect(String(after?.current_period_end)).not.toContain('2099')
+  })
+
+  it('lets nobody delete their own subscription row', async () => {
+    const { data: deleted } = await alice.client
+      .from('subscriptions')
+      .delete()
+      .eq('id', `sub_rls_${alice.id}`)
+      .select()
+
+    expect(deleted).toEqual([])
+
+    const { count } = await admin
+      .from('subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', alice.id)
+
+    expect(count).toBe(1)
   })
 
   it('refuses a client-side insert of a subscription for someone else', async () => {

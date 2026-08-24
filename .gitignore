@@ -10,3 +10,6 @@ next-env.d.ts
 .DS_Store
 .vercel
 coverage/
+
+# Local throwaway probes. Never committed.
+scratch/
