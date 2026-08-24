@@ -50,8 +50,8 @@ done < .env.local
 for target in production preview development; do
   vercel env rm NEXT_PUBLIC_SITE_URL "$target" --yes >/dev/null 2>&1 || true
 done
-printf '%s' "https://usepropsignal.com" | vercel env add NEXT_PUBLIC_SITE_URL production >/dev/null
-printf '%s' "https://usepropsignal.com" | vercel env add NEXT_PUBLIC_SITE_URL preview >/dev/null
+printf '%s' "https://www.usepropsignal.com" | vercel env add NEXT_PUBLIC_SITE_URL production >/dev/null
+printf '%s' "https://www.usepropsignal.com" | vercel env add NEXT_PUBLIC_SITE_URL preview >/dev/null
 printf '%s' "http://localhost:3000" | vercel env add NEXT_PUBLIC_SITE_URL development >/dev/null
 echo "  set NEXT_PUBLIC_SITE_URL"
 
