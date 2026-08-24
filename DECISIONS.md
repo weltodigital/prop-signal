@@ -494,3 +494,18 @@ appear next to the property under "worth knowing before you call" and the
 subscriber weighs them, which is the same principle as scoring nothing for a
 figure we do not hold.
 
+### /build-cost is not called, and refurb cost is not held at all
+
+It prices building from nothing. A refurbishment is some fraction of that, and
+nobody can say which fraction without inventing it — which is the assumed
+average this codebase refuses everywhere else. Feeding a guessed figure into
+"room to add value" would put an invented number inside the ranking, where the
+subscriber cannot see it or argue with it.
+
+It also requires `internal_area`, despite the vendor markdown listing only a
+postcode. That makes it per-property rather than per-area, so it would cost
+about one credit per enriched candidate rather than one per run.
+
+So the calculator opens `refurbCost` at zero and the subscriber types their own
+number, which is the one figure in this product they know better than we do.
+
