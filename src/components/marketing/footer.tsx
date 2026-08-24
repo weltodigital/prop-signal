@@ -32,7 +32,7 @@ export function MarketingFooter() {
               <span className="text-base font-semibold tracking-tight text-accent">Prop Signal</span>
             </div>
             <p className="mt-3 text-sm text-muted">
-              Five UK properties every Monday, each with a stated reason it is on the list this week.
+              Find the UK sellers who are ready to take less, before anyone else works out they are.
             </p>
           </div>
 

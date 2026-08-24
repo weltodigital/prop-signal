@@ -4,7 +4,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Prop Signal',
   description:
-    'Five UK property deals in your area every Monday, chosen because something changed — a reduction, a return to market, a listing gone stale.',
+    'Find the sellers who are ready to take less. Five properties in your area every Monday, chosen because something moved, with the numbers already worked out.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

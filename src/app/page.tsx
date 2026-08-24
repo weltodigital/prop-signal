@@ -6,46 +6,46 @@ import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 
 export const metadata: Metadata = {
-  title: 'Prop Signal — five UK properties every Monday, and why',
+  title: 'Prop Signal — find the sellers who are ready to take less',
   description:
-    'Pick an area and a strategy. Every Monday, five properties with the numbers stacked and a stated reason each one qualified this week. £29 a month.',
+    'Five properties in your area every Monday, chosen because something moved. A price cut, a fall-through, a year unsold. You get the leverage and the numbers, without the scrolling. £29 a month.',
 }
 
 const CLAIMS = [
   {
-    title: 'Event-driven, not listing-driven',
-    body: 'What has moved beats what merely appeared. A reduction, a return after a fall-through, a listing going stale. That comes from our own week-on-week diffing, not from a portal feed.',
+    title: 'Know what to offer',
+    body: 'Every property arrives with what it was asking, what it is asking now, and how long it has been stuck. A seller who has cut twice and sat unsold for a year has told you where they are. That is what an offer is built on.',
   },
   {
-    title: 'Every figure carries its date',
-    body: 'Nothing on the page claims to be true today. Each number is labelled with the day it was observed, and a figure we do not hold says so rather than showing an estimate.',
+    title: 'Get your Sunday back',
+    body: 'No saved searches to triage, no alerts about properties you have already dismissed. We watch the whole area every week and only put something in front of you when it has actually changed.',
   },
   {
-    title: 'Five, or fewer, never more',
-    body: 'A quiet week in a quiet area will not produce five that qualify. You get a shorter list and one plain sentence saying why. The list is never padded.',
+    title: 'Rule it out in thirty seconds',
+    body: 'Rent, gross yield, the gap to the estimated value and local demand are worked out before you open it. A deal that does not stack is obvious without a spreadsheet or a phone call.',
   },
 ] as const
 
 const STEPS = [
   {
     step: '01',
-    title: 'Tell us where and how you buy',
-    body: 'A postcode, how far you will travel, and the strategies you buy on. One area per subscriber, capped at forty miles.',
+    title: 'Tell us where you buy',
+    body: 'A postcode, how far you will travel, and the strategies you buy on. It takes about a minute and you never have to set up a search again.',
   },
   {
     step: '02',
-    title: 'Your opening list is a backfill',
-    body: 'It draws on everything standing in your area, not only what appeared this week, so the first Monday is worth reading.',
+    title: 'Your first list arrives full',
+    body: 'The opening list draws on every property standing in your area, not only this week, so there is something to act on from the first Monday.',
   },
   {
     step: '03',
-    title: 'Then it runs every Sunday night',
-    body: 'The run diffs against the week before, writes what changed, scores what qualifies and publishes by Monday morning.',
+    title: 'After that, only what changed',
+    body: 'Each Monday you get the properties where a seller has moved since you last looked. Nothing you have already seen and dismissed comes back.',
   },
   {
     step: '04',
-    title: 'Work the numbers yourself',
-    body: 'Star anything worth watching, read the full history, and put your own figures through the calculator. None of it costs you anything.',
+    title: 'Make the call',
+    body: 'Check the history, put your own purchase price and rent through the calculator, and ring the agent knowing more than they expect.',
   },
 ] as const
 
@@ -96,12 +96,12 @@ export default async function HomePage() {
               </p>
 
               <h1 className="display mt-5 text-4xl font-semibold sm:text-6xl">
-                Five properties every Monday, and the reason each one is on the list.
+                Find the sellers who are ready to take less.
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">
-                Pick an area and a strategy. Every Monday morning five properties are waiting in your dashboard, with
-                the numbers stacked and a stated reason each one qualified this week.
+                Five properties in your area every Monday, chosen because something moved. A price cut, a fall-through,
+                a year on the market with no buyer. You get the leverage and the numbers. You skip the scrolling.
               </p>
 
               <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -114,8 +114,8 @@ export default async function HomePage() {
               </div>
 
               <p className="mt-5 text-sm text-muted">
-                £29 a month, one area, cancel any time. No free tier, and no card details taken for a trial that does
-                not exist.
+                £29 a month for your area. Cancel any time. No free tier, and no card details taken for a trial that
+                does not exist.
               </p>
             </div>
 
@@ -128,8 +128,12 @@ export default async function HomePage() {
         {/* Three claims -------------------------------------------------- */}
         <section id="inside" className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="display max-w-2xl text-3xl font-semibold sm:text-4xl">
-            Anyone can see what came on the market. We show you what moved.
+            The best deal in your area was probably listed months ago.
           </h2>
+          <p className="mt-5 max-w-2xl text-lg text-muted">
+            It has been sitting there, quietly coming down, while every alert you subscribe to shouts about what went
+            up this morning. Motivated sellers are made, not born, and they are made slowly.
+          </p>
 
           <div className="mt-12 grid gap-10 sm:grid-cols-3">
             {CLAIMS.map((claim) => (
@@ -147,18 +151,18 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl space-y-24 px-6 py-20">
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div>
-                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">The diff</p>
+                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Leverage</p>
                 <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
-                  A dated record of everything that has happened to a property.
+                  Walk in knowing exactly how much room there is.
                 </h2>
                 <p className="mt-5 text-lg text-muted">
-                  Every run is compared against the one before it and the differences are written down permanently.
-                  A price reduction of at least five per cent, a return to market, a listing crossing a days-unsold
-                  mark. Those are the moves that can put a property back in front of you.
+                  An agent will tell you there is interest. The history tells you the price has come down twice, the
+                  sale already fell through once, and nobody has bought it in seven hundred days. You make your offer
+                  against that rather than against the asking price.
                 </p>
                 <p className="mt-4 text-muted">
-                  A five hundred pound trim on a two hundred and fifty thousand pound house is recorded and is not
-                  material. Going under offer is recorded and is not material, because it is going rather than coming.
+                  You get the whole record, dated. Small trims and properties going under offer are noted and left
+                  alone, because neither one means a seller is ready to move.
                 </p>
               </div>
               <TimelinePreview />
@@ -166,18 +170,18 @@ export default async function HomePage() {
 
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div className="lg:order-2">
-                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">The working</p>
+                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Fewer wasted Saturdays</p>
                 <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
-                  Every score opens up, line by line.
+                  Decide before you spend a day on a viewing.
                 </h2>
                 <p className="mt-5 text-lg text-muted">
-                  A quality score for whether the property is any good, and a movement score for how hard and how
-                  recently it moved. They are added rather than blended, so a mediocre property that has just dropped
-                  twelve per cent can outrank a good one that has not moved.
+                  The yield, the gap to the estimated value and the local demand are worked out and shown with the
+                  figures behind them. You can see why something scored what it did and disagree with it, which is
+                  more use than a number you have to take on trust.
                 </p>
                 <p className="mt-4 text-muted">
-                  There is no language model anywhere in this path. The weights are versioned and every stored score
-                  records which version produced it.
+                  Where we hold nothing, it says so and scores nothing. No assumed averages, and no language model
+                  anywhere near this.
                 </p>
               </div>
               <div className="lg:order-1">
@@ -187,17 +191,17 @@ export default async function HomePage() {
 
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div>
-                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Restraint</p>
+                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Worth opening</p>
                 <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
-                  A short honest list beats five with two duds.
+                  A list you can act on without checking it first.
                 </h2>
                 <p className="mt-5 text-lg text-muted">
-                  Some weeks a quiet area will not produce five that meet the threshold. Those weeks publish fewer and
-                  say so in one sentence. Filtering is the entire product, so padding the list would undo it.
+                  A quiet week gets a shorter list and one sentence explaining why. You are never handed five when
+                  three qualified, so you never have to work out which two are filler.
                 </p>
                 <p className="mt-4 text-muted">
-                  A property returns only on the strength of a move it has not already been shown to you for, which is
-                  what stops the same house arriving every Monday.
+                  Nothing you have already seen and passed on comes back unless the seller has moved again. The list
+                  stays worth the two minutes it takes to read.
                 </p>
               </div>
 
@@ -233,10 +237,17 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl px-6 py-20">
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <div>
-                <h2 className="display text-3xl font-semibold sm:text-4xl">One price, one area, no tiers.</h2>
+                <h2 className="display text-3xl font-semibold sm:text-4xl">
+                  Less than an hour of your time, every month.
+                </h2>
                 <p className="mt-5 text-lg text-muted">
-                  Every subscriber costs real data credits every week, whether the list is opened or not. That is why
-                  there is no free plan and no trial. The newsletter is the free tier.
+                  Most investors lose a weekend a month to portals and still miss the property that quietly dropped
+                  twelve per cent in March. This replaces that hour, and costs about what you would spend on lunch
+                  while doing it.
+                </p>
+                <p className="mt-4 text-muted">
+                  Every subscriber costs us real data credits every week, opened or not, which is why there is no free
+                  plan and no trial. The newsletter is the free tier.
                 </p>
               </div>
 
@@ -248,10 +259,11 @@ export default async function HomePage() {
 
                 <ul className="mt-6 space-y-3 text-muted">
                   {[
-                    'One area, up to forty miles',
-                    'Five properties every Monday, with the reason each qualified',
-                    'The full dated history behind every property',
-                    'Watchlist, archive and the deal calculator',
+                    'Your area, up to forty miles from your postcode',
+                    'Five sellers worth a phone call, every Monday',
+                    'The full price history, so you know what to offer',
+                    'Yield and value gap worked out before you open it',
+                    'A calculator that runs your own numbers, not ours',
                     'Cancel any time from your account page',
                   ].map((line) => (
                     <li key={line} className="flex gap-3">
@@ -295,10 +307,10 @@ export default async function HomePage() {
         <section className="bg-accent">
           <div className="mx-auto max-w-6xl px-6 py-20 text-center">
             <h2 className="display mx-auto max-w-2xl text-3xl font-semibold text-white sm:text-4xl">
-              Next Monday, five properties and the reason for each.
+              Next Monday, five sellers worth a phone call.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/70">
-              £29 a month for one area. Cancel any time.
+              £29 a month for your area. Cancel any time.
             </p>
 
             <div className="mt-9 flex flex-wrap justify-center gap-3">
