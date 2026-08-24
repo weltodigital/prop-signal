@@ -393,3 +393,41 @@ the point of display.
 `serverEnv()` bundled Supabase with Stripe, so the pipeline could not run without Stripe
 keys it never uses. Now `supabaseAdminEnv()`, `stripeEnv()` and `propertyDataEnv()` are
 separate. A missing Stripe key stops checkout and nothing else.
+
+### The watchlist has no notifications table
+
+A notification is a material event on a starred property, observed since that
+star was last read. Storing it would mean writing a row that duplicates the
+event row and can drift from it. It is derived at read time instead, from two
+queries: the watchlist, and the material events on those properties since the
+earliest cut-off in it.
+
+The cut-off is per star, not per user, because "mark this one read" has to be
+possible without silencing the other nine. That is why the events are filtered
+in memory rather than in the query — PostgREST cannot compare a column on one
+table against a column on another, and the volume is a handful of rows.
+
+### Starring is checked against the properties table, not just the owner id
+
+The insert policy on `watchlist` requires `exists (select 1 from properties
+where id = property_id)`, which is evaluated under the caller's own read policy.
+A property belonging to another subscriber is invisible to that subquery, so the
+insert fails. Without it, a guessed uuid would put somebody else's row on your
+watchlist — readable, because the join back out is scoped by your own id, but it
+would still be their property in your list.
+
+### An old score is shown as it was stored, never recomputed
+
+The property page reads `quality_score`, `movement_score` and `score_version`
+off the impression row rather than adding the factors back up. The factors are
+what the weights produced at the time; re-adding them under today's weights
+would restate history and quietly contradict the version stamp sitting next to
+it.
+
+### The sample tool derived its own idea of which fields are mapped
+
+`propertydata:sample` kept a hand-copied list of the field names the pipeline
+reads, and it went stale the moment `listing.ts` gained `price_history`, `sqf`,
+`reduced_by` and the rest. It reported nine unmapped fields when four were.
+`ALIASES` is now exported and the tool derives the set from it, so the report
+cannot drift from the thing it is reporting on.

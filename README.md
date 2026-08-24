@@ -17,13 +17,56 @@ our own week-on-week diffing.
 | 3 | Onboarding, and the first-run backfill | Done |
 | 4 | The weekly pipeline | Done |
 | 5 | Scoring | Done |
-| 6 | Subscriber app | Not started |
+| 6 | Subscriber app — the five, timelines, archive, watchlist, calculator | Done |
 | 7 | Publishing the week's five | Not started |
 | 8 | Admin export for the newsletter | Not started |
 
 The pipeline is written and covered by tests, but it has never been run against the live
 API — there is no key yet. A subscriber can sign up, pay, answer the two questions and
 reach a dashboard that waits for the first run.
+
+## The subscriber app
+
+Five routes, all server-rendered, all reads against rows the Sunday run already
+wrote. Nothing a subscriber can click spends a credit.
+
+| Route | What it is |
+| --- | --- |
+| `/dashboard` | This week's five. The qualifying event in the headline position, the numbers stacked, the score openable line by line. |
+| `/property/[id]` | One property in full: the complete event timeline, every week it has been shown to you, and the calculator. |
+| `/archive` and `/archive/[runId]` | Previous weeks, exactly as they were published. |
+| `/watchlist` | Starred properties, and the events on them you have not read. |
+| `/account` | Plan, area, strategies, billing portal. |
+
+### The watchlist costs nothing, by construction
+
+Starring a property adds a row to `watchlist` and nothing else. There is no
+notifications table: a notification is a material event on a starred property
+observed since that row's `events_seen_at`, derived at read time from the diff
+the run already wrote. It cannot fall out of step with the events because it is
+the events, and it cannot start costing money because there is no call behind it.
+
+Each starred row carries its own cut-off, so marking one property read does not
+silence the rest.
+
+### Stack it
+
+`src/lib/stack.ts` is the BRRR and buy-to-let arithmetic: pure, tested, and
+deliberately not `server-only` so it runs in the browser. Moving a number costs
+nothing. It opens on the figures we hold — asking price, estimated rent,
+estimated value — labelled as a starting point, and a figure we do not hold
+starts empty rather than at an average. `tests/stack.test.ts` checks the
+mortgage maths against the annuity formula and pins the awkward cases: a zero
+rate, a refinance that pulls more out than went in, a top-up.
+
+### What the interface will not do
+
+- No photographs, anywhere. Listing images carry no rights, so we describe the
+  property and link to the advert.
+- No figure without the date it was observed next to it.
+- No estimated stand-in for a figure we do not hold. It says "Not held" and the
+  score for that factor is zero, not an assumed average.
+- No padding. A thin week publishes fewer and says why.
 
 ## Stack
 

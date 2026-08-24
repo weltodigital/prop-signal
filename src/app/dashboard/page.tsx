@@ -1,77 +1,15 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { getSubscriptionState } from '@/lib/subscription'
-import { getSearchProfile } from '@/lib/search-profile'
-import { getCurrentWeek, type PublishedDeal } from '@/lib/deals'
+import { getCurrentWeek } from '@/lib/deals'
+import { requireSubscriber } from '@/lib/require-subscriber'
+import { formatDate } from '@/lib/format'
 import { AppShell } from '@/components/app-shell'
-import { Card, EmptyState, Notice } from '@/components/ui'
+import { DealCard } from '@/components/deal-card'
+import { EmptyState, Notice } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
 
-const dateFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-
-function formatDate(iso: string): string {
-  return dateFormat.format(new Date(iso))
-}
-
-function formatMoney(pence: number | null): string {
-  return pence === null ? 'Price not held' : `£${pence.toLocaleString('en-GB')}`
-}
-
 function describeArea(postcode: string, radiusMiles: number): string {
   return `${postcode}, within ${radiusMiles} ${radiusMiles === 1 ? 'mile' : 'miles'}`
-}
-
-/**
- * A published deal.
- *
- * The qualifying event is in the headline position, because it is the reason
- * the property is here. Every figure carries the date it was observed. There is
- * never a photograph — listing images carry no rights, so we link to the advert.
- */
-function DealCard({ deal }: { deal: PublishedDeal }) {
-  return (
-    <Card>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-sm font-medium text-accent">{deal.headline}</p>
-        <p className="nums text-sm text-muted">Score {deal.totalScore.toFixed(0)}</p>
-      </div>
-
-      <h3 className="mt-2 text-lg font-medium">{deal.address ?? 'Address not held'}</h3>
-
-      <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-        <div>
-          <dt className="text-muted">Asking price</dt>
-          <dd className="nums font-medium">{formatMoney(deal.price)}</dd>
-        </div>
-        <div>
-          <dt className="text-muted">Bedrooms</dt>
-          <dd className="nums font-medium">{deal.bedrooms ?? 'Not held'}</dd>
-        </div>
-        <div>
-          <dt className="text-muted">Type</dt>
-          <dd className="font-medium">{deal.propertyType ?? 'Not held'}</dd>
-        </div>
-      </dl>
-
-      <p className="mt-4 text-sm text-muted">
-        Observed {formatDate(deal.observedAt)}. Quality {deal.qualityScore.toFixed(0)}, movement{' '}
-        {deal.movementScore.toFixed(0)}, scoring {deal.scoreVersion}.
-      </p>
-
-      {deal.listingUrl ? (
-        <a
-          href={deal.listingUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="mt-4 inline-block text-sm underline underline-offset-4 hover:text-accent"
-        >
-          View the original listing
-        </a>
-      ) : null}
-    </Card>
-  )
 }
 
 export default async function DashboardPage({
@@ -79,23 +17,11 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ checkout?: string; onboarded?: string }>
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user?.email) redirect('/login?next=/dashboard')
-
-  const state = await getSubscriptionState()
-  if (!state.active) redirect('/subscribe')
-
-  const profile = await getSearchProfile()
-  if (!profile) redirect('/onboarding')
-
+  const { email, profile } = await requireSubscriber('/dashboard')
   const [week, params] = await Promise.all([getCurrentWeek(), searchParams])
 
   return (
-    <AppShell email={user.email}>
+    <AppShell email={email}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           {week?.kind === 'backfill' ? 'Your opening list' : 'This week'}
@@ -162,6 +88,12 @@ export default async function DashboardPage({
             <p>
               A quiet week in a quiet area will not always produce five that meet the threshold, and we would rather
               show you a short list than pad it out.
+            </p>
+            <p className="mt-3">
+              <Link href="/archive" className="underline underline-offset-4 hover:text-ink">
+                Previous weeks
+              </Link>{' '}
+              are still here.
             </p>
           </EmptyState>
         )}

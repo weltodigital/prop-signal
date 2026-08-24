@@ -116,7 +116,7 @@ export function strongestMaterialEvent(events: StoredEvent[]): StoredEvent | nul
 }
 
 /** Plain English for why a property is on the list, for the headline position. */
-export function describeEvent(event: StoredEvent | null): string {
+export function describeEvent(event: Pick<StoredEvent, 'type' | 'magnitude'> | null): string {
   if (!event) return 'New to your area'
 
   switch (event.type) {

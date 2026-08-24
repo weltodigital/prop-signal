@@ -33,6 +33,7 @@ suite('row level security', () => {
   let admin: SupabaseClient
   let alice: Tenant
   let bob: Tenant
+  const propertyIds = new Map<string, string>()
 
   async function makeTenant(label: string): Promise<Tenant> {
     const email = `rls-${label}-${stamp}@propsignal.test`
@@ -71,12 +72,34 @@ suite('row level security', () => {
         .from('billing_customers')
         .upsert({ owner_id: tenant.id, stripe_customer_id: `cus_rls_${tenant.id}` })
       if (customerError) throw new Error(`Could not seed billing customer: ${customerError.message}`)
+
+      // One property each, so the watchlist has something of its own to point
+      // at and something of somebody else's to be refused.
+      const observed = new Date().toISOString()
+      const { data: property, error: propertyError } = await admin
+        .from('properties')
+        .insert({
+          owner_id: tenant.id,
+          property_key: `pd:rls-${stamp}-${tenant.id}`,
+          first_observed_at: observed,
+          last_observed_at: observed,
+          address: '1 Isolation Street',
+          postcode: 'M1 1AE',
+          price: 150_000,
+        })
+        .select('id')
+        .single()
+      if (propertyError || !property) throw new Error(`Could not seed property: ${propertyError?.message}`)
+
+      propertyIds.set(tenant.id, property.id)
     }
   })
 
   afterAll(async () => {
     for (const tenant of [alice, bob]) {
       if (!tenant) continue
+      await admin.from('watchlist').delete().eq('owner_id', tenant.id)
+      await admin.from('properties').delete().eq('owner_id', tenant.id)
       await admin.from('subscriptions').delete().eq('owner_id', tenant.id)
       await admin.from('billing_customers').delete().eq('owner_id', tenant.id)
       await admin.auth.admin.deleteUser(tenant.id)
@@ -196,5 +219,57 @@ suite('row level security', () => {
 
     expect(error).toBeNull()
     expect(data).toBe(true)
+  })
+  it('lets a user star a property of their own', async () => {
+    const { error } = await alice.client
+      .from('watchlist')
+      .insert({ owner_id: alice.id, property_id: propertyIds.get(alice.id) })
+
+    expect(error).toBeNull()
+  })
+
+  it('refuses to let a user star somebody else property', async () => {
+    // The insert policy checks the property under the caller's own read policy,
+    // so Bob's property is invisible to Alice and the check fails. Without it a
+    // guessed uuid would put another tenant's row on her watchlist.
+    const { error } = await alice.client
+      .from('watchlist')
+      .insert({ owner_id: alice.id, property_id: propertyIds.get(bob.id) })
+
+    expect(error).not.toBeNull()
+  })
+
+  it('refuses to let a user star a property in somebody else name', async () => {
+    const { error } = await alice.client
+      .from('watchlist')
+      .insert({ owner_id: bob.id, property_id: propertyIds.get(alice.id) })
+
+    expect(error).not.toBeNull()
+  })
+
+  it('hides one user watchlist from another', async () => {
+    const { data, error } = await bob.client.from('watchlist').select('id, property_id')
+
+    expect(error).toBeNull()
+    expect(data).toEqual([])
+  })
+
+  it('refuses to let a user unstar somebody else property', async () => {
+    const { data: deleted } = await bob.client.from('watchlist').delete().eq('owner_id', alice.id).select('id')
+
+    expect(deleted).toEqual([])
+
+    const { count } = await admin
+      .from('watchlist')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', alice.id)
+
+    expect(count).toBe(1)
+  })
+
+  it('hides one user properties and events from another', async () => {
+    const { data } = await bob.client.from('properties').select('id')
+
+    expect(data?.map((row) => row.id)).toEqual([propertyIds.get(bob.id)])
   })
 })
