@@ -2,8 +2,26 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { clientEnv } from '@/lib/env'
 
-/** Paths that require a signed-in user. */
-const PROTECTED_PREFIXES = ['/dashboard', '/onboarding', '/account', '/subscribe', '/admin']
+/**
+ * Paths that require a signed-in user.
+ *
+ * Every page behind the sign-in wall must be listed here. The page-level guard
+ * redirects too, but by the time it runs Next has already flushed the loading
+ * shell, so the redirect goes out as a meta tag inside a 200 rather than as a
+ * 307. A route missing from this list still keeps its data — the guard runs
+ * before any query — but it answers an anonymous request with a skeleton and a
+ * client-side bounce instead of turning it away outright.
+ */
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/onboarding',
+  '/account',
+  '/subscribe',
+  '/admin',
+  '/watchlist',
+  '/archive',
+  '/property',
+]
 
 /**
  * Refreshes the Supabase session on every request and bounces anonymous
