@@ -1,8 +1,8 @@
 'use server'
 
 import { z } from 'zod'
-import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { requestOrigin } from '@/lib/origin'
 
 export type LoginState = { status: 'idle' | 'sent' | 'error'; message?: string; email?: string }
 
@@ -28,12 +28,9 @@ export async function sendMagicLink(_prev: LoginState, formData: FormData): Prom
   const { email, next } = parsed.data
   const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard'
 
-  // Built from the request so links work on localhost, previews and production
-  // without a per-environment constant.
-  const headerList = await headers()
-  const host = headerList.get('x-forwarded-host') ?? headerList.get('host')
-  const proto = headerList.get('x-forwarded-proto') ?? 'http'
-  const origin = host ? `${proto}://${host}` : ''
+  // Built from the request so links work on localhost, previews and the live
+  // domain without a per-environment constant.
+  const origin = await requestOrigin()
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({

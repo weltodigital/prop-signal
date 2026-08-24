@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/client'
 import { getOrCreateCustomer } from '@/lib/stripe/customer'
-import { siteUrl } from '@/lib/env'
+import { absoluteUrl } from '@/lib/origin'
 
 export const runtime = 'nodejs'
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   const session = await stripe().billingPortal.sessions.create({
     customer: customerId,
-    return_url: siteUrl('/account'),
+    return_url: await absoluteUrl('/account'),
   })
 
   return NextResponse.redirect(session.url, { status: 303 })

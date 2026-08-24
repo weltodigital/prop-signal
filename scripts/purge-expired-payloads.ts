@@ -5,7 +5,7 @@
  *
  * Does the same work as the daily cron, for running by hand.
  */
-import 'dotenv/config'
+import './load-env'
 import { purgeExpiredPayloads } from '../src/lib/propertydata'
 
 purgeExpiredPayloads()

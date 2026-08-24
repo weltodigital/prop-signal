@@ -93,9 +93,3 @@ export function propertyDataEnv(): PropertyDataEnv {
   cachedPropertyDataEnv = parsed.data
   return cachedPropertyDataEnv
 }
-
-/** Absolute URL for a path, for Stripe redirects and magic-link callbacks. */
-export function siteUrl(path = '/'): string {
-  const base = clientEnv().NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
-  return `${base}${path.startsWith('/') ? path : `/${path}`}`
-}

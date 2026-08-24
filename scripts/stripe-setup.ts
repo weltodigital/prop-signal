@@ -7,7 +7,7 @@
  * Prints the price id to put in STRIPE_PRICE_ID. Idempotent — it looks the
  * product up by lookup key before creating anything.
  */
-import 'dotenv/config'
+import './load-env'
 import Stripe from 'stripe'
 
 const PRICE_LOOKUP_KEY = 'prop_signal_monthly_gbp'

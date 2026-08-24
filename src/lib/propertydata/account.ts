@@ -11,7 +11,19 @@ import { PropertyDataError, retryAfterMs } from './errors'
  * It lives inside the wrapper anyway, so the rule that nothing outside this
  * directory touches PropertyData stays literally true.
  */
-export type AccountCredits = Record<string, unknown> & { status?: string }
+export type AccountCredits = {
+  creditsUsed: number | null
+  creditsRemaining: number | null
+  creditsLimit: number | null
+  renewsAt: Date | null
+  /** The whole envelope, for anything not broken out above. */
+  raw: Record<string, unknown>
+}
+
+function toNumber(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
 
 export async function checkAccount(fetchImpl: typeof fetch = fetch): Promise<AccountCredits> {
   const env = propertyDataEnv()
@@ -21,7 +33,7 @@ export async function checkAccount(fetchImpl: typeof fetch = fetch): Promise<Acc
     headers: { 'X-API-Key': env.PROPERTYDATA_API_KEY, Accept: 'application/json' },
   })
 
-  const body = (await response.json().catch(() => null)) as AccountCredits | null
+  const body = (await response.json().catch(() => null)) as Record<string, unknown> | null
 
   if (!response.ok || body?.status === 'error' || !body) {
     throw new PropertyDataError({
@@ -32,7 +44,18 @@ export async function checkAccount(fetchImpl: typeof fetch = fetch): Promise<Acc
     })
   }
 
-  return body
+  // PropertyData wrap the figures in `result`. Reading through it here keeps
+  // that shape out of everything downstream.
+  const result = (body.result ?? body) as Record<string, unknown>
+  const renewsAt = toNumber(result.credits_renew_at)
+
+  return {
+    creditsUsed: toNumber(result.credits_used),
+    creditsRemaining: toNumber(result.credits_remaining),
+    creditsLimit: toNumber(result.credits_limit),
+    renewsAt: renewsAt === null ? null : new Date(renewsAt * 1000),
+    raw: body,
+  }
 }
 
 /** The configured limits, for reporting alongside the account position. */

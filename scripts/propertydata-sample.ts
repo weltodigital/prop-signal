@@ -9,7 +9,7 @@
  *
  * Costs one credit.
  */
-import 'dotenv/config'
+import './load-env'
 import { createClient } from '@supabase/supabase-js'
 import { sampleSourcedProperties } from '../src/lib/propertydata'
 

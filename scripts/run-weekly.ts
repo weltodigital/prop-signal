@@ -7,7 +7,7 @@
  *
  * Does exactly what the Sunday cron does. It spends real credits.
  */
-import 'dotenv/config'
+import './load-env'
 import { createClient } from '@supabase/supabase-js'
 import { runWeekly } from '../src/lib/pipeline/run'
 

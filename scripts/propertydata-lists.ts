@@ -10,7 +10,7 @@
  *
  * Probing costs roughly one credit per list. Nothing is spent without --spend.
  */
-import 'dotenv/config'
+import './load-env'
 import { createClient } from '@supabase/supabase-js'
 import { probeStrategyLists } from '../src/lib/propertydata'
 
