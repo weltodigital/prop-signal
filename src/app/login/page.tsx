@@ -1,6 +1,8 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { LoginForm } from './login-form'
 import { Card, Notice } from '@/components/ui'
+import logo from '@/assets/prop-signal-logo.png'
 
 const LINK_ERRORS: Record<string, string> = {
   link_expired: 'That sign-in link has expired or has already been used. Ask for a new one below.',
@@ -18,8 +20,8 @@ export default async function LoginPage({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-      <Link href="/" className="text-sm font-medium tracking-wide text-accent uppercase">
-        Prop Signal
+      <Link href="/" className="inline-block">
+        <Image src={logo} alt="Prop Signal" className="h-14 w-auto" priority />
       </Link>
 
       <h1 className="mt-4 text-2xl font-semibold tracking-tight">Sign in</h1>

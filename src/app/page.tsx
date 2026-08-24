@@ -1,4 +1,6 @@
+import Image from 'next/image'
 import { ButtonLink } from '@/components/ui'
+import logo from '@/assets/prop-signal-logo.png'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function HomePage() {
@@ -9,7 +11,7 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-20">
-      <p className="text-sm font-medium tracking-wide text-accent uppercase">Prop Signal</p>
+      <Image src={logo} alt="Prop Signal" className="h-16 w-auto" priority />
 
       <h1 className="mt-4 text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">
         Five properties every Monday, and the reason each one is on the list.
