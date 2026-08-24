@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { ALIASES } from '../pipeline/listing'
 import { createPropertyDataClient } from './client'
 
 /**
@@ -22,22 +23,8 @@ export type SampleReport = {
   unmapped: string[]
 }
 
-const MAPPED = new Set([
-  'id', 'property_id', 'listing_id', 'reference', 'ref',
-  'address', 'display_address', 'full_address', 'title',
-  'postcode', 'post_code', 'outcode', 'postcode_district',
-  'price', 'asking_price', 'current_price', 'listed_price',
-  'bedrooms', 'beds', 'num_bedrooms', 'bedroom_count',
-  'bathrooms', 'baths', 'num_bathrooms', 'bathroom_count',
-  'type_standardised', 'standardised_type', 'property_type', 'type',
-  'url', 'listing_url', 'link', 'property_url', 'portal_url',
-  'agent', 'agent_name', 'branch', 'estate_agent',
-  'sstc', 'is_sstc', 'sold_stc', 'under_offer',
-  'days_on_market', 'days_listed', 'listed_days',
-  'months_on_market', 'months_listed',
-  'first_listed', 'first_listed_date', 'listed_date', 'date_listed', 'first_seen',
-  'lists', 'list', 'sourcing_lists',
-])
+/** Derived from the alias lists themselves, so it cannot drift from them. */
+const MAPPED = new Set<string>(Object.values(ALIASES).flat())
 
 export async function sampleSourcedProperties(options: {
   ownerId: string

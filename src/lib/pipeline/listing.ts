@@ -61,7 +61,14 @@ export type Listing = {
   raw: Record<string, unknown>
 }
 
-const ALIASES = {
+/**
+ * The field names we look for, in order of preference.
+ *
+ * Exported so `propertydata:sample` can report what a live response carries
+ * that we do not read, without keeping a second copy of this list that goes
+ * stale the moment this one changes.
+ */
+export const ALIASES = {
   id: ['id', 'property_id', 'listing_id', 'reference', 'ref'],
   address: ['address', 'display_address', 'full_address', 'title'],
   preciseAddress: ['precise_address', 'full_address'],
