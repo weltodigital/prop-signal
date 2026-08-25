@@ -24,9 +24,13 @@ if [ ! -d .vercel ]; then
   exit 1
 fi
 
-# NEXT_PUBLIC_SITE_URL is set per environment rather than copied, because the
-# fallback origin differs between production and a preview.
-SKIP="NEXT_PUBLIC_SITE_URL"
+# Not copied.
+#   NEXT_PUBLIC_SITE_URL is set per environment below, because the fallback
+#   origin differs between production and a preview.
+#   VERCEL_OIDC_TOKEN is written into .env.local by `vercel link`. It is a
+#   short-lived local credential, not a project setting, and pushing it would
+#   put a token that expires within the hour into every deployment.
+SKIP="NEXT_PUBLIC_SITE_URL VERCEL_OIDC_TOKEN"
 
 pushed=0
 while IFS= read -r line; do
@@ -35,7 +39,7 @@ while IFS= read -r line; do
   value="${line#*=}"
 
   [ -z "$value" ] && continue
-  [ "$key" = "$SKIP" ] && continue
+  case " $SKIP " in *" $key "*) continue ;; esac
 
   for target in production preview development; do
     vercel env rm "$key" "$target" --yes >/dev/null 2>&1 || true

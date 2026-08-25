@@ -509,3 +509,49 @@ about one credit per enriched candidate rather than one per run.
 So the calculator opens `refurbCost` at zero and the subscriber types their own
 number, which is the one figure in this product they know better than we do.
 
+
+## Going live on Stripe — 25 August 2026
+
+### The signing secret is written to the file, not printed
+
+Stripe returns a webhook endpoint's secret once, in the create response, and never
+again. Printing it puts the only copy in terminal scrollback. `stripe:setup` writes it
+straight into `.env.local` and prints which keys it wrote, not what they are.
+
+The same fact is why an endpoint that already exists cannot simply be re-pointed. There
+is nothing to read back, so `--recreate-webhook` deletes it and issues a new secret,
+deliberately and only when asked.
+
+### Three events, because entitlement is one field
+
+The webhook subscribes to `checkout.session.completed`,
+`customer.subscription.updated` and `customer.subscription.deleted` and no others.
+Access is decided by `subscriptions.status` in `src/lib/subscription.ts`, and everything
+that moves that field fires one of those three. `invoice.payment_failed` is the tempting
+fourth, but a failed card sets the subscription to `past_due`, which is an `updated`.
+
+Extra subscriptions are not harmful — the route records an event it does not handle and
+returns 200 — but each one is a delivery Stripe will retry if the handler ever 500s.
+
+### `stripe:check` reads, `stripe:setup` writes
+
+Two scripts rather than one with a flag. The money path is the part of this system that
+fails silently: a price archived in the dashboard, an endpoint Stripe disabled after a
+run of failures, a portal nobody configured. `stripe:check` answers "is it still right"
+without the risk of changing anything to find out, and it prints no secret, so it can be
+run with somebody watching.
+
+### The live keys are on production only
+
+Vercel preview deployments do not get `STRIPE_SECRET_KEY`. `stripeEnv()` is read at
+request time, not at build time, so a preview still builds and only its checkout route
+fails. That is the right failure: a live key on every preview branch is a preview branch
+that can charge a real card.
+
+### `vercel link` edits two files, and both edits were wrong here
+
+It appends `VERCEL_OIDC_TOKEN` to `.env.local` and `.env*` to `.gitignore`. The token is
+a short-lived local credential, and `scripts/vercel-env.sh` copies every line of
+`.env.local` into the project — it would have pushed a credential that expires within
+the hour into every deployment. The script now skips it by name. The `.gitignore` line
+was reverted: `.env*` would have hidden `.env.example`, which is committed on purpose.

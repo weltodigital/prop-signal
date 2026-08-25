@@ -18,7 +18,8 @@
     "run:weekly": "tsx --conditions=react-server scripts/run-weekly.ts",
     "propertydata:sample": "tsx --conditions=react-server scripts/propertydata-sample.ts",
     "vercel:env": "bash scripts/vercel-env.sh",
-    "propertydata:area": "tsx --conditions=react-server scripts/propertydata-area.ts"
+    "propertydata:area": "tsx --conditions=react-server scripts/propertydata-area.ts",
+    "stripe:check": "tsx scripts/stripe-check.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

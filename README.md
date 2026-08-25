@@ -21,9 +21,14 @@ our own week-on-week diffing.
 | 7 | Delivery — the run date, the unseen marker, in-app only | Done |
 | 8 | Admin export for the newsletter | Not started |
 
-The pipeline is written and covered by tests, but it has never been run against the live
-API — there is no key yet. A subscriber can sign up, pay, answer the two questions and
-reach a dashboard that waits for the first run.
+The pipeline is written, covered by tests, and its field names were verified against the
+live API on 24 August 2026 — but it has never been run end to end. Every table is empty
+except the cache. The PropertyData key on file is a 500-credit trial that does not renew,
+which is enough to prove the pipeline and not enough to run it for paying subscribers.
+
+Stripe is live: the £29 price, the webhook endpoint and the portal are all configured on
+the live account, and `pnpm stripe:check` passes. A subscriber can sign up, pay, answer
+the two questions and reach a dashboard that waits for the first run.
 
 ## The subscriber app
 
@@ -123,16 +128,44 @@ URL. Do the same for the production domain when you deploy.
 
 ### 2. Stripe
 
+Put the secret key in `STRIPE_SECRET_KEY` — test mode first — then:
+
 ```bash
-pnpm stripe:setup
+pnpm stripe:setup    # product, price, webhook endpoint, portal
+pnpm stripe:check    # read-only: does Stripe match what the code expects
 ```
 
-This creates the product and the £29/month price, and prints the price id for
-`STRIPE_PRICE_ID`. Run it once in test mode and again in live mode. Then enable the
-customer portal at **Settings → Billing → Customer portal**, allowing cancellation and
-payment method updates.
+`stripe:setup` creates four things and looks each one up before creating it, so it can
+be run again without making a second copy of anything: the product and its £29/month
+price, a webhook endpoint at `NEXT_PUBLIC_SITE_URL/api/stripe/webhook` subscribed to the
+three events the handler acts on, and a customer portal allowing cancellation and card
+changes. `STRIPE_PRICE_ID` and `STRIPE_WEBHOOK_SECRET` are written into `.env.local`
+rather than printed — Stripe returns a signing secret once, at creation, and never
+again. That is also why re-pointing an endpoint that already exists needs
+`--recreate-webhook`: the old one is deleted and a new secret issued, because there is
+no way to read back the secret of an endpoint Stripe already has.
 
-For webhooks locally:
+`stripe:check` changes nothing and prints no secret. It confirms the account can take
+money, the price is £29 monthly in the same mode as the key, the endpoint is enabled and
+subscribed to all three events, and the portal allows both cancellation and a card
+change. Run it after setting Stripe up by hand, too.
+
+Only three events matter, because entitlement is derived from one field —
+`subscriptions.status`, checked in `src/lib/subscription.ts`. Everything that moves that
+field fires one of them.
+
+| Event | Why |
+| --- | --- |
+| `checkout.session.completed` | The signup, and the only event carrying `client_reference_id` — the fallback that attributes a subscription when the customer mapping is missing. |
+| `customer.subscription.updated` | Renewal, a failed card moving it to `past_due`, recovery, cancel-at-period-end. |
+| `customer.subscription.deleted` | The end of it. |
+
+`invoice.payment_failed` and `invoice.paid` are not needed: both move the subscription,
+which fires `updated`. Subscribing to more breaks nothing — the route records what it
+does not handle — but each one is a delivery Stripe retries on a 500.
+
+For webhooks against a local server, forward them with the Stripe CLI instead of
+creating an endpoint:
 
 ```bash
 stripe listen --forward-to localhost:3000/api/stripe/webhook
@@ -370,10 +403,13 @@ project settings, with `NEXT_PUBLIC_SITE_URL` pointing at the real domain.
 daily at 03:00. Both authenticate against `CRON_SECRET`, which Vercel sends as a bearer
 token once you add it as an environment variable.
 
-Add a Stripe webhook endpoint for `https://YOUR_DOMAIN/api/stripe/webhook` subscribed to
-`checkout.session.completed`, `customer.subscription.updated` and
-`customer.subscription.deleted`, and copy its signing secret into
-`STRIPE_WEBHOOK_SECRET`.
+`pnpm stripe:setup` already created the webhook endpoint against `NEXT_PUBLIC_SITE_URL`,
+so there is nothing to add by hand. `pnpm stripe:check` confirms it.
+
+The live Stripe keys are set on **production only**, not on preview. `stripeEnv()` is
+read at request time rather than at build time, so a preview deployment still builds —
+only its checkout route fails, which is the intended outcome. A live secret key on every
+preview branch is a preview branch that can charge a real card.
 
 ## Rules this codebase holds to
 
