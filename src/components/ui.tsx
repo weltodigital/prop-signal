@@ -65,3 +65,36 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
     </div>
   )
 }
+
+/**
+ * The one text-input look, so five auth forms do not carry five copies of the
+ * same class string and drift apart.
+ */
+export const inputClass =
+  'w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20'
+
+export function Field({
+  label,
+  hint,
+  ...props
+}: ComponentProps<'input'> & { label: string; hint?: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={props.id} className="block text-sm font-medium">
+        {label}
+      </label>
+      <input {...props} className={`${inputClass} ${props.className ?? ''}`} />
+      {hint ? <p className="text-xs text-muted">{hint}</p> : null}
+    </div>
+  )
+}
+
+/** An error a form action came back with. */
+export function FormError({ message }: { message?: string }) {
+  if (!message) return null
+  return (
+    <p className="text-sm text-warn" role="alert">
+      {message}
+    </p>
+  )
+}

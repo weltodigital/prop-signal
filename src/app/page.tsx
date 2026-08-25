@@ -79,7 +79,7 @@ export default async function HomePage() {
   } = await supabase.auth.getUser()
 
   const signedIn = Boolean(user)
-  const primaryHref = signedIn ? '/dashboard' : '/login'
+  const primaryHref = signedIn ? '/dashboard' : '/signup'
   const primaryLabel = signedIn ? 'Go to your dashboard' : 'Start for £29 a month'
 
   return (

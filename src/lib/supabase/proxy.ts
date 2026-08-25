@@ -21,7 +21,18 @@ const PROTECTED_PREFIXES = [
   '/watchlist',
   '/archive',
   '/property',
+  // The reset link is the authentication. By the time this page renders the
+  // callback has turned it into a session, so no session means no valid link.
+  '/reset-password',
 ]
+
+/**
+ * Pages there is no point showing someone who is already signed in.
+ *
+ * /forgot-password is deliberately absent. Someone signed in on one device can
+ * still have forgotten the password they need on another.
+ */
+const SIGNED_OUT_ONLY = ['/login', '/signup']
 
 /**
  * Refreshes the Supabase session on every request and bounces anonymous
@@ -65,7 +76,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return NextResponse.redirect(login)
   }
 
-  if (user && pathname === '/login') {
+  if (user && SIGNED_OUT_ONLY.includes(pathname)) {
     const dashboard = request.nextUrl.clone()
     dashboard.pathname = '/dashboard'
     dashboard.search = ''

@@ -36,7 +36,7 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
               <Link href="/login" className="hidden text-muted hover:text-ink sm:inline">
                 Sign in
               </Link>
-              <ButtonLink href="/login">Start for £29 a month</ButtonLink>
+              <ButtonLink href="/signup">Start for £29 a month</ButtonLink>
             </>
           )}
         </div>
