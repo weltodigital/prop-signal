@@ -6,7 +6,9 @@ function form(overrides: Record<string, unknown> = {}) {
   return {
     postcode: 'm14 5tp',
     radiusMiles: '10',
-    strategies: ['reduced-properties'],
+    sourcingLists: ['reduced-properties'],
+    investmentStrategies: ['btl'],
+    assumptions: { refurbCostPerSqFt: '', nightlyRate: '', occupancyPercent: '' },
     minPrice: '',
     maxPrice: '',
     minBedrooms: '',
@@ -15,13 +17,13 @@ function form(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('the two questions', () => {
-  it('accepts a postcode and one strategy, which is the whole requirement', () => {
+describe('the three questions', () => {
+  it('accepts a postcode, one sourcing list and one strategy, which is the whole requirement', () => {
     const result = searchProfileSchema.safeParse(form())
 
     expect(result.success).toBe(true)
     expect(result.data?.postcode).toBe('M14 5TP')
-    expect(result.data?.strategies).toEqual(['reduced-properties'])
+    expect(result.data?.sourcingLists).toEqual(['reduced-properties'])
     expect(result.data?.minPrice).toBeNull()
     expect(result.data?.propertyTypes).toBeNull()
   })
@@ -38,16 +40,16 @@ describe('the two questions', () => {
     expect(result.error?.issues[0]?.message).toContain('full UK postcode')
   })
 
-  it('refuses no strategy at all', () => {
-    const result = searchProfileSchema.safeParse(form({ strategies: [] }))
+  it('refuses no sourcing list at all', () => {
+    const result = searchProfileSchema.safeParse(form({ sourcingLists: [] }))
     expect(result.success).toBe(false)
   })
 
-  it('de-duplicates a strategy chosen twice', () => {
+  it('de-duplicates a sourcing list chosen twice', () => {
     const result = searchProfileSchema.safeParse(
-      form({ strategies: ['reduced-properties', 'reduced-properties', 'auction-properties'] }),
+      form({ sourcingLists: ['reduced-properties', 'reduced-properties', 'auction-properties'] }),
     )
-    expect(result.data?.strategies).toEqual(['reduced-properties', 'auction-properties'])
+    expect(result.data?.sourcingLists).toEqual(['reduced-properties', 'auction-properties'])
   })
 })
 
@@ -103,13 +105,44 @@ describe('the optional third question', () => {
 })
 
 describe('limits', () => {
-  it('caps strategies at eight', () => {
+  it('caps sourcing lists at eight', () => {
     const nine = Array.from({ length: 9 }, (_, i) => `list-${i}`)
-    expect(searchProfileSchema.safeParse(form({ strategies: nine })).success).toBe(false)
+    expect(searchProfileSchema.safeParse(form({ sourcingLists: nine })).success).toBe(false)
   })
 
   it('keeps the search change quota small and finite', () => {
     expect(SEARCH_CHANGE_LIMIT).toBeGreaterThan(0)
     expect(SEARCH_CHANGE_LIMIT).toBeLessThanOrEqual(5)
+  })
+})
+
+describe('investment strategies', () => {
+  it('takes the four the pipeline can score', () => {
+    const result = searchProfileSchema.safeParse(form({ investmentStrategies: ['btl', 'hmo', 'brrr', 'r2sa'] }))
+    expect(result.data?.investmentStrategies).toEqual(['btl', 'hmo', 'brrr', 'r2sa'])
+  })
+
+  it('drops one this build cannot score rather than storing it', () => {
+    // A strategy is a scoring function, not a row. Storing a name nothing can
+    // score would publish a list ranked on nothing.
+    const result = searchProfileSchema.safeParse(form({ investmentStrategies: ['btl', 'rent-to-rent'] }))
+    expect(result.data?.investmentStrategies).toEqual(['btl'])
+  })
+
+  it('refuses a set with nothing scorable left in it', () => {
+    expect(searchProfileSchema.safeParse(form({ investmentStrategies: ['rent-to-rent'] })).success).toBe(false)
+  })
+
+  it('takes the figures we do not hold, and refuses an impossible occupancy', () => {
+    const good = searchProfileSchema.safeParse(
+      form({ assumptions: { refurbCostPerSqFt: '65', nightlyRate: '110', occupancyPercent: '70' } }),
+    )
+    expect(good.data?.assumptions.refurbCostPerSqFt).toBe(65)
+    expect(good.data?.assumptions.occupancyPercent).toBe(70)
+
+    const bad = searchProfileSchema.safeParse(
+      form({ assumptions: { refurbCostPerSqFt: '', nightlyRate: '', occupancyPercent: '140' } }),
+    )
+    expect(bad.success).toBe(false)
   })
 })

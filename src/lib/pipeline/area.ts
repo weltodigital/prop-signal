@@ -43,6 +43,15 @@ export type AreaInsights = {
   /** Per-address EPC and council tax, for matching a specific property. */
   epcByAddress: Array<{ address: string; rating: string; score: number | null; inspectedOn: string | null }>
   taxBandByAddress: Array<{ address: string; band: string }>
+
+  /**
+   * Only fetched for a profile whose strategies need them, because a
+   * buy-to-let subscriber should not pay a credit for HMO room rates.
+   */
+  hmoRoomRatePerMonth: number | null
+  /** Registered HMOs nearby. Saturation, or a proven market — stated, not scored. */
+  registeredHmosNearby: number | null
+  developmentGdvPerSqFt: number | null
 }
 
 function asNumber(value: unknown): number | null {
@@ -101,6 +110,50 @@ export function readSoldComparables(payload: unknown): SoldComparables {
 export function readLocalYield(payload: unknown): number | null {
   const longLet = record(record(record(payload).data).long_let)
   return asNumber(longLet.gross_yield)
+}
+
+/**
+ * `/rents-hmo`. Live local asking rents for a room in a shared house.
+ *
+ * An area figure, not a figure about any particular house: it says what a room
+ * goes for nearby. Read through aliases like everything else here, because
+ * PropertyData document the parameters and not the response body.
+ */
+export function readHmoRoomRate(payload: unknown): number | null {
+  const data = record(record(payload).data)
+  const direct = asNumber(data.average ?? data.average_rent ?? data.mean ?? record(payload).average)
+  if (direct !== null) return direct
+
+  // Some shapes carry the average inside a long_let-style envelope.
+  const nested = record(data.room ?? data.rooms ?? data.per_room)
+  return asNumber(nested.average ?? nested.mean)
+}
+
+/** `/national-hmo-register`. How many licensed HMOs are already nearby. */
+export function readRegisteredHmos(payload: unknown): number | null {
+  const data = record(payload).data
+  if (Array.isArray(data)) return data.length
+
+  const inner = record(data)
+  const counted = asNumber(inner.total ?? inner.count ?? record(payload).total)
+  if (counted !== null) return counted
+
+  const rows = array(inner.hmos ?? inner.results ?? inner.register)
+  return rows.length ? rows.length : null
+}
+
+/**
+ * `/development-gdv`. What finished space is worth per square foot locally.
+ *
+ * Used as the end value for a refurbishment. It is a development figure rather
+ * than a refurbishment one, which overstates a light touch-up and understates a
+ * full conversion — stated on the breakdown rather than quietly corrected.
+ */
+export function readDevelopmentGdv(payload: unknown): number | null {
+  const data = record(record(payload).data)
+  return asNumber(
+    data.gdv_per_sqf ?? data.gdv_psf ?? data.per_sqf ?? data.average_price_per_sqf ?? record(payload).gdv_per_sqf,
+  )
 }
 
 /** `/flood-risk`. A band, worded rather than numbered. */

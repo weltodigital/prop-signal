@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell'
 import { DealCard } from '@/components/deal-card'
 import { MarkSeen } from '@/components/mark-seen'
 import { EmptyState, Notice } from '@/components/ui'
+import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,8 +68,9 @@ export default async function DashboardPage({
         <div className="mt-6">
           <Notice title="Your search is saved">
             <p>
-              {describeArea(profile.postcode, profile.radiusMiles)}, across {profile.strategies.length}{' '}
-              {profile.strategies.length === 1 ? 'strategy' : 'strategies'}.
+              {describeArea(profile.postcode, profile.radiusMiles)}, across {profile.sourcingLists.length}{' '}
+              {profile.sourcingLists.length === 1 ? 'list' : 'lists'}, scored for{' '}
+              {profile.investmentStrategies.map((id) => STRATEGY_DEFINITIONS[id].label).join(' and ')}.
             </p>
           </Notice>
         </div>

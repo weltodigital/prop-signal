@@ -12,7 +12,7 @@ our own week-on-week diffing.
 
 | Phase | What it covers | Status |
 | --- | --- | --- |
-| 1 | Schema, RLS, magic-link auth, Stripe checkout, portal and webhooks | Done |
+| 1 | Schema, RLS, email-and-password auth, Stripe checkout, portal and webhooks | Done |
 | 2 | The credit wrapper — the only module allowed to call PropertyData | Done |
 | 3 | Onboarding, and the first-run backfill | Done |
 | 4 | The weekly pipeline | Done |
@@ -91,14 +91,15 @@ a week was thin. `tests/rls.test.ts` asserts both halves.
   property and link to the advert.
 - No figure without the date it was observed next to it.
 - No estimated stand-in for a figure we do not hold. It says "Not held" and the
-  score for that factor is zero, not an assumed average.
+  factor takes no part in the score, rather than counting as an assumed average
+  or as a zero the property did not earn.
 - No padding. A thin week publishes fewer and says why.
 
 ## Stack
 
 TypeScript, Next.js App Router, Supabase (Postgres, Auth, RLS), Stripe, Vercel. No
-email service — Supabase Auth sends its own magic links, and everything else the user
-receives, they receive in the dashboard.
+email service — Supabase Auth sends the two emails this product has, and everything else
+the user receives, they receive in the dashboard.
 
 ## Local setup
 
@@ -206,9 +207,10 @@ disabled, so it fails here rather than in the middle of a Sunday run.
 pnpm dev
 ```
 
-Sign in at `http://localhost:3000/login`. In local development Supabase writes the
-magic link to its own logs — find it under **Authentication → Logs** in the dashboard,
-or use Inbucket if you are running Supabase locally.
+Create an account at `http://localhost:3000/signup`, then sign in at `/login`. In local
+development Supabase writes any email it sends to its own logs — find it under
+**Authentication → Logs** in the dashboard, or use Inbucket if you are running Supabase
+locally.
 
 Test cards: `4242 4242 4242 4242` succeeds, `4000 0000 0000 0341` fails after
 attaching, which is a useful way to see the `past_due` handling.
@@ -225,22 +227,110 @@ pnpm build       # production build
 Supabase credentials are present, so point it at a **development** project and run it
 before anything ships — it creates and deletes users.
 
+## Signing in
+
+Email and password. There is no magic link and no social login.
+
+| Route | What it is |
+| --- | --- |
+| `/signup` | Create an account. Costs nothing; the £29 is charged at the next step by Stripe. |
+| `/login` | Email and password. |
+| `/forgot-password` | Sends a reset link. Reports the same thing whether or not the address has an account. |
+| `/reset-password` | Reached from that link, which the callback has already turned into a session. |
+| `/account` | Change password, current one required. |
+
+`src/lib/auth.ts` holds the rules the five forms share — the password bounds, the
+address normalising, the error wording and the redirect guard — and
+`tests/auth.test.ts` pins them.
+
+Passwords are eight characters at minimum and seventy-two at most. The floor is ours;
+Supabase would take six. The ceiling is bcrypt's: it reads the first 72 bytes and ignores
+the rest, so a longer password would silently be a 72-character one and it is better to
+say so than to pretend.
+
+### What the forms will not tell you
+
+"Invalid login credentials" is shown as *that email address and password do not match*,
+never split into "no account here" and "wrong password". The forgotten-password form says
+the same thing whether or not the address is a customer. Either distinction would let
+anyone check an email address against the user table.
+
+Signing up with an address that already has an account is the one place that says so —
+otherwise the only alternative is to claim an email was sent that never was.
+
+### Two things live in the Supabase dashboard, not here
+
+**Confirm email**, under Authentication → Sign In / Providers. With it **on**, a new
+account gets no session until the link in the confirmation email is clicked, so signup
+stops at "check your inbox" and Stripe is one email round trip away. With it **off**,
+signup returns a session and goes straight to checkout — the card is a stronger check on
+a real customer than an email click is. `src/app/signup/actions.ts` handles both, because
+that setting can change without a deploy.
+
+**Email delivery.** Supabase's built-in SMTP is rate-limited to a handful of messages an
+hour and Supabase document it as unsuitable for production. Two flows depend on it:
+confirmation, and password reset. That is survivable at nought subscribers and will not
+be at a launch spike. Custom SMTP is the fix, under Project Settings → Authentication.
+
 ## Onboarding
 
-Two questions: where (a full UK postcode and a radius), and which strategies. A third,
-optional, narrows the results by price, bedrooms and type — applied to the payload after
-it arrives, so it costs nothing and can be changed as often as the user likes.
+Three questions, and an optional fourth.
 
-The limits are constraints rather than form validation. One area per user is a unique
-index on `owner_id`. The radius is capped at 40 miles by a `CHECK`, well short of the 200
-the API would allow. Strategies are checked against `strategy_lists` by a trigger, so an
-id that is not on offer cannot be stored even by a direct database write.
+**Where** — a full UK postcode and a radius.
 
-Changing the postcode, radius or strategies resets `backfill_completed_at`, because a new
-area's standing inventory has never been shown to that user and their next list should
-draw on all of it. That costs credits, so it is capped at three changes per allowance
-period and the counter is visible on the account page. Changing only the optional filters
-is uncapped, because it cannot surface anything new.
+**Your strategy** — how the subscriber makes money, which is what decides whether a
+property is any good. Buy to let, HMO, flip/BRRR, serviced accommodation. Pick as many
+as you actually run: each property is scored under all of them and ranked by whichever
+suits it best.
+
+**What to look for** — the PropertyData sourcing lists, which decide what stock gets
+pulled out of the market at all. Needs work, price reduced, repossession, high yield,
+auction, short lease, slow to sell, large plot.
+
+**Narrow it down**, optional — price, bedrooms and type, applied to the payload after it
+arrives, so it costs nothing and can be changed as often as the subscriber likes.
+
+### Two axes, deliberately
+
+A sourcing list says *which stock*. A strategy says *what good means*. They are
+independent — an HMO investor can still want repossessions — so they are asked
+separately rather than one implying the other.
+
+Until scoring v4 there was only one axis, and the word "strategy" meant a sourcing list.
+It is now `sourcing_lists`, in the schema and in the code, because two different things
+called strategy would confuse the subscriber and everyone reading this.
+
+### The figures we ask for, and why
+
+Two strategies need numbers PropertyData do not publish. Rather than invent them or drop
+the strategy, the subscriber supplies their own:
+
+| Strategy | Asked for | Why |
+| --- | --- | --- |
+| Flip / BRRR | Refurb cost per square foot | `/build-cost` prices building from nothing, and what fraction of that a refurbishment costs is exactly the invented number this codebase refuses. See DECISIONS.md. |
+| Serviced accommodation | Nightly rate and occupancy | There is no nightly-rate or occupancy endpoint anywhere in PropertyData's API — all 69 were checked. |
+
+A strategy whose figures are missing is skipped for that run and logged, rather than
+being scored on a guess. The seam is deliberate: buy a short-let data feed later and only
+those two inputs change.
+
+### The limits are constraints, not form validation
+
+One area per user is a unique index on `owner_id`. The radius is capped at 40 miles by a
+`CHECK`, well short of the 200 the API would allow, and clamped again per sourcing list
+because PropertyData reject a wider call outright. Sourcing lists are checked against the
+`sourcing_lists` table by a trigger and investment strategies against a fixed set in the
+same trigger, so neither an unknown list nor an unscorable strategy can be stored even by
+a direct database write.
+
+A strategy is a scoring function, not a row in a table — which is why it is a fixed set.
+Storing a name nothing can score would publish a list ranked on nothing.
+
+Changing the postcode, radius or sourcing lists resets `backfill_completed_at`, because a
+new area's standing inventory has never been shown to that user and their next list
+should draw on all of it. That costs credits, so it is capped at three changes per
+allowance period and the counter is visible on the account page. Changing only the
+optional filters is uncapped, because it cannot surface anything new.
 
 ## The credit wrapper
 
@@ -323,6 +413,15 @@ candidate in the search. Twenty-five properties cost the same as one.
 | `/flood-risk` | The band, worded |
 | `/growth` | Capital growth over one year and five |
 
+Three more are fetched only for a profile whose strategies need them, so a buy-to-let
+subscriber never pays a credit for HMO room rates.
+
+| Endpoint | For | What it gives |
+| --- | --- | --- |
+| `/rents-hmo` | HMO | Local asking rent for one room |
+| `/national-hmo-register` | HMO | Licensed HMOs nearby — saturation, stated not scored |
+| `/development-gdv` | Flip / BRRR | What finished space is worth per square foot |
+
 Field names were confirmed against live responses on 2026-08-24. PropertyData
 document the parameters for these and not the response bodies, so
 `pnpm propertydata:area --spend` prints what actually comes back and
@@ -340,40 +439,130 @@ wrong EPC is worse than none.
 
 ### Scoring
 
-Pure functions in `src/lib/pipeline/scoring.ts`. `quality()` takes the listing, its
-enrichment and the area figures; `movement()` takes the events.
+Pure functions in `src/lib/pipeline/scoring.ts`. Versioned weights, `v3`, and no LLM
+anywhere in this path.
 
-Quality asks whether the property makes money, not whether it looks respectable.
+Quality cannot be scored one property at a time any more, because cashflow is ranked
+against the rest of the run. So it comes in two phases: `measureQuality` per property,
+then `qualityScores` over the whole cohort. `movement` stays per property.
 
-| Factor | Weight |
+**Quality — out of 100, over the factors held.**
+
+| Factor | Weight | How |
+| --- | --- | --- |
+| Whatever the strategy is judged on | 40 | Percentile against the other candidates in this run, **under the same strategy** |
+| Asking £/sq ft against nearby completed sales | 30 | 0% → 25% below scores nothing → everything |
+| Local sales demand | 15 | Rated 20 → 80 out of 100 |
+| Value-add lists the subscriber did *not* ask for | 15 | One scores half, two scores all |
+
+**Movement — out of 100.** The weights below sum to 85 and are scaled, which is how
+reduction and stale can be 35 and 10 while both scores still share a ceiling. Equal
+ceilings are what stop either dominating by construction.
+
+| Factor | Weight | How |
+| --- | --- | --- |
+| Cumulative reduction from peak asking | 35 | 2% → 20% scores nothing → everything |
+| Back on the market | 25 | All or nothing |
+| Slow to sell | 10 | 60 → 365 days |
+| Recency | 15 | Moved today → 28 days ago |
+
+**The total is quality plus movement, on 0 to 200.** Straight addition, so a mediocre
+property that just dropped twelve per cent can outrank a good one that has not moved.
+A tie goes to the one that moved. The qualification threshold of 25 is 25 of that 200,
+and it applies only to a property that has never been shown to this subscriber — one
+that has needs a new material event instead, whatever it scores.
+
+#### The strategy decides what the 40 points measure
+
+Only that one factor changes. Price against comparables, demand and room to add value
+mean the same thing whatever you intend to do with a property; the return does not.
+
+| Strategy | Judged on |
 | --- | --- |
-| Net monthly cashflow, at 25% down and 5.5% interest only, after 20% of rent in costs | 30 |
-| Asking £/sq ft against nearby completed sales | 25 |
-| This property's gross yield against the local benchmark | 15 |
-| Local sales demand | 15 |
-| On a list that implies work | 15 |
+| Buy to let | Net monthly cashflow on a single-household rent |
+| HMO | Net monthly cashflow at local room rates, bills and licensing in the costs |
+| Flip / BRRR | How much of your money comes back out on the refinance |
+| Serviced accommodation | Net monthly cashflow at your own nightly rate and occupancy |
 
-Cashflow replaced gross yield in v2. A 4% gross yield reads as unremarkable and
-loses money every month at 5.5% borrowing, and the old score rewarded it. The
-figure comes from `stack()`, the same arithmetic as the calculator on the
-property page, so the score and the number a subscriber can reproduce cannot
-disagree.
+Running costs differ by strategy and are stated rather than buried — 20% of rent for a
+let, 35% for an HMO, 40% for a short let. A property is scored under every strategy the
+subscriber runs and ranked by whichever suits it best, and the card says which.
 
-Sold prices per square foot replaced the sale valuation for the same reason a
-reduction should only be counted once. A property reduced twice is "below the
-estimate" partly because the estimate follows the asking price down, which let
-one reduction earn points in quality and again in movement.
+Each strategy is percentiled against its own cohort, so a room rate is never ranked
+against a refinance.
 
-Risks are stated rather than scored. An EPC of F or G, flood risk above low, or
-an area where most sales are leasehold appear next to the property and do not
-move the ranking. Working out how many points an EPC of F is worth against a
-12% reduction would mean inventing a number. They are added rather than blended, so a
-mediocre property that just dropped 12% can outrank a good one that has not moved. Both
-have the same ceiling, so neither dominates by construction. Weights are versioned and
-every stored score records its version. No LLM anywhere in this path.
+#### Why the return is a percentile
 
-A factor with no data behind it scores nothing rather than an assumed average, and the
-breakdown says which. Omitting beats estimating.
+An absolute band does not survive leaving one part of the country. £0 to £350 a month
+scores nearly nothing across the South East and nearly everything up north, and a
+40-point factor that is constant either way is not a factor at all.
+
+The price of the change: a percentile ranks within a filtered, event-driven cohort that
+is not a sample of the local market. The one place that matters is a run where every
+property loses money, so a property with negative cashflow cannot take more than half
+the factor however well it ranks against the rest.
+
+Gross yield against the local benchmark was removed rather than reweighted. It and
+cashflow are both rent over price, so between them they put 45 of 100 quality points on
+one signal.
+
+#### Why the score is a share rather than a sum
+
+Scoring a missing figure as zero is honest but biased: floor area is absent far more
+often on flats and new builds, so those were systematically pushed down the list for a
+gap in PropertyData rather than anything about the property.
+
+So a factor with no data behind it is normalised out, and the score is the share of the
+points that were actually available. On its own that would let a property top the list
+on two factors, so it comes paired with a floor: at least **three of the four** quality
+factors must be held or the property is dropped. In practice that means at least one of
+cashflow or comparables, since demand is area-level and condition is nearly always held.
+
+#### Why "room to add value" is relative
+
+Every property an unmodernised-only subscriber sees is unmodernised. Scoring the list
+itself gave every one of them half marks for a constant. Only the value-add lists they
+did *not* tick carry information, so those are what is counted — and a subscriber who
+ticked all of them gets the factor normalised out, because for them it separates
+nothing.
+
+#### Why the reduction is cumulative
+
+Three cuts of 5% is a seller who has been talked down three times, which is a better
+prospect than one 14% cut. Taking the deepest single step scored it at a third of the
+value. `cumulativeReduction` reads the peak asking price out of the reduction events and
+compares it with the most recent one — not the lowest ever seen, because a property can
+be reduced, raised, and reduced again.
+
+#### What earns recency, and what does not
+
+Only a reduction or a return to market. `first_seen` is dated when *we* looked, and a
+days-on-market crossing is the calendar moving rather than the property — ageing past 90
+days was collecting stale points, full recency and qualification all at once. It still
+qualifies a property and still earns its own stale points. It just cannot also be news.
+
+#### Risks gate, and are still never scored
+
+Working out how many points an EPC of F is worth against a 12% reduction would mean
+inventing a number. But a note alone let a G-rated house on a flood plain lead the week,
+so a risk now carries a severity instead. None of them adjusts a factor.
+
+| Risk | Severity |
+| --- | --- |
+| Flood risk high | **Exclude** — never reaches the subscriber |
+| EPC F or G | **Cap** at 120 of 200 — unless the subscriber picked unmodernised, auction or repossessed, where it is what they came for |
+| EPC D or E, middling flood risk, short lease | Note |
+
+Short lease moved out of value-add and into risks. A lease with 70 years left is a bill
+before it is an opportunity, and the length — the only thing that decides which — is not
+a field we hold.
+
+Leasehold-heavy area was dropped entirely. In central Birmingham it fired on everything,
+and a flag that fires on everything is not information.
+
+Sold prices per square foot are used rather than the sale valuation, because a property
+reduced twice is "below the estimate" partly because the estimate follows the asking
+price down — which let one reduction earn points in quality and again in movement.
 
 ### Thin weeks
 

@@ -1,16 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CONDITION_LISTS,
+  cumulativeReduction,
   DEFAULT_WEIGHTS,
+  factorsHeld,
+  isCapped,
+  isExcluded,
+  measureQuality,
+  MIN_QUALITY_FACTORS,
   movement,
-  netMonthlyCashflow,
-  quality,
+  percentile,
+  qualityScores,
   rank,
+  RISK_CAPPED_TOTAL,
   risks,
   SCORE_VERSION,
   type AreaContext,
+  type EnergyCertificate,
   type Enrichment,
+  type Score,
 } from '@/lib/pipeline/scoring'
 import { normaliseListing, type Listing } from '@/lib/pipeline/listing'
+import { EMPTY_ASSUMPTIONS, type InvestmentStrategy, type StrategyAssumptions } from '@/lib/strategies'
+import { EMPTY_STRATEGY_AREA, type StrategyAreaContext } from '@/lib/pipeline/strategy-return'
 import type { PropertyEvent } from '@/lib/pipeline/events'
 
 const NOW = new Date('2026-06-07T22:00:00.000Z')
@@ -22,6 +34,7 @@ function listing(overrides: Record<string, unknown> = {}): Listing {
     price: 200_000,
     bedrooms: 3,
     type_standardised: 'Terraced house',
+    sqf: 800,
     lists: ['reduced-properties'],
     ...overrides,
   })
@@ -45,8 +58,8 @@ function event(overrides: Partial<PropertyEvent> = {}): PropertyEvent {
   return {
     type: 'price_reduced',
     observedAt: NOW,
-    previousValue: null,
-    currentValue: null,
+    previousValue: { price: 200_000 },
+    currentValue: { price: 176_000 },
     magnitude: -12,
     isMaterial: true,
     dedupeKey: 'k',
@@ -54,271 +67,278 @@ function event(overrides: Partial<PropertyEvent> = {}): PropertyEvent {
   }
 }
 
+/** Scores one property as its own cohort, which is what most cases need. */
+function scoreOne(
+  l: Listing = listing(),
+  e: Enrichment = enrichment(),
+  a: AreaContext = area(),
+  sourcingLists: string[] = [],
+  strategy: InvestmentStrategy = 'btl',
+  strategyArea: StrategyAreaContext = EMPTY_STRATEGY_AREA,
+  assumptions: StrategyAssumptions = EMPTY_ASSUMPTIONS,
+): Score {
+  const measurement = measureQuality(strategy, l, e, a, sourcingLists, strategyArea, assumptions)
+  const score = qualityScores([measurement], DEFAULT_WEIGHTS)[0]
+  if (!score) throw new Error('no score')
+  return score
+}
+
+function pointsFor(score: Score, label: string): number {
+  return score.factors.find((f) => f.label === label)?.points ?? 0
+}
+
+function availableFor(score: Score, label: string): number {
+  return score.factors.find((f) => f.label === label)?.available ?? 0
+}
+
+describe('percentile', () => {
+  it('puts the best at the top and the worst at the bottom', () => {
+    const cohort = [10, 20, 30, 40]
+    expect(percentile(40, cohort)).toBe(1)
+    expect(percentile(10, cohort)).toBe(0)
+  })
+
+  it('gives tied values the same place', () => {
+    const cohort = [10, 10, 10, 10]
+    expect(percentile(10, cohort)).toBe(0.5)
+  })
+
+  it('returns the middle for a cohort of one, not the top', () => {
+    // Being the only property with a rent estimate is not an achievement.
+    expect(percentile(500, [500])).toBe(0.5)
+  })
+})
+
 describe('quality', () => {
   it('stamps the version on every score', () => {
-    expect(quality(listing(), enrichment(), area()).version).toBe(SCORE_VERSION)
+    expect(scoreOne().version).toBe(SCORE_VERSION)
   })
 
-  it('gives a factor for every input, so the breakdown is complete', () => {
-    const score = quality(listing(), enrichment(), area())
-    expect(score.factors.map((f) => f.label)).toEqual([
-      'Monthly cashflow',
-      'Price against nearby sales',
-      'Yield against the area',
-      'Local demand',
-      'Room to add value',
-    ])
-  })
+  it('scores cashflow against the rest of the run, not an absolute scale', () => {
+    // The same property is worth most of the factor in a weak field and none of
+    // it in a strong one. An absolute band could not do both.
+    const cheap = listing({ price: 120_000 })
+    const middling = listing({ price: 200_000 })
+    const dear = listing({ price: 400_000 })
 
-  it('scores what is left each month, not the gross yield', () => {
-    // £150,000 at 25% down is a £112,500 loan. At 5.5% interest only that is
-    // £515 a month, against £1,100 rent less 20% costs.
-    const clears = quality(listing({ price: 150_000 }), enrichment({ estimatedRent: 1_100 }), area())
-    const loses = quality(listing({ price: 400_000 }), enrichment({ estimatedRent: 1_100 }), area())
-
-    expect(clears.score).toBeGreaterThan(loses.score)
-    expect(loses.factors.find((f) => f.label === 'Monthly cashflow')?.points).toBe(0)
-  })
-
-  it('scores nothing for a property that does not wash its face', () => {
-    // The failure the old gross yield hid: a 4.4% gross yield reads as
-    // unremarkable and loses money every month at 5.5% borrowing.
-    expect(netMonthlyCashflow(300_000, 1_100)).toBeLessThan(0)
-
-    const score = quality(listing({ price: 300_000 }), enrichment({ estimatedRent: 1_100 }), area())
-    const cashflow = score.factors.find((f) => f.label === 'Monthly cashflow')
-
-    expect(cashflow?.points).toBe(0)
-    expect(cashflow?.detail).toContain('Loses')
-  })
-
-  it('prices against what sold nearby, not against the asking price', () => {
-    // 600 sq ft at £300 locally is £180,000. Asking £150,000 is under it.
-    const under = quality(listing({ price: 150_000, sqf: 600 }), enrichment(), area({ soldPricePerSqFt: 300 }))
-    const over = quality(listing({ price: 240_000, sqf: 600 }), enrichment(), area({ soldPricePerSqFt: 300 }))
-
-    const underFactor = under.factors.find((f) => f.label === 'Price against nearby sales')
-    const overFactor = over.factors.find((f) => f.label === 'Price against nearby sales')
-
-    expect(underFactor?.points).toBeGreaterThan(0)
-    expect(overFactor?.points).toBe(0)
-    expect(overFactor?.detail).toContain('above')
-  })
-
-  it('says which figure is missing rather than assuming one', () => {
-    const score = quality(listing(), { estimatedValue: null, estimatedRent: null, areaDemandRating: null }, area())
-    const cashflow = score.factors.find((f) => f.label === 'Monthly cashflow')
-
-    expect(cashflow?.points).toBe(0)
-    expect(cashflow?.detail).toBe('No rent estimate held')
-
-    const noArea = quality(listing({ sqf: 600 }), enrichment(), {
-      soldPricePerSqFt: null,
-      localGrossYieldPercent: null,
-      floodRisk: null,
-      leaseholdShare: null,
-    })
-    expect(noArea.factors.find((f) => f.label === 'Price against nearby sales')?.detail).toBe(
-      'No local sold prices held',
+    const scores = qualityScores(
+      [cheap, middling, dear].map((l) => measureQuality('btl', l, enrichment(), area())),
+      DEFAULT_WEIGHTS,
     )
-    expect(noArea.factors.find((f) => f.label === 'Yield against the area')?.detail).toBe(
-      'No local yield benchmark held',
+
+    expect(pointsFor(scores[0]!, 'Monthly cashflow')).toBe(DEFAULT_WEIGHTS.quality.strategyReturn)
+    expect(pointsFor(scores[1]!, 'Monthly cashflow')).toBeGreaterThan(0)
+    expect(pointsFor(scores[2]!, 'Monthly cashflow')).toBe(0)
+  })
+
+  it('will not give a loss-making property the whole factor for ranking best', () => {
+    // Everything in this run loses money. The least bad is still a loss.
+    const dear = [500_000, 600_000, 700_000].map((price) =>
+      measureQuality('btl', listing({ price }), enrichment({ estimatedRent: 900 }), area()),
+    )
+    const scores = qualityScores(dear, DEFAULT_WEIGHTS)
+
+    expect(pointsFor(scores[0]!, 'Monthly cashflow')).toBeLessThanOrEqual(
+      DEFAULT_WEIGHTS.quality.strategyReturn / 2,
     )
   })
 
-  it('measures the yield against the area rather than against a fixed band', () => {
-    const strong = quality(listing({ price: 150_000 }), enrichment({ estimatedRent: 1_100 }), area({ localGrossYieldPercent: 6 }))
-    const ordinary = quality(listing({ price: 150_000 }), enrichment({ estimatedRent: 1_100 }), area({ localGrossYieldPercent: 12 }))
+  it('normalises over the factors held, so a missing one does not penalise', () => {
+    // A flat with no floor area cannot be compared on price per square foot.
+    // It competes on the three factors it does have rather than carrying a zero.
+    const withArea = scoreOne(listing({ sqf: 800 }))
+    const withoutArea = scoreOne(listing({ sqf: null }))
 
-    const strongFactor = strong.factors.find((f) => f.label === 'Yield against the area')
-    const ordinaryFactor = ordinary.factors.find((f) => f.label === 'Yield against the area')
-
-    expect(strongFactor?.points).toBeGreaterThan(ordinaryFactor?.points ?? 0)
+    expect(availableFor(withArea, 'Price against nearby sales')).toBe(DEFAULT_WEIGHTS.quality.comparables)
+    expect(availableFor(withoutArea, 'Price against nearby sales')).toBe(0)
+    expect(factorsHeld(withoutArea)).toBe(3)
+    expect(withoutArea.score).toBeGreaterThan(0)
   })
 
-  it('states the figure behind every factor so it can be argued with', () => {
-    for (const factor of quality(listing(), enrichment(), area()).factors) {
-      expect(factor.detail.length).toBeGreaterThan(0)
-    }
+  it('counts how many factors are held, so a property short of data can be dropped', () => {
+    const bare = scoreOne(listing({ sqf: null }), enrichment({ estimatedRent: null, areaDemandRating: null }))
+    expect(factorsHeld(bare)).toBeLessThan(MIN_QUALITY_FACTORS)
   })
 
-  it('credits a property on a list that implies work', () => {
-    const needsWork = quality(listing({ lists: ['unmodernised-properties'] }), enrichment(), area())
-    const plain = quality(listing({ lists: ['high-yield-properties'] }), enrichment(), area())
+  it('scores a factor with no data at zero available rather than zero points', () => {
+    const noRent = scoreOne(listing(), enrichment({ estimatedRent: null }))
+    expect(availableFor(noRent, 'Monthly cashflow')).toBe(0)
+    expect(noRent.factors.find((f) => f.label === 'Monthly cashflow')?.detail).toMatch(/no rent estimate/i)
+  })
+})
 
-    expect(needsWork.score).toBeGreaterThan(plain.score)
+describe('room to add value', () => {
+  it('is worth nothing for a list the subscriber already asked for', () => {
+    // Every property an unmodernised-only subscriber sees is unmodernised, so
+    // being unmodernised cannot separate one from another.
+    const l = listing({ lists: ['unmodernised-properties'] })
+    const asked = scoreOne(l, enrichment(), area(), ['unmodernised-properties'])
+    const notAsked = scoreOne(l, enrichment(), area(), ['reduced-properties'])
+
+    expect(pointsFor(asked, 'Room to add value')).toBe(0)
+    expect(pointsFor(notAsked, 'Room to add value')).toBeGreaterThan(0)
   })
 
-  it('cannot exceed the sum of its weights', () => {
-    const ceiling = Object.values(DEFAULT_WEIGHTS.quality).reduce((a, b) => a + b, 0)
-    const best = quality(listing({ price: 50_000, lists: ['unmodernised-properties', 'repossessed-properties'] }), {
-      estimatedValue: 500_000,
-      estimatedRent: 3_000,
-      areaDemandRating: 100,
-    })
+  it('still rewards a list they did not ask for', () => {
+    const l = listing({ lists: ['unmodernised-properties', 'auction-properties'] })
+    const score = scoreOne(l, enrichment(), area(), ['unmodernised-properties'])
+    expect(pointsFor(score, 'Room to add value')).toBeGreaterThan(0)
+  })
 
-    expect(best.score).toBeLessThanOrEqual(ceiling)
+  it('is not held at all when they asked for every value-add list', () => {
+    // The factor carries no information for that subscriber, so it is
+    // normalised out rather than scored zero for everyone.
+    const score = scoreOne(listing(), enrichment(), area(), [...CONDITION_LISTS])
+    expect(availableFor(score, 'Room to add value')).toBe(0)
+  })
+})
+
+describe('cumulativeReduction', () => {
+  it('adds the cuts up rather than taking the largest', () => {
+    // Three cuts of 5% is a seller talked down three times.
+    const stepped = [
+      event({ previousValue: { price: 200_000 }, currentValue: { price: 190_000 }, magnitude: -5 }),
+      event({ previousValue: { price: 190_000 }, currentValue: { price: 180_500 }, magnitude: -5 }),
+      event({ previousValue: { price: 180_500 }, currentValue: { price: 171_475 }, magnitude: -5 }),
+    ]
+    expect(cumulativeReduction(stepped)).toBeCloseTo(14.26, 1)
+  })
+
+  it('beats a single deeper cut on the movement score', () => {
+    const stepped = [
+      event({ observedAt: NOW, previousValue: { price: 200_000 }, currentValue: { price: 190_000 } }),
+      event({ observedAt: NOW, previousValue: { price: 190_000 }, currentValue: { price: 180_500 } }),
+      event({ observedAt: NOW, previousValue: { price: 180_500 }, currentValue: { price: 171_475 } }),
+    ]
+    const single = [event({ previousValue: { price: 200_000 }, currentValue: { price: 176_000 } })]
+
+    // 14.26% cumulative against a single 12% cut.
+    expect(movement(stepped, NOW).score).toBeGreaterThan(movement(single, NOW).score)
+  })
+
+  it('reads the latest price, not the lowest, when a property was raised again', () => {
+    const events = [
+      event({ observedAt: new Date('2026-01-01'), previousValue: { price: 200_000 }, currentValue: { price: 150_000 } }),
+      event({ observedAt: new Date('2026-05-01'), previousValue: { price: 190_000 }, currentValue: { price: 180_000 } }),
+    ]
+    // Peak 200,000, latest 180,000 — not the 150,000 it briefly touched.
+    expect(cumulativeReduction(events)).toBeCloseTo(10, 1)
+  })
+
+  it('is null where nothing was reduced', () => {
+    expect(cumulativeReduction([])).toBeNull()
+    expect(cumulativeReduction([event({ type: 'returned_to_market' })])).toBeNull()
   })
 })
 
 describe('movement', () => {
-  it('scores zero when nothing has happened', () => {
-    const score = movement([], NOW)
-    expect(score.score).toBe(0)
-    expect(score.factors).toEqual([])
+  it('gives a days-on-market crossing no recency', () => {
+    // The calendar moved, not the property. Same reasoning that excludes
+    // first_seen: ageing past 90 days is not news about the seller.
+    const crossing = movement([event({ type: 'days_on_market_crossed', magnitude: 180 })], NOW)
+
+    expect(crossing.factors.some((f) => f.label === 'Slow to sell')).toBe(true)
+    expect(crossing.factors.some((f) => f.label === 'Recency')).toBe(false)
   })
 
-  it('scores a deeper reduction above a shallower one', () => {
-    const deep = movement([event({ magnitude: -18 })], NOW)
-    const shallow = movement([event({ magnitude: -6 })], NOW)
-
-    expect(deep.score).toBeGreaterThan(shallow.score)
+  it('gives a reduction recency', () => {
+    const reduced = movement([event()], NOW)
+    expect(reduced.factors.find((f) => f.label === 'Recency')?.points).toBe(DEFAULT_WEIGHTS.movement.recency)
   })
 
-  it('counts repeated reductions in the label', () => {
-    const twice = movement([event({ magnitude: -8 }), event({ magnitude: -12 })], NOW)
-    expect(twice.factors[0]?.label).toBe('Reduced 2 times')
+  it('scores nothing for a property that has not moved', () => {
+    expect(movement([], NOW).score).toBe(0)
+    expect(movement([event({ type: 'first_seen' })], NOW).score).toBe(0)
   })
 
-  it('scores a return to market on its own', () => {
-    const returned = movement([event({ type: 'returned_to_market', magnitude: null })], NOW)
-    expect(returned.factors.some((f) => f.label === 'Back on the market')).toBe(true)
-    expect(returned.score).toBeGreaterThan(0)
-  })
-
-  it('decays with age, so this week beats last month', () => {
-    const fresh = movement([event({ observedAt: NOW })], NOW)
-    const old = movement([event({ observedAt: new Date(NOW.getTime() - 30 * 86_400_000) })], NOW)
-
-    expect(fresh.score).toBeGreaterThan(old.score)
-  })
-})
-
-describe('ranking', () => {
-  it('lets a mediocre property that just dropped 12% outrank a good static one', () => {
-    // The premise of the whole product, asserted. The mover is worse on every
-    // quality measure — 4.8% yield, barely under the estimate, weak demand —
-    // and still leads, because it moved and the other one did not.
-    const mover = {
-      candidate: 'mover',
-      quality: quality(listing({ price: 200_000 }), { estimatedValue: 205_000, estimatedRent: 800, areaDemandRating: 40 }),
-      movement: movement([event({ magnitude: -12, observedAt: NOW })], NOW),
-    }
-
-    const stayer = {
-      candidate: 'stayer',
-      quality: quality(listing({ price: 180_000 }), { estimatedValue: 195_000, estimatedRent: 900, areaDemandRating: 60 }),
-      movement: movement([], NOW),
-    }
-
-    expect(mover.quality.score).toBeLessThan(stayer.quality.score)
-    expect(rank([stayer, mover])[0]?.candidate).toBe('mover')
-  })
-
-  it('still lets an exceptional property beat a small move, which is the honest limit of that', () => {
-    // Movement is not a trump card. A property clearing £284 a month on a yield
-    // a third above the area beats one that shaved 12% off an asking price it
-    // cannot let profitably. If this stops being true the weights have gone
-    // wrong, not this test.
-    const mover = {
-      candidate: 'mover',
-      quality: quality(
-        listing({ price: 200_000 }),
-        { estimatedValue: 205_000, estimatedRent: 800, areaDemandRating: 40 },
-        area(),
-      ),
-      movement: movement([event({ magnitude: -12, observedAt: NOW })], NOW),
-    }
-
-    const exceptional = {
-      candidate: 'exceptional',
-      quality: quality(
-        listing({ price: 150_000 }),
-        { estimatedValue: 190_000, estimatedRent: 1_000, areaDemandRating: 70 },
-        area(),
-      ),
-      movement: movement([], NOW),
-    }
-
-    expect(rank([mover, exceptional])[0]?.candidate).toBe('exceptional')
-  })
-
-  it('gives movement and quality the same ceiling, so neither can dominate by construction', () => {
-    const qualityCeiling = Object.values(DEFAULT_WEIGHTS.quality).reduce((a, b) => a + b, 0)
-    const movementCeiling = Object.values(DEFAULT_WEIGHTS.movement).reduce((a, b) => a + b, 0)
-
-    expect(movementCeiling).toBe(qualityCeiling)
-  })
-
-  it('adds the two scores rather than blending them', () => {
-    const entry = {
-      candidate: 'x',
-      quality: quality(listing(), enrichment()),
-      movement: movement([event()], NOW),
-    }
-
-    const [ranked] = rank([entry])
-    expect(ranked?.total).toBeCloseTo(entry.quality.score + entry.movement.score, 1)
-  })
-
-  it('breaks a tie in favour of the one that moved', () => {
-    const still = { candidate: 'still', quality: { score: 60, factors: [], version: 'v1' }, movement: { score: 0, factors: [], version: 'v1' } }
-    const moved = { candidate: 'moved', quality: { score: 20, factors: [], version: 'v1' }, movement: { score: 40, factors: [], version: 'v1' } }
-
-    expect(rank([still, moved])[0]?.candidate).toBe('moved')
-  })
-
-  it('orders descending', () => {
-    const entries = [10, 90, 50].map((score) => ({
-      candidate: score,
-      quality: { score, factors: [], version: 'v1' },
-      movement: { score: 0, factors: [], version: 'v1' },
-    }))
-
-    expect(rank(entries).map((e) => e.candidate)).toEqual([90, 50, 10])
+  it('shares a ceiling with quality, so neither dominates', () => {
+    const everything = movement(
+      [
+        event({ previousValue: { price: 200_000 }, currentValue: { price: 150_000 } }),
+        event({ type: 'returned_to_market' }),
+        event({ type: 'days_on_market_crossed', magnitude: 400 }),
+      ],
+      NOW,
+    )
+    expect(everything.score).toBe(100)
   })
 })
 
-describe('no LLM in this path', () => {
-  it('produces the same score for the same input every time', () => {
-    const a = quality(listing(), enrichment())
-    const b = quality(listing(), enrichment())
+describe('risks', () => {
+  const epcG: EnergyCertificate = { rating: 'G', score: 12 }
 
-    expect(a).toEqual(b)
+  it('caps a property nobody can let', () => {
+    const found = risks(listing(), area(), epcG, ['reduced-properties'])
+    expect(isCapped(found)).toBe(true)
+  })
+
+  it('only notes it for a subscriber who came for the refurbishment', () => {
+    // An unmodernised or auction buyer is looking for exactly this stock.
+    const found = risks(listing(), area(), epcG, ['unmodernised-properties'])
+    expect(isCapped(found)).toBe(false)
+    expect(found.some((r) => r.severity === 'note' && r.label === 'EPC G')).toBe(true)
+  })
+
+  it('excludes a property on a high flood risk', () => {
+    expect(isExcluded(risks(listing(), area({ floodRisk: 'High' }), null))).toBe(true)
+  })
+
+  it('only notes a middling flood risk', () => {
+    const found = risks(listing(), area({ floodRisk: 'Medium' }), null)
+    expect(isExcluded(found)).toBe(false)
+    expect(found.some((r) => r.severity === 'note')).toBe(true)
+  })
+
+  it('says nothing about a low flood risk', () => {
+    expect(risks(listing(), area({ floodRisk: 'Very Low' }), null)).toHaveLength(0)
+  })
+
+  it('treats a short lease as a cost, not as room to add value', () => {
+    const l = listing({ lists: ['short-lease-properties'] })
+    const found = risks(l, area(), null)
+
+    expect(found.some((r) => r.label === 'Short lease')).toBe(true)
+    expect(pointsFor(scoreOne(l), 'Room to add value')).toBe(0)
+  })
+
+  it('no longer flags a leasehold-heavy area', () => {
+    // In central Birmingham it fired on everything, which is not information.
+    expect(risks(listing(), area({ leaseholdShare: 0.95 }), null)).toHaveLength(0)
   })
 })
 
-describe('risks, which are stated rather than scored', () => {
-  it('flags a property that cannot legally be let', () => {
-    const found = risks(area(), { rating: 'F', score: 30 })
+describe('rank', () => {
+  const strong: Score = { score: 90, factors: [], version: SCORE_VERSION }
+  const weak: Score = { score: 10, factors: [], version: SCORE_VERSION }
+  const still: Score = { score: 0, factors: [], version: SCORE_VERSION }
+  const moved: Score = { score: 40, factors: [], version: SCORE_VERSION }
 
-    expect(found).toHaveLength(1)
-    expect(found[0]?.label).toBe('EPC F')
-    expect(found[0]?.detail).toContain('Cannot be let')
+  it('adds the two scores into a total out of 200', () => {
+    const [top] = rank([{ candidate: 'a', quality: strong, movement: moved }])
+    expect(top?.total).toBe(130)
   })
 
-  it('warns about a rating that passes today and would not under the C minimum', () => {
-    expect(risks(area(), { rating: 'D', score: 60 })[0]?.detail).toContain('C minimum')
+  it('breaks a tie towards the one that moved', () => {
+    const ordered = rank([
+      { candidate: 'static', quality: { score: 80, factors: [], version: SCORE_VERSION }, movement: still },
+      { candidate: 'mover', quality: { score: 40, factors: [], version: SCORE_VERSION }, movement: moved },
+    ])
+    expect(ordered[0]?.candidate).toBe('mover')
   })
 
-  it('says nothing about a good rating', () => {
-    expect(risks(area(), { rating: 'B', score: 85 })).toEqual([])
+  it('holds a capped property below the ceiling', () => {
+    const capping = [{ label: 'EPC G', detail: '', severity: 'cap' as const }]
+    const [only] = rank([{ candidate: 'a', quality: strong, movement: { ...moved, score: 90 }, risks: capping }])
+
+    expect(only?.total).toBe(RISK_CAPPED_TOTAL)
+    expect(only?.cappedBy).toBe('EPC G')
   })
 
-  it('flags flood risk above low, and not at or below it', () => {
-    expect(risks(area({ floodRisk: 'High' }), null)).toHaveLength(1)
-    expect(risks(area({ floodRisk: 'Very Low' }), null)).toEqual([])
-    expect(risks(area({ floodRisk: 'Low' }), null)).toEqual([])
-  })
+  it('leaves a capped property alone when it was never going to reach the cap', () => {
+    const capping = [{ label: 'EPC G', detail: '', severity: 'cap' as const }]
+    const [only] = rank([{ candidate: 'a', quality: weak, movement: still, risks: capping }])
 
-  it('warns that a leasehold area hides costs this product cannot see', () => {
-    const found = risks(area({ leaseholdShare: 0.9 }), null)
-
-    expect(found[0]?.label).toBe('Leasehold area')
-    expect(found[0]?.detail).toContain('service charge')
-  })
-
-  it('holds its tongue when nothing is known', () => {
-    expect(risks({ soldPricePerSqFt: null, localGrossYieldPercent: null, floodRisk: null, leaseholdShare: null }, null)).toEqual([])
+    expect(only?.total).toBe(10)
+    expect(only?.cappedBy).toBeNull()
   })
 })

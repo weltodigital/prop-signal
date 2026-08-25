@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
-import { countSearchChanges, getSearchProfile, listStrategies, SEARCH_CHANGE_LIMIT } from '@/lib/search-profile'
+import { countSearchChanges, getSearchProfile, listSourcingLists, SEARCH_CHANGE_LIMIT } from '@/lib/search-profile'
 import { ButtonLink } from '@/components/ui'
 import { AppShell } from '@/components/app-shell'
+import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
+import { ChangePasswordForm } from './change-password-form'
 import { Button, Card, Notice } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -39,14 +41,14 @@ export default async function AccountPage({
   const state = await getSubscriptionState()
   const subscription = state.subscription
 
-  const [profile, strategies, changesUsed, params] = await Promise.all([
+  const [profile, sourcingLists, changesUsed, params] = await Promise.all([
     state.active ? getSearchProfile() : Promise.resolve(null),
-    state.active ? listStrategies() : Promise.resolve([]),
+    state.active ? listSourcingLists() : Promise.resolve([]),
     state.active ? countSearchChanges(user.id) : Promise.resolve(0),
     searchParams,
   ])
 
-  const strategyLabels = new Map(strategies.map((s) => [s.id, s.label]))
+  const listLabels = new Map(sourcingLists.map((list) => [list.id, list.label]))
 
   return (
     <AppShell email={user.email}>
@@ -135,9 +137,15 @@ export default async function AccountPage({
                 </dd>
               </div>
               <div className="flex justify-between gap-4 border-b border-line pb-3">
-                <dt className="text-muted">Strategies</dt>
+                <dt className="text-muted">Strategy</dt>
                 <dd className="max-w-[60%] text-right font-medium">
-                  {profile.strategies.map((id) => strategyLabels.get(id) ?? id).join(', ')}
+                  {profile.investmentStrategies.map((id) => STRATEGY_DEFINITIONS[id].label).join(', ')}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4 border-b border-line pb-3">
+                <dt className="text-muted">Looking for</dt>
+                <dd className="max-w-[60%] text-right font-medium">
+                  {profile.sourcingLists.map((id) => listLabels.get(id) ?? id).join(', ')}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -171,8 +179,10 @@ export default async function AccountPage({
       <Card className="mt-6">
         <h2 className="text-base font-medium">Sign-in</h2>
         <p className="mt-3 text-sm text-muted">
-          You sign in with a link sent to {user.email}. There is no password to change.
+          You sign in as {user.email}. Changing the address is not something you can do here — email me and I will
+          move it, so that losing an inbox does not lose the subscription with it.
         </p>
+        <ChangePasswordForm />
       </Card>
     </AppShell>
   )

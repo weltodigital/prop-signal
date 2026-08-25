@@ -17,6 +17,11 @@ import { WatchButton } from '@/components/watch-button'
  * words.
  */
 export function DealCard({ deal, isNew = false }: { deal: PublishedDeal; isNew?: boolean }) {
+  const winner = deal.strategyScores.find((s) => s.strategy === deal.winningStrategy) ?? null
+  const runnersUp = deal.strategyScores
+    .filter((s) => s.strategy !== deal.winningStrategy)
+    .sort((a, b) => b.total - a.total)
+
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
@@ -37,6 +42,18 @@ export function DealCard({ deal, isNew = false }: { deal: PublishedDeal; isNew?:
           <p className="mt-0.5 text-sm text-muted">
             {[deal.postcode, formatBedrooms(deal.bedrooms), deal.propertyType].filter(Boolean).join(' · ')}
           </p>
+          {/* Which of the subscriber's strategies this property suits. Where
+              they run only one it says nothing they do not know, so it is only
+              shown once there is a comparison to draw. */}
+          {winner && deal.strategyScores.length > 1 ? (
+            <p className="mt-1.5 text-sm">
+              <span className="font-medium">Best as a {winner.label.toLowerCase()}</span>
+              <span className="text-muted">
+                {' '}
+                — {runnersUp.map((s) => `${s.label.toLowerCase()} ${s.total.toFixed(0)}`).join(', ')}
+              </span>
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
@@ -86,6 +103,12 @@ export function DealCard({ deal, isNew = false }: { deal: PublishedDeal; isNew?:
           </span>
         </summary>
         <div className="mt-4">
+          {winner ? (
+            <p className="mb-4 text-sm text-muted">
+              Scored as a <span className="font-medium text-ink">{winner.label.toLowerCase()}</span>, which is the
+              strategy this property suits best of the ones you run.
+            </p>
+          ) : null}
           <ScoreBreakdown
             quality={deal.qualityFactors}
             movement={deal.movementFactors}

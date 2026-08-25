@@ -4,7 +4,8 @@ import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { saveSearch, type OnboardingState } from './actions'
 import { Button, Card } from '@/components/ui'
-import { PROPERTY_TYPES, RADIUS_OPTIONS, type SearchProfile, type StrategyList } from '@/lib/search-profile.types'
+import { PROPERTY_TYPES, RADIUS_OPTIONS, type SearchProfile, type SourcingList } from '@/lib/search-profile.types'
+import { STRATEGY_LIST, type InvestmentStrategy } from '@/lib/strategies'
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
@@ -25,12 +26,12 @@ function Submit({ isNew }: { isNew: boolean }) {
 }
 
 export function SearchForm({
-  strategies,
+  sourcingLists,
   profile,
   searchChangesUsed,
   searchChangeLimit,
 }: {
-  strategies: StrategyList[]
+  sourcingLists: SourcingList[]
   profile: SearchProfile | null
   searchChangesUsed: number
   searchChangeLimit: number
@@ -38,11 +39,20 @@ export function SearchForm({
   const [state, formAction] = useActionState<OnboardingState, FormData>(saveSearch, { status: 'idle' })
   // PropertyData cap the radius per list and reject the whole call above it, so
   // the options narrow as strategies are ticked rather than failing on Sunday.
-  const [chosen, setChosen] = useState<string[]>(profile?.strategies ?? [])
+  const [chosen, setChosen] = useState<string[]>(profile?.sourcingLists ?? [])
   const maxRadius = Math.min(
-    ...strategies.filter((s) => chosen.includes(s.id)).map((s) => s.maxRadiusMiles),
+    ...sourcingLists.filter((list) => chosen.includes(list.id)).map((list) => list.maxRadiusMiles),
     Math.max(...RADIUS_OPTIONS),
   )
+
+  // Which strategies are ticked decides which figures we have to ask for. A
+  // BRRR needs a refurb cost and a short let needs a nightly rate, because
+  // PropertyData publish neither and this product will not invent them.
+  const [strategies, setStrategies] = useState<InvestmentStrategy[]>(
+    profile?.investmentStrategies ?? ['btl'],
+  )
+  const needsRefurb = strategies.includes('brrr')
+  const needsNightly = strategies.includes('r2sa')
 
   const [showOptional, setShowOptional] = useState(
     Boolean(profile?.minPrice || profile?.maxPrice || profile?.minBedrooms || profile?.propertyTypes?.length),
@@ -109,26 +119,27 @@ export function SearchForm({
       </Card>
 
       <Card>
-        <h2 className="text-base font-medium">2. Strategy</h2>
+        <h2 className="text-base font-medium">2. Your strategy</h2>
         <p className="mt-1 text-sm text-muted">
-          What kind of situation you want to hear about. Pick as many as apply. More strategies means a wider net, not
-          a longer list — you still get five.
+          How you intend to make money from a property, which is what decides whether it is a good one. The same
+          three-bed can be an ordinary buy-to-let and an excellent HMO. Pick as many as you actually run — each
+          property is scored under all of them and ranked by whichever suits it best.
         </p>
 
         <fieldset className="mt-6 space-y-3">
-          <legend className="sr-only">Strategies</legend>
-          {strategies.map((strategy) => (
+          <legend className="sr-only">Investment strategies</legend>
+          {STRATEGY_LIST.map((strategy) => (
             <label
               key={strategy.id}
               className="flex cursor-pointer gap-3 rounded-md border border-line p-3 hover:bg-paper"
             >
               <input
                 type="checkbox"
-                name="strategies"
+                name="investmentStrategies"
                 value={strategy.id}
-                defaultChecked={profile?.strategies.includes(strategy.id) ?? false}
+                defaultChecked={strategies.includes(strategy.id)}
                 onChange={(event) =>
-                  setChosen((current) =>
+                  setStrategies((current) =>
                     event.target.checked
                       ? [...current, strategy.id]
                       : current.filter((id) => id !== strategy.id),
@@ -139,21 +150,127 @@ export function SearchForm({
               <span>
                 <span className="block text-sm font-medium">{strategy.label}</span>
                 <span className="block text-sm text-muted">{strategy.description}</span>
-                {strategy.maxRadiusMiles < Math.max(...RADIUS_OPTIONS) ? (
+                <span className="mt-0.5 block text-sm text-muted">Scored on: {strategy.measures}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <FieldError message={errors.investmentStrategies} />
+
+        {needsRefurb || needsNightly ? (
+          <div className="mt-6 space-y-5 rounded-md border border-line bg-paper p-4">
+            <div>
+              <p className="text-sm font-medium">Your own figures</p>
+              <p className="mt-1 text-sm text-muted">
+                We do not hold these and will not guess them. PropertyData publish no refurbishment cost and no
+                nightly rate, and an assumed average inside a score is the thing this product refuses everywhere
+                else. You know your own numbers better than any data feed does.
+              </p>
+            </div>
+
+            {needsRefurb ? (
+              <div>
+                <label htmlFor="refurbCostPerSqFt" className="block text-sm font-medium">
+                  Refurb cost per square foot
+                </label>
+                <input
+                  id="refurbCostPerSqFt"
+                  name="refurbCostPerSqFt"
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  defaultValue={profile?.assumptions.refurbCostPerSqFt ?? ''}
+                  className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  placeholder="65"
+                />
+                <p className="mt-1 text-sm text-muted">What your builder charges, in pounds. Used with the floor area.</p>
+                <FieldError message={errors.assumptions} />
+              </div>
+            ) : null}
+
+            {needsNightly ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="nightlyRate" className="block text-sm font-medium">
+                    Nightly rate
+                  </label>
+                  <input
+                    id="nightlyRate"
+                    name="nightlyRate"
+                    type="number"
+                    min="1"
+                    inputMode="numeric"
+                    defaultValue={profile?.assumptions.nightlyRate ?? ''}
+                    className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    placeholder="110"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="occupancyPercent" className="block text-sm font-medium">
+                    Occupancy, %
+                  </label>
+                  <input
+                    id="occupancyPercent"
+                    name="occupancyPercent"
+                    type="number"
+                    min="1"
+                    max="100"
+                    inputMode="numeric"
+                    defaultValue={profile?.assumptions.occupancyPercent ?? ''}
+                    className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    placeholder="65"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </Card>
+
+      <Card>
+        <h2 className="text-base font-medium">3. What to look for</h2>
+        <p className="mt-1 text-sm text-muted">
+          Which situations you want pulled out of the market. Pick as many as apply. More lists means a wider net, not
+          a longer list — you still get five.
+        </p>
+
+        <fieldset className="mt-6 space-y-3">
+          <legend className="sr-only">Sourcing lists</legend>
+          {sourcingLists.map((list) => (
+            <label
+              key={list.id}
+              className="flex cursor-pointer gap-3 rounded-md border border-line p-3 hover:bg-paper"
+            >
+              <input
+                type="checkbox"
+                name="sourcingLists"
+                value={list.id}
+                defaultChecked={profile?.sourcingLists.includes(list.id) ?? false}
+                onChange={(event) =>
+                  setChosen((current) =>
+                    event.target.checked ? [...current, list.id] : current.filter((id) => id !== list.id),
+                  )
+                }
+                className="mt-0.5 size-4 accent-accent"
+              />
+              <span>
+                <span className="block text-sm font-medium">{list.label}</span>
+                <span className="block text-sm text-muted">{list.description}</span>
+                {list.maxRadiusMiles < Math.max(...RADIUS_OPTIONS) ? (
                   <span className="mt-0.5 block text-sm text-muted">
-                    Searches up to {strategy.maxRadiusMiles} miles.
+                    Searches up to {list.maxRadiusMiles} miles.
                   </span>
                 ) : null}
               </span>
             </label>
           ))}
         </fieldset>
-        <FieldError message={errors.strategies} />
+        <FieldError message={errors.sourcingLists} />
       </Card>
 
       <Card>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-medium">3. Narrow it down</h2>
+          <h2 className="text-base font-medium">4. Narrow it down</h2>
           <span className="text-sm text-muted">Optional</span>
         </div>
         <p className="mt-1 text-sm text-muted">

@@ -555,3 +555,270 @@ a short-lived local credential, and `scripts/vercel-env.sh` copies every line of
 `.env.local` into the project — it would have pushed a credential that expires within
 the hour into every deployment. The script now skips it by name. The `.gitignore` line
 was reverted: `.env*` would have hidden `.env.example`, which is committed on purpose.
+
+## Passwords replace the magic link — 25 August 2026
+
+### Password only, not password and link
+
+The magic link went. Keeping both would have meant two ways in to explain, two ways to
+get wrong, and a link that stays a valid path into the account for anyone who reaches
+the inbox. Recovery is now the forgotten-password flow, which is the same email with a
+narrower blast radius: it can only set a password, and only once.
+
+Cost of the choice: everything now leans on email delivery working, and Supabase's
+built-in SMTP is rate-limited. Noted in the README rather than fixed, because at nought
+subscribers it is not yet a problem.
+
+### The signup action handles confirmation being on *or* off
+
+Whether a new account is confirmed on creation is a Supabase dashboard setting
+(`mailer_autoconfirm`), not a line in this repository. It can be changed by anyone with
+the dashboard open, without a deploy and without a test failing.
+
+So the action does not assume. A session in the response means they are in, and it goes
+to checkout. No session means Supabase has sent a confirmation link, and the form says
+so. Both are correct; neither depends on remembering what the toggle says.
+
+### Errors never say whether an account exists
+
+`Invalid login credentials` becomes "that email address and password do not match", and
+the forgotten-password form reports the same outcome for an address that has no account
+as for one that does. Splitting either would turn a login form into a way of testing
+whether an email address is a customer here.
+
+The exception is signing up with a taken address, which says so. The alternative is
+claiming to have sent an email that was never sent, and then the person is stuck.
+
+### Changing a password requires the current one
+
+Supabase's `updateUser({ password })` does not ask for the old password — the session is
+enough. That means a stolen session cookie is a stolen account: whoever has it can set a
+new password and lock the owner out.
+
+So the account form verifies the current password with `signInWithPassword` before
+changing anything. One extra round trip. The reset flow does not ask, because there the
+emailed link *is* the authentication and the person may well have arrived precisely
+because they no longer know the old one.
+
+Both then call `signOut({ scope: 'others' })`. Someone changing a password may be doing
+it because somebody else has it, and a change that leaves the other session signed in
+achieves nothing.
+
+### Eight characters, and seventy-two
+
+Supabase's floor is six. Eight is one second more at the keyboard and this account is one
+step from billing details.
+
+The ceiling is not a preference. Supabase hashes with bcrypt, which reads the first 72
+bytes and ignores everything after. Without the limit a 100-character password would
+quietly be a 72-character one, and the user would believe otherwise.
+
+### `safeRedirect` rejects two things that look relative
+
+`?next=` decides where somebody lands holding a fresh session, so it takes paths on this
+site and nothing else. Two of the rejections are not obvious: `//evil.example` is a
+protocol-relative URL that a browser resolves against another origin, and `/\evil.example`
+is the same trick using a backslash browsers normalise into a slash. Both start with `/`
+and neither is local. `tests/auth.test.ts` pins them.
+
+### `/reset-password` is a protected route, `/forgot-password` is not
+
+The reset page is listed in the proxy's protected prefixes, which reads oddly for a page
+only signed-out people visit. But the reset link is the authentication: by the time the
+page renders, the callback has exchanged it for a session. No session means no valid
+link, and the proxy turning it away is exactly right.
+
+`/forgot-password` is deliberately absent from the signed-out-only list. Somebody signed
+in on a laptop can still have forgotten the password they need on their phone.
+
+## Scoring v3 — 25 August 2026
+
+Nine changes, from one review of v2. Most of them are the same mistake in different
+places: a number that looked absolute but was only true somewhere.
+
+### Cashflow is a percentile, because £350 a month is not a national figure
+
+£0 to £350 net was the v2 band. Across the South East nearly every property scores zero
+on it; up north nearly every property scores full. A 30-point factor that is constant in
+both directions is not a factor, it is a rounding error with a weight.
+
+It is now ranked against the other candidates in the same run. What that costs: the
+cohort is a filtered, event-driven set, not a sample of the local market, so on a bad
+week the best of a bad bunch takes the factor. Guarded in the one place it matters —
+negative cashflow cannot take more than half the factor however well it ranks. Without
+that, "everything here loses money" and "this is the best deal this week" are the same
+sentence.
+
+### Gross yield against the area was removed rather than reweighted
+
+Cashflow and yield-against-area are both rent over price. Between them they put 45 of
+100 quality points on one signal, dressed as two.
+
+Removed rather than trimmed, because trimming keeps a redundant factor and calls it
+diversification. What is lost is real and worth naming: yield-against-area anchored to
+the whole local market, and a percentile only ranks within the cohort. If the cohort
+turns out to be systematically unrepresentative, that anchor is the thing to bring back.
+
+### Reduction and stale went to 35 and 10, not merged
+
+The same correlation argument applies — a property that has been reduced has usually
+been on the market a while — but not the same conclusion. A stubborn seller can be stale
+without ever reducing, and a motivated one can cut hard in week two. They are correlated,
+not identical, so the combined weight came down from 60 to 45 and both stayed.
+
+### Movement sums to 85 and is scaled to 100
+
+A consequence of the above: the weights no longer add to a round number. Rescaling keeps
+the two scores sharing a ceiling, which is what stops either dominating by construction.
+The alternative — inventing 15 points of weight to hand to whichever factor could absorb
+them — would have moved the ranking for no reason anyone could state.
+
+### Quality is a share of what was held, with a floor of three factors
+
+Scoring a missing figure as zero is honest and biased. Floor area is missing far more
+often on flats and new builds, so v2 pushed both down the list for a gap in
+PropertyData rather than anything about the property.
+
+Normalising over the factors held fixes that and introduces its own problem: a property
+with one factor could top the list on it. So the two rules come as a pair — normalise,
+but only above three of four held. In practice that means at least one of cashflow or
+comparables, because demand is area-level and condition is nearly always held.
+
+### The reduction is cumulative from peak, not the deepest single cut
+
+Three cuts of 5% is a seller talked down three times. One cut of 14% is a seller who
+repriced once. The first is the better prospect and v2 scored it at a third of the value.
+
+Writing the test for it found a bug in the first attempt: several reductions can share an
+`observedAt`, because price history read in one go dates every step to the day it
+happened, and the reducer kept the first of them rather than the last. A property cut
+three times in a week read as having been cut once.
+
+### A days-on-market crossing earns no recency
+
+Same reasoning that already excluded `first_seen`: it is dated when the calendar moved,
+not when the property did. v2 let a property that merely aged past 90 days collect stale
+points, full recency and qualification at once — three rewards for the passage of time.
+
+It still qualifies, and still earns its own stale points. It just is not news.
+
+### Risks gate instead of only annotating
+
+Still never scored — how many points an EPC of F is worth against a 12% reduction is not
+a number anybody can defend. But a note alone let a G-rated house on a flood plain lead
+the week, which is the failure the note was supposed to prevent.
+
+So severity gates instead. High flood risk excludes. EPC F or G caps the total at 120 of
+200 — *unless* the subscriber picked unmodernised, auction or repossessed, in which case
+an F is the reason they are looking. Capping the exact stock somebody asked for would be
+answering a question they did not ask.
+
+### Room to add value is relative to what was ticked
+
+Every property an unmodernised-only subscriber sees is unmodernised. v2 gave every one of
+them half marks for it — a constant with a weight, which cannot separate anything.
+
+Only the lists they did not tick are counted. Tick all of them and the factor is
+normalised out rather than scored zero, because for that subscriber it genuinely
+distinguishes nothing.
+
+### Short lease is a risk; leasehold-heavy area is nothing
+
+Short lease was earning value-add points. A lease with 70 years left is a bill before it
+is an opportunity, and the length — the only thing that decides which — is not a field
+this product holds. It is a note now.
+
+Leasehold-heavy area was dropped outright. In central Birmingham it fires on every
+property, and a flag that fires on everything conveys nothing but noise.
+
+### What the threshold is a total of, written down
+
+25 of a possible 200, applied to quality plus movement, and only to a property that has
+never been shown to that subscriber. One that has needs a new material event instead,
+whatever it scores.
+
+It has never been tested against real output — the number was chosen against v2's scale
+and v2 never ran. It is the first thing to retune after a live run.
+
+## Investment strategies — 25 August 2026
+
+Scoring v4. Until now the product had one axis and called it strategy. It had two, and
+was only ever scoring one of them.
+
+### A sourcing list and a strategy are different questions
+
+A list says which stock to pull out of the market. A strategy says what "good" means once
+it is out. The same three-bed is an ordinary buy-to-let and an excellent HMO, and no
+sourcing list can tell you which.
+
+Every score before v4 was a buy-to-let score — net monthly cashflow on a single-household
+rent, at 25% down and 5.5% interest only. That was never a neutral default, only an
+unstated one. Making it a choice is mostly a matter of admitting what was already there.
+
+The old column is renamed to `sourcing_lists` rather than left alone. Two different things
+called strategy would confuse the schema, the code and the subscriber, and with no
+profiles yet the rename costs nothing.
+
+### Only one factor changes
+
+Price against comparables, local demand and room to add value mean the same thing whatever
+you intend to do with a property. The return does not. So the strategy swaps out that one
+measurement — 40 of the 100 quality points — and leaves the rest of v3 alone.
+
+That is what makes four strategies cheap rather than four scoring systems. It also keeps
+the percentile honest: each strategy is ranked against its own cohort, so a room rate is
+never compared with a refinance.
+
+### A property is ranked by its best strategy
+
+A subscriber who runs two strategies gets one list, not two. Each property is scored under
+both and ranked by whichever suits it better, carrying the others' totals so the card can
+say "best as an HMO — buy to let 96".
+
+The alternative, a section per strategy, splits a list of five into two lists of two or
+three and makes the page harder to read for no gain.
+
+### BRRR is scored on money back out, not cashflow
+
+The point of the strategy is to recycle the deposit. A BRRR that cashflows nicely and
+leaves £40,000 stuck in the wall has failed at the thing it was for, and scoring it on
+monthly cashflow would call that a success.
+
+### We ask for the two figures we do not hold
+
+A refurbishment cost and a nightly rate are the two numbers these strategies live on, and
+PropertyData publish neither. `/build-cost` prices building from nothing — the fraction of
+that a refurbishment costs is the invented number this codebase refuses everywhere else —
+and across all 69 endpoints there is no nightly rate and no occupancy figure at all.
+
+So the subscriber supplies both. That is not a workaround, it is the same decision already
+made for the calculator: these are figures an investor knows better than any data feed
+does. A strategy missing its figures is skipped for the run and logged, never scored on a
+guess.
+
+It also avoided a second data vendor, which would have meant reworking the rule that
+exactly one module may spend money — the rule `tests/module-boundary.test.ts` enforces.
+The seam is clean: swap those two inputs for a market feed and nothing else changes.
+
+### R2SA was on the "not building" list
+
+The original brief names R2SA analytics under "explicitly not building", with "ask before
+adding any of these". It was asked about, the data gap was put plainly, and it was chosen
+anyway. Recorded here so the brief and the build do not silently disagree.
+
+### A strategy is a fixed set in code, not a row in a table
+
+Sourcing lists are a table because they are data — an id and a radius the API enforces.
+A strategy is a scoring function. A row without a function would let somebody store a
+strategy nothing can score and publish a list ranked on nothing, so the trigger checks
+against a literal list and the schema validation drops anything this build cannot score.
+
+Both fall back to buy-to-let rather than to nothing, because that is what every score
+meant before this change.
+
+### Only pay for what the strategies need
+
+`/rents-hmo`, `/national-hmo-register` and `/development-gdv` are area-level like the six
+already fetched, so they cost a credit per run rather than per property. They are fetched
+only for a profile whose strategies use them: a buy-to-let subscriber never pays for HMO
+room rates. Worst case a run goes from six area credits to nine, against a ceiling of 100.

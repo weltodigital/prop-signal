@@ -4,7 +4,7 @@ import { getSubscriptionState } from '@/lib/subscription'
 import {
   countSearchChanges,
   getSearchProfile,
-  listStrategies,
+  listSourcingLists,
   SEARCH_CHANGE_LIMIT,
 } from '@/lib/search-profile'
 import { AppShell } from '@/components/app-shell'
@@ -24,9 +24,9 @@ export default async function OnboardingPage() {
   const subscription = await getSubscriptionState()
   if (!subscription.active) redirect('/subscribe')
 
-  const [profile, strategies, changesUsed] = await Promise.all([
+  const [profile, sourcingLists, changesUsed] = await Promise.all([
     getSearchProfile(),
-    listStrategies(),
+    listSourcingLists(),
     countSearchChanges(user.id),
   ])
 
@@ -35,7 +35,7 @@ export default async function OnboardingPage() {
   return (
     <AppShell email={user.email}>
       <h1 className="text-2xl font-semibold tracking-tight">
-        {isNew ? 'Two questions' : 'Your area and strategy'}
+        {isNew ? 'Three questions' : 'Your area and strategy'}
       </h1>
 
       <p className="mt-2 max-w-prose text-muted">
@@ -57,7 +57,7 @@ export default async function OnboardingPage() {
 
       <div className="mt-8">
         <SearchForm
-          strategies={strategies}
+          sourcingLists={sourcingLists}
           profile={profile}
           searchChangesUsed={changesUsed}
           searchChangeLimit={SEARCH_CHANGE_LIMIT}

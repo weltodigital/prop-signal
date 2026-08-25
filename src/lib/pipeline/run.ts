@@ -14,6 +14,9 @@ import {
 import {
   matchAddress,
   readCouncilTax,
+  readDevelopmentGdv,
+  readHmoRoomRate,
+  readRegisteredHmos,
   readEpc,
   readFloodRisk,
   readGrowth,
@@ -21,7 +24,31 @@ import {
   readSoldComparables,
   type AreaInsights,
 } from './area'
-import { DEFAULT_WEIGHTS, movement, quality, rank, risks, SCORE_VERSION, type Enrichment } from './scoring'
+import {
+  DEFAULT_WEIGHTS,
+  factorsHeld,
+  isExcluded,
+  measureQuality,
+  MIN_QUALITY_FACTORS,
+  movement,
+  qualityScores,
+  rank,
+  risks,
+  SCORE_VERSION,
+  type Enrichment,
+  type QualityMeasurement,
+  type Risk,
+  type Score,
+} from './scoring'
+import {
+  areaDataNeeded,
+  EMPTY_ASSUMPTIONS,
+  isInvestmentStrategy,
+  missingAssumptions,
+  STRATEGY_DEFINITIONS,
+  type InvestmentStrategy,
+  type StrategyAssumptions,
+} from '@/lib/strategies'
 import {
   DEFAULT_QUALIFICATION,
   describeEvent,
@@ -61,7 +88,9 @@ export type ProfileRow = {
   owner_id: string
   postcode: string
   radius_miles: number
-  strategies: string[]
+  sourcing_lists: string[]
+  investment_strategies: string[]
+  strategy_assumptions: Record<string, unknown> | null
   min_price: number | null
   max_price: number | null
   min_bedrooms: number | null
@@ -79,12 +108,45 @@ export type RunSummary = {
   candidatesFiltered: number
   candidatesEnriched: number
   eventsWritten: number
+  /** Removed by a risk severe enough to disqualify, before scoring. */
+  candidatesRiskExcluded: number
+  /** Dropped for holding too few quality factors to rank honestly. */
+  candidatesThinData: number
   dealsSelected: number
   creditsSpent: number
   cacheHits: number
   isThin: boolean
   error: string | null
   durationMs: number
+}
+
+/**
+ * The profile's strategies, filtered to ones this build can actually score.
+ *
+ * A row could name a strategy a later deploy removed. Falling back to
+ * buy-to-let is right rather than lenient: it is what every score meant before
+ * strategies existed, so a profile with nothing valid is scored the old way
+ * rather than not at all.
+ */
+function readStrategies(stored: string[] | null): InvestmentStrategy[] {
+  const valid = (stored ?? []).filter(isInvestmentStrategy)
+  return valid.length ? valid : ['btl']
+}
+
+/** The figures the subscriber supplied, read defensively out of jsonb. */
+function readAssumptions(stored: Record<string, unknown> | null): StrategyAssumptions {
+  const positive = (value: unknown): number | null => {
+    const parsed = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }
+
+  if (!stored) return EMPTY_ASSUMPTIONS
+
+  return {
+    refurbCostPerSqFt: positive(stored.refurbCostPerSqFt),
+    nightlyRate: positive(stored.nightlyRate),
+    occupancyPercent: positive(stored.occupancyPercent),
+  }
 }
 
 function log(event: string, fields: Record<string, unknown>): void {
@@ -154,6 +216,8 @@ export async function runProfile(options: {
     candidatesFiltered: 0,
     candidatesEnriched: 0,
     eventsWritten: 0,
+    candidatesRiskExcluded: 0,
+    candidatesThinData: 0,
     dealsSelected: 0,
     creditsSpent: 0,
     cacheHits: 0,
@@ -181,12 +245,12 @@ export async function runProfile(options: {
         run_id: run.id,
         requested: profile.radius_miles,
         used: radius,
-        strategies: profile.strategies,
+        sourcing_lists: profile.sourcing_lists,
       })
     }
 
     const sourced = await client.call<unknown>('sourced-properties', {
-      list: profile.strategies.join(','),
+      list: profile.sourcing_lists.join(','),
       postcode: profile.postcode,
       radius,
       results: isBackfill ? BACKFILL_PAGE_SIZE : WEEKLY_PAGE_SIZE,
@@ -229,7 +293,12 @@ export async function runProfile(options: {
     }
     // Area-level, one call per endpoint per run. Every candidate in this search
     // shares them, so twenty-five properties cost the same as one.
-    const area = await loadAreaInsights(client, profile.postcode, observedAt)
+    const area = await loadAreaInsights(
+      client,
+      profile.postcode,
+      observedAt,
+      areaDataNeeded(readStrategies(profile.investment_strategies)),
+    )
 
     const enrichment = await enrichCandidates(client, enrichmentTargets, profile.postcode)
     summary.candidatesEnriched = enrichment.size
@@ -240,49 +309,149 @@ export async function runProfile(options: {
     // --- 5. Score, qualify, rank -------------------------------------------
     const history = await loadHistory(supabase, profile.owner_id, [...propertyIds.values()])
 
-    const scored = filtered.flatMap((listing) => {
+    const areaContext = {
+      soldPricePerSqFt: area.sold.averagePricePerSqFt,
+      localGrossYieldPercent: area.localGrossYieldPercent,
+      floodRisk: area.floodRisk,
+      leaseholdShare: area.sold.leaseholdShare,
+    }
+
+    // The strategies this subscriber picked, and the figures they supplied for
+    // the ones we do not hold data for.
+    const strategies = readStrategies(profile.investment_strategies)
+    const assumptions = readAssumptions(profile.strategy_assumptions)
+
+    const strategyArea = {
+      hmoRoomRatePerMonth: area.hmoRoomRatePerMonth,
+      developmentGdvPerSqFt: area.developmentGdvPerSqFt,
+    }
+
+    // A strategy the subscriber has not given us the numbers for cannot be
+    // scored. Say so in the log rather than silently ranking on the rest.
+    const scorable = strategies.filter((strategy) => {
+      const gaps = missingAssumptions(strategy, assumptions)
+      if (gaps.length === 0) return true
+      log('strategy_skipped', {
+        run_id: run.id,
+        owner_id: profile.owner_id,
+        strategy,
+        missing: gaps,
+      })
+      return false
+    })
+
+    // Pass one: everything true of a property whatever you intend to do with
+    // it. No property can be scored until every property has been measured,
+    // because the strategy's own figure is ranked against the rest of the run.
+    const measured = filtered.flatMap((listing) => {
       const propertyId = propertyIds.get(listing.key)
       if (!propertyId) return []
-
-      const propertyEvents = history.events.get(propertyId) ?? []
-      const impressions = history.impressions.get(propertyId) ?? []
 
       const address = listing.preciseAddress ?? listing.address
       const epcRow = matchAddress(area.epcByAddress, address)
       const epc = epcRow ? { rating: epcRow.rating, score: epcRow.score } : null
       const taxRow = matchAddress(area.taxBandByAddress, address)
 
-      const areaContext = {
-        soldPricePerSqFt: area.sold.averagePricePerSqFt,
-        localGrossYieldPercent: area.localGrossYieldPercent,
-        floodRisk: area.floodRisk,
-        leaseholdShare: area.sold.leaseholdShare,
+      const propertyRisks: Risk[] = risks(listing, areaContext, epc, profile.sourcing_lists)
+
+      // A risk this severe is not a note beside a deal. It is not a deal.
+      if (isExcluded(propertyRisks)) {
+        summary.candidatesRiskExcluded += 1
+        return []
       }
 
-      const q = quality(
-        listing,
-        enrichment.get(enrichmentKey(listing, profile.postcode)) ?? EMPTY_ENRICHMENT,
-        areaContext,
-        DEFAULT_WEIGHTS,
-      )
-      const m = movement(propertyEvents, observedAt, DEFAULT_WEIGHTS)
-      const total = Number((q.score + m.score).toFixed(2))
+      const propertyEnrichment =
+        enrichment.get(enrichmentKey(listing, profile.postcode)) ?? EMPTY_ENRICHMENT
 
-      const verdict = qualifies({ events: propertyEvents, impressions, totalScore: total }, DEFAULT_QUALIFICATION)
+      return [
+        {
+          listing,
+          propertyId,
+          epc,
+          councilTaxBand: taxRow?.band ?? null,
+          risks: propertyRisks,
+          events: history.events.get(propertyId) ?? [],
+          impressions: history.impressions.get(propertyId) ?? [],
+          measurements: new Map<InvestmentStrategy, QualityMeasurement>(
+            scorable.map((strategy) => [
+              strategy,
+              measureQuality(
+                strategy,
+                listing,
+                propertyEnrichment,
+                areaContext,
+                profile.sourcing_lists,
+                strategyArea,
+                assumptions,
+              ),
+            ]),
+          ),
+        },
+      ]
+    })
+
+    // Pass two: score each strategy against its own cohort. A room rate is
+    // never ranked against a refinance, so each strategy gets its own pass.
+    const byStrategy = new Map<InvestmentStrategy, Score[]>(
+      scorable.map((strategy) => [
+        strategy,
+        qualityScores(
+          measured.map((entry) => entry.measurements.get(strategy)!),
+          DEFAULT_WEIGHTS,
+        ),
+      ]),
+    )
+
+    // Pass three: a property is ranked by whichever strategy suits it best, and
+    // carries what the others came to so the page can say why.
+    const scored = measured.flatMap((entry, index) => {
+      const m = movement(entry.events, observedAt, DEFAULT_WEIGHTS)
+
+      const perStrategy = scorable.flatMap((strategy) => {
+        const q = byStrategy.get(strategy)?.[index]
+        if (!q) return []
+
+        // Normalising over the factors held stops a flat with no floor area
+        // being punished for it. Without a floor it would also let a property
+        // top the list on two factors, so the two rules come as a pair.
+        if (factorsHeld(q) < MIN_QUALITY_FACTORS) return []
+
+        return [{ strategy, quality: q, total: Number((q.score + m.score).toFixed(2)) }]
+      })
+
+      if (perStrategy.length === 0) {
+        summary.candidatesThinData += 1
+        return []
+      }
+
+      const best = perStrategy.reduce((winner, entry) => (entry.total > winner.total ? entry : winner))
+
+      const verdict = qualifies(
+        { events: entry.events, impressions: entry.impressions, totalScore: best.total },
+        DEFAULT_QUALIFICATION,
+      )
       if (!verdict.qualifies) return []
 
       return [
         {
           candidate: {
-            listing,
-            propertyId,
+            listing: entry.listing,
+            propertyId: entry.propertyId,
             verdict,
-            epc,
-            councilTaxBand: taxRow?.band ?? null,
-            risks: risks(areaContext, epc),
+            epc: entry.epc,
+            councilTaxBand: entry.councilTaxBand,
+            risks: entry.risks,
+            winningStrategy: best.strategy,
+            strategyScores: perStrategy.map((s) => ({
+              strategy: s.strategy,
+              label: STRATEGY_DEFINITIONS[s.strategy].label,
+              quality: s.quality.score,
+              total: s.total,
+            })),
           },
-          quality: q,
+          quality: best.quality,
           movement: m,
+          risks: entry.risks,
         },
       ]
     })
@@ -350,6 +519,10 @@ export async function runProfile(options: {
     candidates_filtered: summary.candidatesFiltered,
     candidates_enriched: summary.candidatesEnriched,
     events_written: summary.eventsWritten,
+    // Logged rather than stored: a run that published two is worth being able
+    // to explain, and these say whether the filter or the data did it.
+    candidates_risk_excluded: summary.candidatesRiskExcluded,
+    candidates_thin_data: summary.candidatesThinData,
     deals_selected: summary.dealsSelected,
     credits_spent: summary.creditsSpent,
     cache_hits: summary.cacheHits,
@@ -377,7 +550,7 @@ export async function runWeekly(options: {
   let query = supabase
     .from('search_profiles')
     .select(
-      'id, owner_id, postcode, radius_miles, strategies, min_price, max_price, min_bedrooms, property_types, backfill_completed_at',
+      'id, owner_id, postcode, radius_miles, sourcing_lists, investment_strategies, strategy_assumptions, min_price, max_price, min_bedrooms, property_types, backfill_completed_at',
     )
 
   if (options.ownerId) query = query.eq('owner_id', options.ownerId)
@@ -432,7 +605,7 @@ async function allowedRadius(supabase: SupabaseClient, profile: ProfileRow): Pro
   const { data, error } = await supabase
     .from('strategy_lists')
     .select('max_radius_miles')
-    .in('id', profile.strategies)
+    .in('id', profile.sourcing_lists)
 
   if (error || !data?.length) return profile.radius_miles
 
@@ -798,11 +971,15 @@ type SelectedCandidate = {
     verdict: { event: StoredEvent | null }
     epc: { rating: string; score: number | null } | null
     councilTaxBand: string | null
-    risks: Array<{ label: string; detail: string }>
+    risks: Array<{ label: string; detail: string; severity: string }>
+    winningStrategy: InvestmentStrategy
+    strategyScores: Array<{ strategy: string; label: string; quality: number; total: number }>
   }
   quality: { score: number; factors: unknown[] }
   movement: { score: number; factors: unknown[] }
   total: number
+  /** Set where a risk held the total below what the factors earned. */
+  cappedBy: string | null
 }
 
 async function publish(
@@ -829,6 +1006,11 @@ async function publish(
       movement_score: entry.movement.score,
       total_score: entry.total,
       score_version: SCORE_VERSION,
+      // Which strategy put it here, and what the others came to. Kept with the
+      // impression so a later change of strategy does not rewrite the reason
+      // something was shown.
+      winning_strategy: entry.candidate.winningStrategy,
+      strategy_scores: entry.candidate.strategyScores,
       score_breakdown: {
         headline: describeEvent(entry.candidate.verdict.event),
         quality: entry.quality.factors,
@@ -839,6 +1021,7 @@ async function publish(
         epc: entry.candidate.epc,
         councilTaxBand: entry.candidate.councilTaxBand,
         risks: entry.candidate.risks,
+        cappedBy: entry.cappedBy,
       },
     }))
 
@@ -900,6 +1083,7 @@ async function loadAreaInsights(
   client: ReturnType<typeof createPropertyDataClient>,
   postcode: string,
   observedAt: Date,
+  needed: { hmoRents: boolean; developmentGdv: boolean } = { hmoRents: false, developmentGdv: false },
 ): Promise<AreaInsights> {
   const insights: AreaInsights = {
     postcode,
@@ -921,6 +1105,9 @@ async function loadAreaInsights(
     growth5YearPercent: null,
     epcByAddress: [],
     taxBandByAddress: [],
+    hmoRoomRatePerMonth: null,
+    registeredHmosNearby: null,
+    developmentGdvPerSqFt: null,
   }
 
   async function attempt(name: string, run: () => Promise<void>): Promise<void> {
@@ -971,6 +1158,27 @@ async function loadAreaInsights(
     insights.growth5YearPercent = growth.fiveYear
   })
 
+  // The rest are paid for only by a profile whose strategies need them. A
+  // buy-to-let subscriber never spends a credit on HMO room rates.
+  if (needed.hmoRents) {
+    await attempt('rents-hmo', async () => {
+      const response = await client.call<unknown>('rents-hmo', { postcode })
+      insights.hmoRoomRatePerMonth = readHmoRoomRate(response.data)
+    })
+
+    await attempt('national-hmo-register', async () => {
+      const response = await client.call<unknown>('national-hmo-register', { postcode })
+      insights.registeredHmosNearby = readRegisteredHmos(response.data)
+    })
+  }
+
+  if (needed.developmentGdv) {
+    await attempt('development-gdv', async () => {
+      const response = await client.call<unknown>('development-gdv', { postcode })
+      insights.developmentGdvPerSqFt = readDevelopmentGdv(response.data)
+    })
+  }
+
   return insights
 }
 
@@ -1001,6 +1209,11 @@ async function persistAreaInsights(
       council_tax_band_d: area.councilTaxBandD,
       growth_1y_pct: area.growth1YearPercent,
       growth_5y_pct: area.growth5YearPercent,
+      // Null where this profile's strategies did not need them, which is also
+      // the record of what the run did not pay for.
+      hmo_room_rate_pcm: area.hmoRoomRatePerMonth,
+      registered_hmos_nearby: area.registeredHmosNearby,
+      development_gdv_per_sqf: area.developmentGdvPerSqFt,
     },
     { onConflict: 'owner_id,run_id' },
   )

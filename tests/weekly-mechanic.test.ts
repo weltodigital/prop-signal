@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { diffListing, type PreviousObservation, type PropertyEvent } from '@/lib/pipeline/events'
 import { normaliseListing } from '@/lib/pipeline/listing'
-import { movement, quality, type AreaContext, type Enrichment } from '@/lib/pipeline/scoring'
+import { measureQuality, movement, qualityScores, type AreaContext, type Enrichment } from '@/lib/pipeline/scoring'
 import { qualifies, type PriorImpression, type StoredEvent } from '@/lib/pipeline/qualification'
 
 /**
@@ -84,7 +84,10 @@ function runWeek(
 ): { shown: boolean; headline: string | null } {
   ledger.record(diffListing(current, previous, at))
 
-  const q = quality(current, ENRICHMENT, AREA)
+  // One property is its own cohort here, which is the point: this file tests
+  // the mechanic, not the ranking. A cohort of one takes the middle of the
+  // cashflow factor rather than the top.
+  const q = qualityScores([measureQuality('btl', current, ENRICHMENT, AREA)])[0]!
   const m = movement(ledger.events, at)
   const verdict = qualifies({
     events: ledger.events,

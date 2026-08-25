@@ -1,79 +1,100 @@
-import { stack } from '@/lib/stack'
+import { EMPTY_ASSUMPTIONS, type InvestmentStrategy, type StrategyAssumptions } from '@/lib/strategies'
+import { EMPTY_STRATEGY_AREA, strategyReturn, type StrategyAreaContext, type StrategyReturn } from './strategy-return'
 import type { Listing } from './listing'
 import type { PropertyEvent } from './events'
 
 /**
  * Scoring. Pure functions, versioned weights, no LLM anywhere in this path.
  *
- * Two scores, added. A quality score for whether the property is any good, and
- * a movement score for how hard and how recently it moved. A mediocre property
- * that just dropped 12% can outrank a good one that has not moved, which is the
- * whole premise of the product.
+ * Two scores, each on 0..100, added into a 0..200 total. Quality asks whether
+ * the property makes money. Movement asks how hard and how recently it moved.
+ * A mediocre property that just dropped 12% can outrank a good one that has not
+ * moved, which is the whole premise of the product.
+ *
+ * Quality cannot be scored one property at a time, because cashflow is ranked
+ * against the rest of the run. So it comes in two phases: `measureQuality` per
+ * property, then `qualityScores` over the cohort. `movement` stays per property.
  *
  * Every stored score records the version below. Change the weights, change the
  * version, and old scores stay readable as what they were.
  */
 
-export const SCORE_VERSION = 'v2'
-
-/**
- * The finance the cashflow factor assumes.
- *
- * Stated here rather than buried, because every cashflow figure the product
- * shows is only true under these. They are ordinary buy-to-let terms and the
- * subscriber can put their own through the calculator on the property page.
- *
- * Versioned with the weights: change these and the scores mean something
- * different, so the version has to move with them.
- */
-export const SCORING_FINANCE = {
-  depositPercent: 25,
-  annualRatePercent: 5.5,
-  interestOnly: true,
-  /** Management, insurance and maintenance, as a share of the rent. */
-  costsPercentOfRent: 20,
-} as const
+export const SCORE_VERSION = 'v4'
 
 export type Weights = {
   quality: {
-    /** What is left each month after the mortgage and the running costs. */
-    cashflow: number
+    /**
+     * Whatever the chosen strategy is judged on, ranked against the rest of
+     * this run under the same strategy. Cashflow for a let, money back out for
+     * a BRRR — never one compared against the other.
+     */
+    strategyReturn: number
     /** Asking price per square foot against what nearby homes actually sold for. */
     comparables: number
-    /** This property's gross yield against the local benchmark. */
-    yieldVsLocal: number
     /** Local sales demand, from the area-level figure. */
     demand: number
-    /** Whether the property is on a list that implies work, and so margin. */
+    /** Value-add lists this subscriber did not already ask for. */
     condition: number
   }
   movement: {
-    /** Size of a price reduction. */
+    /** Cumulative reduction from the peak asking price. */
     reduction: number
     /** A return to market after a fall-through. */
     returned: number
     /** Time on the market, once it has crossed a mark. */
     stale: number
-    /** How recently the qualifying event fired. */
+    /** How recently the property actually moved. */
     recency: number
   }
 }
 
+/**
+ * Quality sums to 100 and is then normalised over the factors actually held.
+ * Movement sums to 85 and is scaled to 100, which is how the reduction and
+ * stale weights can be 35 and 10 without the two scores having different
+ * ceilings. Equal ceilings are what stop either dominating by construction.
+ */
 export const DEFAULT_WEIGHTS: Weights = {
-  quality: { cashflow: 30, comparables: 25, yieldVsLocal: 15, demand: 15, condition: 15 },
-  movement: { reduction: 40, returned: 25, stale: 20, recency: 15 },
+  quality: { strategyReturn: 40, comparables: 30, demand: 15, condition: 15 },
+  movement: { reduction: 35, returned: 25, stale: 10, recency: 15 },
 }
+
+const MOVEMENT_TOTAL = 85
+
+/**
+ * How many of the four quality factors must have data behind them before a
+ * property can be ranked at all.
+ *
+ * Normalising over the factors held stops a flat with no floor area being
+ * punished for a gap in the data. On its own it would also let a property top
+ * the list on two factors, so the two rules come as a pair.
+ *
+ * In practice this means at least one of cashflow or comparables: demand is
+ * area-level and held for every property in a run or none of them, and
+ * condition is held unless the subscriber has ticked every value-add list.
+ */
+export const MIN_QUALITY_FACTORS = 3
+
+/**
+ * What a property capped by a risk can reach, out of 200.
+ *
+ * Enough to appear on a thin week, not enough to lead a real one.
+ */
+export const RISK_CAPPED_TOTAL = 120
 
 export type Factor = {
   /** Plain English, shown to the user. */
   label: string
   /** Points contributed, after weighting. */
   points: number
+  /** Points that were available for this factor, or 0 where it is not held. */
+  available: number
   /** The figure the points came from, stated so it can be argued with. */
   detail: string
 }
 
 export type Score = {
+  /** 0..100. Quality is the share of available points; movement is scaled. */
   score: number
   factors: Factor[]
   version: string
@@ -112,70 +133,98 @@ export const EMPTY_AREA: AreaContext = {
 export type EnergyCertificate = { rating: string; score: number | null } | null
 
 /**
- * Something that should stop a subscriber, stated rather than scored.
+ * Something that should stop a subscriber.
  *
- * A penalty would need a magnitude we cannot defend — how many points is an
- * EPC of F worth against a 12% reduction? Nobody knows. So these are surfaced
- * next to the property instead, where the subscriber applies their own
- * judgement to them.
+ * Still never scored — working out how many points an EPC of F is worth
+ * against a 12% reduction would mean inventing a number. But a note alone let a
+ * G-rated house on a flood plain lead the week, so severity now gates instead:
+ *
+ *   note     stated beside the property, nothing else
+ *   cap      the total cannot exceed RISK_CAPPED_TOTAL
+ *   exclude  the property does not appear at all
  */
-export type Risk = { label: string; detail: string }
+export type RiskSeverity = 'note' | 'cap' | 'exclude'
+export type Risk = { label: string; detail: string; severity: RiskSeverity }
 
 const MEES_FAIL = new Set(['F', 'G'])
 const MEES_TIGHT = new Set(['D', 'E'])
 
-export function risks(area: AreaContext, epc: EnergyCertificate): Risk[] {
+/** Flood bands that take a property off the list rather than annotate it. */
+const FLOOD_EXCLUDES = ['high']
+const FLOOD_IGNORES = ['very low', 'low']
+
+/**
+ * Lists that imply work, and so margin.
+ *
+ * Short lease is not among them any more. A lease with 70 years left is a bill
+ * before it is an opportunity, and the length — the only thing that decides
+ * which — is not a field we hold. It is a risk below.
+ */
+export const CONDITION_LISTS = ['unmodernised-properties', 'repossessed-properties', 'auction-properties'] as const
+
+const SHORT_LEASE_LIST = 'short-lease-properties'
+
+/** Someone who asked for these is buying the work, so an EPC of F is the point. */
+function buysRefurbishment(strategies: readonly string[]): boolean {
+  return CONDITION_LISTS.some((list) => strategies.includes(list))
+}
+
+export function risks(
+  listing: Pick<Listing, 'lists'>,
+  area: AreaContext,
+  epc: EnergyCertificate,
+  strategies: readonly string[] = [],
+): Risk[] {
   const found: Risk[] = []
 
   if (epc && MEES_FAIL.has(epc.rating)) {
     found.push({
       label: `EPC ${epc.rating}`,
       detail: 'Cannot be let at this rating without works or a registered exemption.',
+      // A subscriber who asked for unmodernised or auction stock is looking for
+      // exactly this. Capping it would hide what they came for.
+      severity: buysRefurbishment(strategies) ? 'note' : 'cap',
     })
   } else if (epc && MEES_TIGHT.has(epc.rating)) {
     found.push({
       label: `EPC ${epc.rating}`,
       detail: 'Lettable now. The proposed C minimum would need work before it could be let again.',
+      severity: 'note',
     })
   }
 
-  const flood = area.floodRisk?.toLowerCase()
-  if (flood && flood !== 'very low' && flood !== 'low') {
-    found.push({ label: `Flood risk ${area.floodRisk}`, detail: 'Rivers and sea. Expect it to show in the premium.' })
+  const flood = area.floodRisk?.toLowerCase().trim()
+  if (flood && !FLOOD_IGNORES.includes(flood)) {
+    const excluded = FLOOD_EXCLUDES.some((band) => flood.includes(band))
+    found.push({
+      label: `Flood risk ${area.floodRisk}`,
+      detail: excluded
+        ? 'Rivers and sea. High enough that this is not a deal at any price.'
+        : 'Rivers and sea. Expect it to show in the premium.',
+      severity: excluded ? 'exclude' : 'note',
+    })
   }
 
-  if (area.leaseholdShare !== null && area.leaseholdShare >= 0.7) {
+  if (listing.lists.includes(SHORT_LEASE_LIST)) {
     found.push({
-      label: 'Leasehold area',
-      detail: `${Math.round(area.leaseholdShare * 100)}% of nearby sales were leasehold. Lease length, ground rent and service charge are not held here and change the numbers.`,
+      label: 'Short lease',
+      detail:
+        'Lease length, ground rent and service charge are not held here. An extension is a cost before it is a discount.',
+      severity: 'note',
     })
   }
 
   return found
 }
 
-/**
- * Net monthly cashflow under `SCORING_FINANCE`.
- *
- * Reuses the same arithmetic as the calculator on the property page, so the
- * score and the figure the subscriber can reproduce cannot disagree.
- */
-export function netMonthlyCashflow(price: number, monthlyRent: number): number {
-  const result = stack({
-    purchasePrice: price,
-    refurbCost: 0,
-    buyingCosts: 0,
-    depositPercent: SCORING_FINANCE.depositPercent,
-    annualRatePercent: SCORING_FINANCE.annualRatePercent,
-    termYears: 25,
-    interestOnly: SCORING_FINANCE.interestOnly,
-    monthlyRent,
-    monthlyCosts: Math.round(monthlyRent * (SCORING_FINANCE.costsPercentOfRent / 100)),
-    postRefurbValue: null,
-    refinanceLtvPercent: 75,
-  })
+/** True where a risk takes the property off the list entirely. */
+export function isExcluded(risks: readonly Risk[]): boolean {
+  return risks.some((risk) => risk.severity === 'exclude')
+}
 
-  return result.monthlyCashflow
+/** True where a risk caps what the property can score. */
+export function isCapped(risks: readonly Risk[]): boolean {
+  return risks.some((risk) => risk.severity === 'cap')
 }
 
 /** Maps a value onto 0..1 between a floor and a ceiling. */
@@ -189,131 +238,273 @@ function round(value: number): number {
 }
 
 /**
- * The event types that earn movement points.
+ * Where a value sits in its cohort, 0 worst and 1 best, ties sharing a place.
  *
- * `first_seen` is absent deliberately. It is dated when *we* looked, not when
- * the property did anything, so counting it towards recency would give every
- * property on a backfill a full recency score for having been found.
+ * A cohort of one has no ranking to give, so it returns the middle rather than
+ * the top: being the only property with a rent estimate is not an achievement.
  */
-const MOVEMENT_TYPES = new Set(['price_reduced', 'returned_to_market', 'days_on_market_crossed'])
+export function percentile(value: number, cohort: readonly number[]): number {
+  if (cohort.length < 2) return 0.5
 
-/** Lists that imply the property needs work, and so carries margin. */
-const CONDITION_LISTS = new Set([
-  'unmodernised-properties',
-  'repossessed-properties',
-  'auction-properties',
-  'short-lease-properties',
-])
+  let below = 0
+  let equal = 0
+  for (const other of cohort) {
+    if (other < value) below += 1
+    else if (other === value) equal += 1
+  }
+
+  return (below + 0.5 * Math.max(0, equal - 1)) / (cohort.length - 1)
+}
 
 /**
- * How good the property is, ignoring whether it has moved.
+ * The per-property half of quality: what we can measure, before knowing what
+ * anything else in the run measured.
  *
- * A factor with no data behind it scores nothing rather than an assumed
- * average. Omitting is better than estimating, and the breakdown says so.
+ * A null is a factor with no data behind it. It is normalised out rather than
+ * scored zero, so a flat with no floor area competes on what is held.
  */
-export function quality(
+export type QualityMeasurement = {
+  /** The strategy this measurement was taken under. */
+  strategy: InvestmentStrategy
+  /** What that strategy is judged on, and whether it could be worked out. */
+  strategyReturn: StrategyReturn
+  /** Percent below local completed sales per square foot. Negative is above. */
+  comparableDiscount: number | null
+  /** PropertyData's 0..100 area demand rating. */
+  demand: number | null
+  /**
+   * Value-add lists this property is on that the subscriber did not ask for,
+   * or null where they asked for all of them and the factor cannot discriminate.
+   */
+  extraConditionLists: string[] | null
+  /** Kept for the breakdown, so the detail line can say what was missing. */
+  hasFloorArea: boolean
+  hasSoldPrices: boolean
+}
+
+export function measureQuality(
+  strategy: InvestmentStrategy,
   listing: Listing,
   enrichment: Enrichment,
   area: AreaContext = EMPTY_AREA,
-  weights: Weights = DEFAULT_WEIGHTS,
-): Score {
-  const factors: Factor[] = []
-  const w = weights.quality
+  sourcingLists: readonly string[] = [],
+  strategyArea: StrategyAreaContext = EMPTY_STRATEGY_AREA,
+  assumptions: StrategyAssumptions = EMPTY_ASSUMPTIONS,
+): QualityMeasurement {
   const price = listing.price && listing.price > 0 ? listing.price : null
 
-  // --- Net cashflow --------------------------------------------------------
-  // What is actually left each month, not the gross yield. A 5% gross yield is
-  // a loss at 5.5% borrowing, and the old score rewarded it.
-  if (price && enrichment.estimatedRent) {
-    const cashflow = netMonthlyCashflow(price, enrichment.estimatedRent)
-    // Breaking even scores nothing; £350 a month clear scores everything.
-    const points = round(band(cashflow, 0, 350) * w.cashflow)
-    factors.push({
-      label: 'Monthly cashflow',
-      points,
-      detail:
-        cashflow >= 0
-          ? `£${cashflow.toLocaleString('en-GB')} a month clear, at ${SCORING_FINANCE.depositPercent}% down and ${SCORING_FINANCE.annualRatePercent}% interest only, after ${SCORING_FINANCE.costsPercentOfRent}% of rent in costs`
-          : `Loses £${Math.abs(cashflow).toLocaleString('en-GB')} a month, at ${SCORING_FINANCE.depositPercent}% down and ${SCORING_FINANCE.annualRatePercent}% interest only, after ${SCORING_FINANCE.costsPercentOfRent}% of rent in costs`,
-    })
-  } else {
-    factors.push({ label: 'Monthly cashflow', points: 0, detail: 'No rent estimate held' })
-  }
-
-  // --- Price against what actually sold -------------------------------------
+  let comparableDiscount: number | null = null
   if (price && listing.internalAreaSqFt && area.soldPricePerSqFt) {
     const askingPerSqFt = price / listing.internalAreaSqFt
-    const discount = ((area.soldPricePerSqFt - askingPerSqFt) / area.soldPricePerSqFt) * 100
-    const points = round(band(discount, 0, 25) * w.comparables)
-    factors.push({
-      label: 'Price against nearby sales',
-      points,
-      detail:
-        discount >= 0
-          ? `£${Math.round(askingPerSqFt)} per sq ft against £${Math.round(area.soldPricePerSqFt)} locally, ${discount.toFixed(1)}% below`
-          : `£${Math.round(askingPerSqFt)} per sq ft against £${Math.round(area.soldPricePerSqFt)} locally, ${Math.abs(discount).toFixed(1)}% above`,
-    })
-  } else {
-    factors.push({
-      label: 'Price against nearby sales',
-      points: 0,
-      detail: listing.internalAreaSqFt ? 'No local sold prices held' : 'No floor area held',
-    })
+    comparableDiscount = ((area.soldPricePerSqFt - askingPerSqFt) / area.soldPricePerSqFt) * 100
   }
 
-  // --- Yield against the local benchmark ------------------------------------
-  if (price && enrichment.estimatedRent && area.localGrossYieldPercent && area.localGrossYieldPercent > 0) {
-    const grossYield = ((enrichment.estimatedRent * 12) / price) * 100
-    const ratio = grossYield / area.localGrossYieldPercent
-    // Matching the area scores nothing. Half as much again scores everything.
-    const points = round(band(ratio, 1, 1.5) * w.yieldVsLocal)
-    factors.push({
-      label: 'Yield against the area',
-      points,
-      detail: `${grossYield.toFixed(1)}% against ${area.localGrossYieldPercent.toFixed(1)}% locally`,
-    })
-  } else {
-    factors.push({ label: 'Yield against the area', points: 0, detail: 'No local yield benchmark held' })
-  }
-
-  // --- Demand --------------------------------------------------------------
-  if (enrichment.areaDemandRating !== null) {
-    // PropertyData report demand on a 0 to 100 scale.
-    const points = round(band(enrichment.areaDemandRating, 20, 80) * w.demand)
-    factors.push({
-      label: 'Local demand',
-      points,
-      detail: `Area demand rated ${enrichment.areaDemandRating.toFixed(0)} out of 100`,
-    })
-  } else {
-    factors.push({ label: 'Local demand', points: 0, detail: 'No demand figure held' })
-  }
-
-  // --- Condition -----------------------------------------------------------
-  const conditionLists = listing.lists.filter((list) => CONDITION_LISTS.has(list))
-  if (conditionLists.length) {
-    const points = round(Math.min(1, conditionLists.length / 2) * w.condition)
-    factors.push({
-      label: 'Room to add value',
-      points,
-      detail: `On ${conditionLists.length === 1 ? 'the' : ''} ${conditionLists.join(' and ')} list`,
-    })
-  } else {
-    factors.push({ label: 'Room to add value', points: 0, detail: 'Not on a list that implies work' })
-  }
+  // Condition, relative to what the subscriber already asked for.
+  //
+  // Someone who picked unmodernised gets a list of unmodernised properties, so
+  // being unmodernised says nothing about which of them is the better deal —
+  // it is a constant, and a constant that used to be worth half marks. Only
+  // the lists they did not tick carry information. Tick all of them and the
+  // factor carries none at all, so it is normalised out instead.
+  const unasked: string[] = CONDITION_LISTS.filter((list) => !sourcingLists.includes(list))
+  const extraConditionLists =
+    unasked.length === 0 ? null : listing.lists.filter((list) => unasked.includes(list))
 
   return {
-    score: round(factors.reduce((total, factor) => total + factor.points, 0)),
-    factors,
-    version: SCORE_VERSION,
+    strategy,
+    strategyReturn: strategyReturn(strategy, listing, enrichment.estimatedRent, strategyArea, assumptions),
+    comparableDiscount,
+    demand: enrichment.areaDemandRating,
+    extraConditionLists,
+    hasFloorArea: Boolean(listing.internalAreaSqFt),
+    hasSoldPrices: Boolean(area.soldPricePerSqFt),
   }
+}
+
+/** What the strategy's own factor is called on the breakdown. */
+const RETURN_LABELS: Record<InvestmentStrategy, string> = {
+  btl: 'Monthly cashflow',
+  hmo: 'Monthly cashflow as an HMO',
+  brrr: 'Money back out on refinance',
+  r2sa: 'Monthly cashflow as a short let',
+}
+
+/**
+ * The cohort half of quality.
+ *
+ * Index-aligned with the measurements it is given. Cashflow is scored as a
+ * percentile against the other properties in the same run, because the absolute
+ * scale it used to use did not survive leaving one part of the country: £0 to
+ * £350 a month scores nearly nothing across the South East and nearly
+ * everything up north, and a 30-point factor that is constant either way is not
+ * a factor at all.
+ *
+ * The price of that: a percentile ranks within a filtered, event-driven cohort
+ * that is not a sample of the local market. The one place that matters is a run
+ * where everything loses money, so a property that does not make money cannot
+ * take the whole factor however well it ranks.
+ */
+export function qualityScores(
+  measurements: readonly QualityMeasurement[],
+  weights: Weights = DEFAULT_WEIGHTS,
+): Score[] {
+  const w = weights.quality
+
+  // The cohort is whatever was handed in, which the caller has already split
+  // by strategy. A room rate is never ranked against a refinance.
+  const cohort = measurements
+    .map((m) => m.strategyReturn.value)
+    .filter((value): value is number => value !== null)
+
+  return measurements.map((m) => {
+    const factors: Factor[] = []
+    const label = RETURN_LABELS[m.strategy]
+
+    // --- What this strategy is judged on, against the rest of the run -------
+    if (m.strategyReturn.value === null) {
+      factors.push({ label, points: 0, available: 0, detail: m.strategyReturn.detail })
+    } else {
+      const place = percentile(m.strategyReturn.value, cohort)
+      // Losing money is losing money however the rest of the run is doing.
+      const share = m.strategyReturn.belowWater ? Math.min(place, 0.5) : place
+      const standing =
+        cohort.length < 2
+          ? 'the only one this week that could be scored this way'
+          : `better than ${Math.round(place * 100)}% of this week's candidates`
+
+      factors.push({
+        label,
+        points: round(share * w.strategyReturn),
+        available: w.strategyReturn,
+        detail: `${m.strategyReturn.detail} — ${standing}`,
+      })
+    }
+
+    // --- Price against what actually sold ------------------------------------
+    if (m.comparableDiscount === null) {
+      factors.push({
+        label: 'Price against nearby sales',
+        points: 0,
+        available: 0,
+        detail: m.hasFloorArea ? 'No local sold prices held' : 'No floor area held',
+      })
+    } else {
+      factors.push({
+        label: 'Price against nearby sales',
+        points: round(band(m.comparableDiscount, 0, 25) * w.comparables),
+        available: w.comparables,
+        detail:
+          m.comparableDiscount >= 0
+            ? `${m.comparableDiscount.toFixed(1)}% below what nearby homes sold for per square foot`
+            : `${Math.abs(m.comparableDiscount).toFixed(1)}% above what nearby homes sold for per square foot`,
+      })
+    }
+
+    // --- Demand --------------------------------------------------------------
+    if (m.demand === null) {
+      factors.push({ label: 'Local demand', points: 0, available: 0, detail: 'No demand figure held' })
+    } else {
+      factors.push({
+        label: 'Local demand',
+        points: round(band(m.demand, 20, 80) * w.demand),
+        available: w.demand,
+        detail: `Area demand rated ${m.demand.toFixed(0)} out of 100`,
+      })
+    }
+
+    // --- Condition, beyond what was asked for --------------------------------
+    if (m.extraConditionLists === null) {
+      factors.push({
+        label: 'Room to add value',
+        points: 0,
+        available: 0,
+        detail: 'You asked for every value-add list, so this cannot separate one property from another',
+      })
+    } else {
+      const count = m.extraConditionLists.length
+      factors.push({
+        label: 'Room to add value',
+        points: round(Math.min(1, count / 2) * w.condition),
+        available: w.condition,
+        detail: count
+          ? `Also on ${m.extraConditionLists.join(' and ')}, which you did not ask for`
+          : 'Nothing beyond the lists you asked for',
+      })
+    }
+
+    return {
+      score: normalise(factors),
+      factors,
+      version: SCORE_VERSION,
+    }
+  })
+}
+
+/** Share of the points that were actually available, on 0..100. */
+function normalise(factors: readonly Factor[]): number {
+  const available = factors.reduce((total, factor) => total + factor.available, 0)
+  if (available === 0) return 0
+  const earned = factors.reduce((total, factor) => total + factor.points, 0)
+  return round((earned / available) * 100)
+}
+
+/** How many quality factors had data behind them. */
+export function factorsHeld(score: Score): number {
+  return score.factors.filter((factor) => factor.available > 0).length
+}
+
+/**
+ * The event types that count as the property having moved.
+ *
+ * `first_seen` is absent because it is dated when *we* looked. So is
+ * `days_on_market_crossed`, for the same reason: passing 90 days is the
+ * calendar moving, not the property. It still qualifies a property for the
+ * list and still earns its own stale points — it just cannot also claim to be
+ * recent news.
+ */
+const MOVEMENT_TYPES = new Set(['price_reduced', 'returned_to_market'])
+
+/**
+ * Cumulative reduction from the peak asking price, as a positive percent.
+ *
+ * Not the deepest single cut. Three cuts of 5% is a seller who has been talked
+ * down three times, which is a better prospect than one 14% cut, and taking the
+ * largest step scored it at a third of the value.
+ */
+export function cumulativeReduction(events: readonly PropertyEvent[]): number | null {
+  const reductions = events.filter((event) => event.type === 'price_reduced')
+  if (reductions.length === 0) return null
+
+  const priceOf = (value: Record<string, unknown> | null): number | null => {
+    const price = value?.price
+    return typeof price === 'number' && price > 0 ? price : null
+  }
+
+  const peak = Math.max(...reductions.map((e) => priceOf(e.previousValue) ?? 0))
+
+  // The current price is the one from the most recent reduction, not the
+  // smallest ever seen: a property can be reduced, raised, and reduced again.
+  //
+  // `>=` rather than `>` so the last of several same-day reductions wins.
+  // Price history read in one go dates every step it derives to the day it
+  // happened, and a property cut three times in a week would otherwise be read
+  // as having been cut once.
+  const latest = reductions.reduce((newest, event) =>
+    event.observedAt.getTime() >= newest.observedAt.getTime() ? event : newest,
+  )
+  const current = priceOf(latest.currentValue)
+
+  if (!peak || current === null || peak <= 0) return null
+
+  return round(((peak - current) / peak) * 100)
 }
 
 /**
  * How hard and how recently the property moved.
  *
  * Driven by the events, not by the listing. A property with no events scores
- * zero here and has to stand on quality alone.
+ * zero here and has to stand on quality alone. Scaled to 0..100 so it shares a
+ * ceiling with quality.
  */
 export function movement(
   events: PropertyEvent[],
@@ -323,15 +514,18 @@ export function movement(
   const factors: Factor[] = []
   const w = weights.movement
 
-  const reductions = events.filter((event) => event.type === 'price_reduced')
-  if (reductions.length) {
-    const deepest = Math.max(...reductions.map((event) => Math.abs(event.magnitude ?? 0)))
+  const cumulative = cumulativeReduction(events)
+  if (cumulative !== null && cumulative > 0) {
+    const count = events.filter((event) => event.type === 'price_reduced').length
     // 2% is noise, 20% is an agent in trouble.
-    const points = round(band(deepest, 2, 20) * w.reduction)
     factors.push({
-      label: reductions.length > 1 ? `Reduced ${reductions.length} times` : 'Price reduced',
-      points,
-      detail: `Largest reduction ${deepest.toFixed(1)}%`,
+      label: count > 1 ? `Reduced ${count} times` : 'Price reduced',
+      points: round(band(cumulative, 2, 20) * w.reduction),
+      available: w.reduction,
+      detail:
+        count > 1
+          ? `${cumulative.toFixed(1)}% below its peak asking price, over ${count} reductions`
+          : `${cumulative.toFixed(1)}% below its peak asking price`,
     })
   }
 
@@ -339,6 +533,7 @@ export function movement(
     factors.push({
       label: 'Back on the market',
       points: w.returned,
+      available: w.returned,
       detail: 'Returned after coming off, which usually means a fall-through',
     })
   }
@@ -347,33 +542,37 @@ export function movement(
   if (crossing) {
     const days = crossing.magnitude ?? 0
     // 60 days is ordinary, a year is not.
-    const points = round(band(days, 60, 365) * w.stale)
     factors.push({
       label: 'Slow to sell',
-      points,
+      points: round(band(days, 60, 365) * w.stale),
+      available: w.stale,
       detail: `Passed ${days.toFixed(0)} days on the market`,
     })
   }
 
   // --- Recency -------------------------------------------------------------
-  // Measured over the events that actually scored, so it answers "how recently
-  // did this move" rather than "how recently did we run".
-  const scoring = events.filter((event) => MOVEMENT_TYPES.has(event.type))
+  // Over the events where the property itself did something, so it answers
+  // "how recently did this move" rather than "how recently did we run".
+  const moved = events.filter((event) => MOVEMENT_TYPES.has(event.type))
 
-  if (scoring.length) {
-    const newest = Math.max(...scoring.map((event) => event.observedAt.getTime()))
+  if (moved.length) {
+    const newest = Math.max(...moved.map((event) => event.observedAt.getTime()))
     const daysAgo = Math.max(0, (observedAt.getTime() - newest) / 86_400_000)
     // This week is worth everything; a month ago is worth nothing.
-    const points = round((1 - band(daysAgo, 0, 28)) * w.recency)
     factors.push({
       label: 'Recency',
-      points,
+      points: round((1 - band(daysAgo, 0, 28)) * w.recency),
+      available: w.recency,
       detail: daysAgo < 1 ? 'Moved in this run' : `Moved ${Math.round(daysAgo)} days ago`,
     })
   }
 
+  const earned = factors.reduce((total, factor) => total + factor.points, 0)
+
   return {
-    score: round(factors.reduce((total, factor) => total + factor.points, 0)),
+    // Against the fixed total, not the factors present: a property that has not
+    // moved has scored nothing, rather than having nothing to be scored on.
+    score: round((earned / MOVEMENT_TOTAL) * 100),
     factors,
     version: SCORE_VERSION,
   }
@@ -383,19 +582,36 @@ export type RankedCandidate<T> = {
   candidate: T
   quality: Score
   movement: Score
+  /** Quality plus movement, on 0..200, after any risk cap. */
   total: number
+  /** Set where a risk held the total below what the factors earned. */
+  cappedBy: string | null
 }
 
 /**
  * Combines the two scores and orders the result.
  *
- * Straight addition. A weighted blend would let a good-but-static property beat
- * a mediocre one that just dropped twelve per cent, and that is precisely the
- * outcome this product exists to avoid.
+ * Straight addition of two 0..100 scores, so the total runs 0..200 and the two
+ * halves carry equal weight. A weighted blend would let a good-but-static
+ * property beat a mediocre one that just dropped twelve per cent, and that is
+ * precisely the outcome this product exists to avoid.
  */
-export function rank<T>(scored: Array<Omit<RankedCandidate<T>, 'total'>>): Array<RankedCandidate<T>> {
+export function rank<T>(
+  scored: Array<{ candidate: T; quality: Score; movement: Score; risks?: readonly Risk[] }>,
+): Array<RankedCandidate<T>> {
   return scored
-    .map((entry) => ({ ...entry, total: round(entry.quality.score + entry.movement.score) }))
+    .map((entry) => {
+      const earned = round(entry.quality.score + entry.movement.score)
+      const capping = entry.risks?.find((risk) => risk.severity === 'cap')
+
+      return {
+        candidate: entry.candidate,
+        quality: entry.quality,
+        movement: entry.movement,
+        total: capping ? Math.min(earned, RISK_CAPPED_TOTAL) : earned,
+        cappedBy: capping && earned > RISK_CAPPED_TOTAL ? capping.label : null,
+      }
+    })
     .sort((a, b) => {
       if (b.total !== a.total) return b.total - a.total
       // A tie goes to the one that moved, not the one that merely looks good.

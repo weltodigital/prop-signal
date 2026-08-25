@@ -1,3 +1,5 @@
+import type { InvestmentStrategy, StrategyAssumptions } from '@/lib/strategies'
+
 /**
  * The parts of the search profile that a browser needs.
  *
@@ -23,7 +25,7 @@ export const PROPERTY_TYPES = [
  */
 export const SEARCH_CHANGE_LIMIT = 3
 
-export type StrategyList = {
+export type SourcingList = {
   id: string
   label: string
   description: string
@@ -36,7 +38,11 @@ export type SearchProfile = {
   id: string
   postcode: string
   radiusMiles: number
-  strategies: string[]
+  /** PropertyData sourcing lists — which stock to pull. */
+  sourcingLists: string[]
+  /** How the subscriber makes money, which decides how a property is scored. */
+  investmentStrategies: InvestmentStrategy[]
+  assumptions: StrategyAssumptions
   minPrice: number | null
   maxPrice: number | null
   minBedrooms: number | null

@@ -28,6 +28,11 @@ export type EndpointName =
   | 'flood-risk'
   | 'council-tax'
   | 'growth'
+  // Strategy-dependent, and area-level like the six above. Only fetched for a
+  // profile whose investment strategies actually need them.
+  | 'rents-hmo'
+  | 'national-hmo-register'
+  | 'development-gdv'
   | 'build-cost'
   | 'account/credits'
 
@@ -56,6 +61,13 @@ function sourcedPropertiesCost(payload: unknown): number {
   const properties = (payload as { properties?: unknown[] } | null)?.properties
   const count = Array.isArray(properties) ? properties.length : 0
   return Math.ceil(count / 10)
+}
+
+/** `/national-hmo-register` charges one credit per ten rows, like the sourcing call. */
+function registerCost(payload: unknown): number {
+  const data = (payload as { data?: unknown } | null)?.data
+  const count = Array.isArray(data) ? data.length : 0
+  return Math.max(1, Math.ceil(count / 10))
 }
 
 export const ENDPOINTS: Record<EndpointName, EndpointSpec> = {
@@ -112,6 +124,27 @@ export const ENDPOINTS: Record<EndpointName, EndpointSpec> = {
     ttlMs: 60 * DAY_MS,
     cost: 1,
     reason: 'EPC certificates last ten years. This is capped by the 60-day storage limit rather than by how fast it changes.',
+  },
+  'rents-hmo': {
+    path: '/rents-hmo',
+    ttlMs: 30 * DAY_MS,
+    cost: 1,
+    reason:
+      'Local room rates for a shared house. Asking rents, so they move with the market rather than the week — and only a profile with an HMO strategy ever pays for this.',
+  },
+  'national-hmo-register': {
+    path: '/national-hmo-register',
+    ttlMs: 45 * DAY_MS,
+    cost: registerCost,
+    reason:
+      'Licensed HMOs nearby, which is a saturation signal rather than a figure. The register is updated by councils on their own schedule, which is slow.',
+  },
+  'development-gdv': {
+    path: '/development-gdv',
+    ttlMs: 45 * DAY_MS,
+    cost: 1,
+    reason:
+      'What finished space is worth locally, used as the end value for a refurbishment. Moves with the market, not the week.',
   },
   'flood-risk': {
     path: '/flood-risk',

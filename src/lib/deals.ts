@@ -19,14 +19,37 @@ import { describeEvent } from '@/lib/pipeline/qualification'
  */
 
 /** One line of the score, as the scoring module wrote it. */
-export type ScoreFactor = { label: string; points: number; detail: string }
+export type ScoreFactor = {
+  label: string
+  points: number
+  /**
+   * Points that were available for this factor. Zero means no data was held
+   * and the factor was normalised out rather than scored against the property.
+   *
+   * Absent on anything published before scoring v3, which is why it is
+   * optional: an old score is shown as it was stored, never recomputed.
+   */
+  available?: number
+  detail: string
+}
 
 /**
  * Something that should stop a subscriber, recorded as it stood when the
  * property was published. Stated rather than scored — a penalty would need a
  * magnitude nobody can defend.
  */
-export type Risk = { label: string; detail: string }
+export type Risk = {
+  label: string
+  detail: string
+  /**
+   * How far the risk went. `note` is stated only; `cap` held the total down;
+   * `exclude` never reaches a subscriber, so it is here for completeness.
+   *
+   * Optional for the same reason as `ScoreFactor.available` — scores published
+   * before v3 have no severity, and are shown as they were stored.
+   */
+  severity?: 'note' | 'cap' | 'exclude'
+}
 
 /** The enrichment, all of it dated by `enrichedAt`. Null until enriched. */
 export type DealEnrichment = {
@@ -75,9 +98,19 @@ export type PublishedDeal = PropertySnapshot & {
   risks: Risk[]
   epc: { rating: string; score: number | null } | null
   councilTaxBand: string | null
+  /**
+   * The strategy whose total ranked this property, and what the others came
+   * to. Null on anything published before strategies existed — an old score is
+   * shown as it was stored, never recomputed.
+   */
+  winningStrategy: string | null
+  strategyScores: StrategyScore[]
   /** Whether the signed-in user has starred it. */
   watched: boolean
 }
+
+/** One strategy's verdict on a property, as it stood when published. */
+export type StrategyScore = { strategy: string; label: string; quality: number; total: number }
 
 export type WeekSummary = {
   runId: string
@@ -182,6 +215,25 @@ function asNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function asStrategyScores(value: unknown): StrategyScore[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return []
+    const record = entry as Record<string, unknown>
+    if (typeof record.strategy !== 'string') return []
+
+    return [
+      {
+        strategy: record.strategy,
+        label: typeof record.label === 'string' ? record.label : record.strategy,
+        quality: asNumber(record.quality) ?? 0,
+        total: asNumber(record.total) ?? 0,
+      },
+    ]
+  })
+}
+
 function asRisks(value: unknown): Risk[] {
   if (!Array.isArray(value)) return []
 
@@ -190,7 +242,14 @@ function asRisks(value: unknown): Risk[] {
     const record = entry as Record<string, unknown>
     if (typeof record.label !== 'string') return []
 
-    return [{ label: record.label, detail: typeof record.detail === 'string' ? record.detail : '' }]
+    const severity = record.severity
+    return [
+      {
+        label: record.label,
+        detail: typeof record.detail === 'string' ? record.detail : '',
+        severity: severity === 'note' || severity === 'cap' || severity === 'exclude' ? severity : undefined,
+      },
+    ]
   })
 }
 
@@ -214,6 +273,7 @@ function asFactors(value: unknown): ScoreFactor[] {
       {
         label: record.label,
         points: asNumber(record.points) ?? 0,
+        available: asNumber(record.available) ?? undefined,
         detail: typeof record.detail === 'string' ? record.detail : '',
       },
     ]
@@ -266,7 +326,9 @@ async function loadWeek(selection: SelectionRow): Promise<PublishedWeek> {
 
   const { data: impressions } = await supabase
     .from('deal_impressions')
-    .select('property_id, position, quality_score, movement_score, total_score, score_version, score_breakdown')
+    .select(
+      'property_id, position, quality_score, movement_score, total_score, score_version, score_breakdown, winning_strategy, strategy_scores',
+    )
     .eq('run_id', selection.run_id)
     .order('position', { ascending: true })
 
@@ -301,6 +363,8 @@ async function loadWeek(selection: SelectionRow): Promise<PublishedWeek> {
         risks: asRisks(breakdown.risks),
         epc: asEpc(breakdown.epc),
         councilTaxBand: typeof breakdown.councilTaxBand === 'string' ? breakdown.councilTaxBand : null,
+        winningStrategy: typeof impression.winning_strategy === 'string' ? impression.winning_strategy : null,
+        strategyScores: asStrategyScores(impression.strategy_scores),
         watched: watched.has(impression.property_id),
       },
     ]
@@ -508,7 +572,9 @@ export async function getPropertyDetail(propertyId: string): Promise<PropertyDet
       .order('observed_at', { ascending: false }),
     supabase
       .from('deal_impressions')
-      .select('run_id, shown_at, position, quality_score, movement_score, total_score, score_version, score_breakdown')
+      .select(
+        'run_id, shown_at, position, quality_score, movement_score, total_score, score_version, score_breakdown, winning_strategy, strategy_scores',
+      )
       .eq('property_id', propertyId)
       .order('shown_at', { ascending: false }),
     watchedAmong([propertyId]),
