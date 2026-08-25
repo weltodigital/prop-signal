@@ -16,7 +16,7 @@ const COLUMNS = [
     title: 'Account',
     links: [
       { href: '/login', label: 'Sign in' },
-      { href: '/login', label: 'Create an account' },
+      { href: '/signup', label: 'Create an account' },
     ],
   },
 ] as const
@@ -32,7 +32,8 @@ export function MarketingFooter() {
               <span className="text-base font-semibold tracking-tight text-accent">Prop Signal</span>
             </div>
             <p className="mt-3 text-sm text-muted">
-              Find the UK sellers who are ready to take less, before anyone else works out they are.
+              UK investment property, brought to you. Five a week, chosen because a seller moved, with the numbers
+              already worked out.
             </p>
           </div>
 

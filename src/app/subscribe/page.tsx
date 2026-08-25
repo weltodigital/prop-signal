@@ -39,7 +39,7 @@ export default async function SubscribePage({
     <AppShell email={user.email}>
       <h1 className="text-2xl font-semibold tracking-tight">Subscribe</h1>
       <p className="mt-2 max-w-prose text-muted">
-        £29 a month. One area, five properties a week, cancel any time from your account page.
+        £29 a month. One area, five opportunities a week put in front of you, cancel any time from your account page.
       </p>
 
       {message ? (
@@ -68,9 +68,11 @@ export default async function SubscribePage({
         </div>
 
         <ul className="mt-6 space-y-2 text-sm text-muted">
-          <li>Five properties every Monday, chosen because something changed.</li>
+          <li>Five properties waiting every Monday, chosen because a seller moved.</li>
+          <li>No searching, no saved alerts, and nothing to check in between.</li>
           <li>The qualifying event stated on every one, with the date it was observed.</li>
-          <li>Yield, price against comparables and a score breakdown you can argue with.</li>
+          <li>Cashflow, price against comparables and a score breakdown you can argue with.</li>
+          <li>Scored for how you invest, whether that is a let, an HMO, a flip or a short let.</li>
           <li>A backfill on your first run, drawing on everything standing in your area.</li>
         </ul>
 

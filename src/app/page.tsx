@@ -6,23 +6,23 @@ import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 
 export const metadata: Metadata = {
-  title: 'Prop Signal — find the sellers who are ready to take less',
+  title: 'Prop Signal — the deals, brought to you',
   description:
-    'Five properties in your area every Monday, chosen because something moved. A price cut, a fall-through, a year unsold. You get the leverage and the numbers, without the scrolling. £29 a month.',
+    'Five investment opportunities in your area, in front of you every Monday. No portals to trawl, no saved searches to triage, no sourcing fee. Each one chosen because a seller moved, with the numbers already worked out. £29 a month.',
 }
 
 const CLAIMS = [
   {
-    title: 'Know what to offer',
-    body: 'Every property arrives with what it was asking, what it is asking now, and how long it has been stuck. A seller who has cut twice and sat unsold for a year has told you where they are. That is what an offer is built on.',
+    title: 'The searching is done',
+    body: 'We watch every property in your area, every week, and compare this week against last. You are shown something only when a seller has actually moved. There is no search to set up and nothing to check between Mondays.',
   },
   {
-    title: 'Get your Sunday back',
-    body: 'No saved searches to triage, no alerts about properties you have already dismissed. We watch the whole area every week and only put something in front of you when it has actually changed.',
+    title: 'The maths is done',
+    body: 'Cashflow, price against nearby sales and local demand are worked out before you open it, under the strategy you actually run. A property that does not stack is obvious without a spreadsheet or a phone call.',
   },
   {
-    title: 'Rule it out in thirty seconds',
-    body: 'Rent, gross yield, the gap to the estimated value and local demand are worked out before you open it. A deal that does not stack is obvious without a spreadsheet or a phone call.',
+    title: 'The homework is done',
+    body: 'Every property comes with its full dated price history, so you know what it was asking, what it is asking now and how long it has been stuck. You ring the agent already knowing where they are.',
   },
 ] as const
 
@@ -30,7 +30,7 @@ const STEPS = [
   {
     step: '01',
     title: 'Tell us where you buy',
-    body: 'A postcode, how far you will travel, and the strategies you buy on. It takes about a minute and you never have to set up a search again.',
+    body: 'A postcode, how far you will travel, and how you make your money — buy to let, HMO, flip, serviced accommodation. It takes about a minute, and it is the last search you will ever set up.',
   },
   {
     step: '02',
@@ -45,18 +45,26 @@ const STEPS = [
   {
     step: '04',
     title: 'Make the call',
-    body: 'Check the history, put your own purchase price and rent through the calculator, and ring the agent knowing more than they expect.',
+    body: 'Check the history, put your own purchase price and rent through the calculator, and ring the agent knowing more than they expect. Track it from interested through to completed as you go.',
   },
 ] as const
 
 const FAQS = [
   {
     q: 'How is this different from a portal alert?',
-    a: 'A portal tells you what is new. Almost everything worth buying was already listed and has since moved. We keep a dated record of every property in your area and compare each run against the last, so a property listed eight months ago can lead this week because it dropped twelve per cent on Thursday.',
+    a: 'A portal tells you what is new, because that is all it can tell you — it has no memory of what it said last week. Almost everything worth buying was already listed and has since moved. We keep a dated record of every property in your area and compare each run against the last, so a property listed eight months ago can lead this week because it dropped twelve per cent on Thursday.',
+  },
+  {
+    q: 'How is this different from a deal sourcer?',
+    a: 'A sourcer finds one property, charges a fee in the thousands, and you buy what they picked. We show you everything in your area that moved this week, with the numbers and the reasoning in the open, and you pick. Nobody here has an interest in you buying any particular property, because we are paid the same £29 whether you buy or not.',
+  },
+  {
+    q: 'So I never have to search for anything?',
+    a: 'That is the idea. You set the area and the strategy once, and after that the properties come to you. There is no saved search to maintain, nothing to check between Mondays, and nothing you have already dismissed comes back unless the seller has moved again.',
   },
   {
     q: 'Where does the data come from?',
-    a: 'PropertyData, under licence. The events, the scores and the history are ours, built from what we observed and when. We link to the original agent advert and never reproduce a listing photograph.',
+    a: 'PropertyData, under licence. The events, the scores and the history are ours, built from what we observed and when. We link to the original agent advert and never reproduce a listing photograph. You are always one click from the listing itself, so nothing here asks to be taken on trust.',
   },
   {
     q: 'Why is there no free tier?',
@@ -96,12 +104,17 @@ export default async function HomePage() {
               </p>
 
               <h1 className="display mt-5 text-4xl font-semibold sm:text-6xl">
-                Find the sellers who are ready to take less.
+                Stop hunting for deals. We put them in front of you.
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">
-                Five properties in your area every Monday, chosen because something moved. A price cut, a fall-through,
-                a year on the market with no buyer. You get the leverage and the numbers. You skip the scrolling.
+                Five investment opportunities in your area, waiting for you every Monday. Each one is there because a
+                seller moved — a price cut, a fall-through, a year on the market with no buyer — and each one arrives
+                with the numbers already worked out.
+              </p>
+
+              <p className="mt-4 max-w-2xl text-muted">
+                No portal to trawl. No saved searches to triage. No sourcer taking a fee to hand you a deal they chose.
               </p>
 
               <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -132,7 +145,11 @@ export default async function HomePage() {
           </h2>
           <p className="mt-5 max-w-2xl text-lg text-muted">
             It has been sitting there, quietly coming down, while every alert you subscribe to shouts about what went
-            up this morning. Motivated sellers are made, not born, and they are made slowly.
+            up this morning. Searching finds you what is new. It cannot find you what has changed, because a portal
+            has no memory of what it said last week.
+          </p>
+          <p className="mt-4 max-w-2xl text-lg text-muted">
+            We keep that memory. Motivated sellers are made, not born, and they are made slowly.
           </p>
 
           <div className="mt-12 grid gap-10 sm:grid-cols-3">
@@ -170,14 +187,14 @@ export default async function HomePage() {
 
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div className="lg:order-2">
-                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Fewer wasted Saturdays</p>
+                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Already worked out</p>
                 <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
-                  Decide before you spend a day on a viewing.
+                  Nothing reaches you until it has been through the numbers.
                 </h2>
                 <p className="mt-5 text-lg text-muted">
-                  The yield, the gap to the estimated value and the local demand are worked out and shown with the
-                  figures behind them. You can see why something scored what it did and disagree with it, which is
-                  more use than a number you have to take on trust.
+                  Monthly cashflow, price against what nearby homes actually sold for, and local demand are worked out
+                  before you open it, and shown with the figures behind them. You can see why something scored what it
+                  did and disagree with it, which is more use than a number you have to take on trust.
                 </p>
                 <p className="mt-4 text-muted">
                   Where we hold nothing, it says so and scores nothing. No assumed averages, and no language model
@@ -193,7 +210,7 @@ export default async function HomePage() {
               <div>
                 <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Worth opening</p>
                 <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
-                  A list you can act on without checking it first.
+                  Short when it should be short.
                 </h2>
                 <p className="mt-5 text-lg text-muted">
                   A quiet week gets a shorter list and one sentence explaining why. You are never handed five when
@@ -238,12 +255,13 @@ export default async function HomePage() {
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <div>
                 <h2 className="display text-3xl font-semibold sm:text-4xl">
-                  Less than an hour of your time, every month.
+                  A sourcer charges thousands. This is £29.
                 </h2>
                 <p className="mt-5 text-lg text-muted">
-                  Most investors lose a weekend a month to portals and still miss the property that quietly dropped
-                  twelve per cent in March. This replaces that hour, and costs about what you would spend on lunch
-                  while doing it.
+                  A deal sourcer finds you one property and takes a fee for it, and you buy what they happened to
+                  pick. We show you everything in your area that moved, every week, and you pick. Most investors lose
+                  a weekend a month to portals instead, and still miss the property that quietly dropped twelve per
+                  cent in March.
                 </p>
                 <p className="mt-4 text-muted">
                   Every subscriber costs us real data credits every week, opened or not, which is why there is no free
@@ -260,10 +278,12 @@ export default async function HomePage() {
                 <ul className="mt-6 space-y-3 text-muted">
                   {[
                     'Your area, up to forty miles from your postcode',
-                    'Five sellers worth a phone call, every Monday',
+                    'Scored for how you invest — let, HMO, flip or short let',
+                    'Five opportunities in front of you every Monday',
                     'The full price history, so you know what to offer',
                     'Yield and value gap worked out before you open it',
                     'A calculator that runs your own numbers, not ours',
+                    'Track each one from interested through to completed',
                     'Cancel any time from your account page',
                   ].map((line) => (
                     <li key={line} className="flex gap-3">
@@ -307,7 +327,7 @@ export default async function HomePage() {
         <section className="bg-accent">
           <div className="mx-auto max-w-6xl px-6 py-20 text-center">
             <h2 className="display mx-auto max-w-2xl text-3xl font-semibold text-white sm:text-4xl">
-              Next Monday, five sellers worth a phone call.
+              Next Monday, five opportunities. Without you looking for one.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/70">
               £29 a month for your area. Cancel any time.

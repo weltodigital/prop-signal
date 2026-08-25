@@ -33,8 +33,8 @@ export function DealPreview() {
 
       <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
         {[
-          { label: 'Asking price', value: '£100,000', note: '8.2% below the estimate' },
-          { label: 'Estimated rent', value: '£725 a month', note: '8.7% gross yield' },
+          { label: 'Asking price', value: '£100,000', note: '12% below nearby sold prices per sq ft' },
+          { label: 'Estimated rent', value: '£725 a month', note: '£188 a month clear as a let' },
           { label: 'Days on the market', value: '703', note: 'Price last moved 45 days ago' },
         ].map((figure) => (
           <div key={figure.label}>
@@ -90,22 +90,26 @@ export function TimelinePreview() {
 /** The score breakdown, for the section about showing the working. */
 export function ScorePreview() {
   const factors = [
-    { label: 'Gross yield', detail: '8.7% on £725 a month against the asking price', points: '+22.5' },
-    { label: 'Price against comparables', detail: '8.2% below the £109,000 estimate', points: '+9.8' },
-    { label: 'Local demand', detail: 'Area demand rated 54 out of 100', points: '+11.3' },
-    { label: 'Room to add value', detail: 'No data held', points: '0' },
+    {
+      label: 'Monthly cashflow',
+      detail: '£188 a month clear — better than 80% of this week\u2019s candidates',
+      points: '32.0 / 40',
+    },
+    { label: 'Price against nearby sales', detail: '12.0% below what nearby homes sold for', points: '14.4 / 30' },
+    { label: 'Local demand', detail: 'Area demand rated 54 out of 100', points: '8.5 / 15' },
+    { label: 'Room to add value', detail: 'No floor area held', points: 'Not held' },
   ]
 
   return (
     <div className="rounded-xl border border-line bg-card p-6">
       <div className="flex items-baseline justify-between">
         <p className="text-sm font-medium">Quality</p>
-        <p className="nums text-sm text-muted">43.6</p>
+        <p className="nums text-sm text-muted">64.9</p>
       </div>
 
       <div className="mt-3">
         {factors.map((factor) => {
-          const scored = factor.points !== '0'
+          const scored = factor.points !== 'Not held'
           return (
             <div
               key={factor.label}
@@ -122,7 +126,8 @@ export function ScorePreview() {
       </div>
 
       <p className="mt-3 border-t border-line pt-3 text-sm text-muted">
-        A factor with nothing behind it scores nothing. It never scores an assumed average.
+        A factor with nothing behind it is left out rather than scored zero, and never stands in for an assumed
+        average. The score is the share of what was actually held.
       </p>
     </div>
   )
