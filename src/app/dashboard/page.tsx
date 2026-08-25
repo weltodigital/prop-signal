@@ -1,9 +1,11 @@
 import Link from 'next/link'
 import { getCurrentWeek } from '@/lib/deals'
+import { currentStages, listTrackedDeals } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
 import { AppShell } from '@/components/app-shell'
 import { DealCard } from '@/components/deal-card'
+import { DealTracker } from '@/components/deal-tracker'
 import { MarkSeen } from '@/components/mark-seen'
 import { EmptyState, Notice } from '@/components/ui'
 import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
@@ -20,7 +22,12 @@ export default async function DashboardPage({
   searchParams: Promise<{ checkout?: string; onboarded?: string }>
 }) {
   const { email, profile } = await requireSubscriber('/dashboard')
-  const [week, params] = await Promise.all([getCurrentWeek(), searchParams])
+  const [week, params, tracked, stages] = await Promise.all([
+    getCurrentWeek(),
+    searchParams,
+    listTrackedDeals(),
+    currentStages(),
+  ])
 
   // Read before the marker is cleared, so this render still shows it. The
   // clearing happens in MarkSeen, on the visit rather than on publish.
@@ -84,9 +91,23 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
+      {/* Above the week's five, because a deal at "offer accepted" wants
+          attention today and a new listing can wait. Renders nothing when
+          there is nothing in it. */}
+      <DealTracker deals={tracked} />
+
+      {tracked.length ? <h2 className="mt-10 text-lg font-medium">This week&rsquo;s list</h2> : null}
+
       <div className="mt-8 space-y-4">
         {week && week.deals.length > 0 ? (
-          week.deals.map((deal) => <DealCard key={deal.propertyId} deal={deal} isNew={unseen} />)
+          week.deals.map((deal) => (
+            <DealCard
+              key={deal.propertyId}
+              deal={deal}
+              isNew={unseen}
+              stage={stages.get(deal.propertyId)?.stage ?? null}
+            />
+          ))
         ) : profile.backfillCompletedAt === null ? (
           <EmptyState title="Your first list is not built yet">
             <p>

@@ -41,6 +41,7 @@ wrote. Nothing a subscriber can click spends a credit.
 | `/property/[id]` | One property in full: the complete event timeline, every week it has been shown to you, and the calculator. |
 | `/archive` and `/archive/[runId]` | Previous weeks, exactly as they were published. |
 | `/watchlist` | Starred properties, and the events on them you have not read. |
+| `/deals` | Every property you have tracked and how far it got, finished ones included. |
 | `/account` | Plan, area, strategies, billing portal. |
 
 ### The watchlist costs nothing, by construction
@@ -53,6 +54,44 @@ the events, and it cannot start costing money because there is no call behind it
 
 Each starred row carries its own cut-off, so marking one property read does not
 silence the rest.
+
+### Deals you're working
+
+The product's job ends when five properties are on the dashboard. This is what happens
+after: **Interested → Contacted → Viewing → Offer made → Offer accepted → Completed**,
+plus two ways out — **Passed** and **Fell through**.
+
+The exits are not decoration. Without them a dead deal sits at "viewing" for ever and the
+completion rate reads far higher than the truth. Passed and fell through are kept apart
+because they are different problems: passing says something about the properties being
+surfaced, falling through says something about the market, and merging them would hide
+whichever is happening.
+
+Live deals appear above the week's five, because a deal at "offer accepted" wants
+attention today and a new listing can wait. The section renders nothing when it is empty.
+
+`deal_progress` is **append-only**, and the current stage is the newest row rather than a
+column beside it. A `stage` column would answer "where is this now" and nothing else, and
+the reason for recording any of this is the other question — how many complete, and how
+long each step takes. That needs every transition and the moment it happened.
+
+Moving backwards is allowed, because it happens to real deals. There is no UPDATE policy
+at all: a correction is another row, so the history cannot be quietly tidied. Untracking
+deletes, and the wording says it is for a mis-click — a deal that ended should be passed
+or marked fallen through, because a funnel that drops its failures is not a funnel.
+
+Nothing here costs a credit. It is the subscriber's record of their own actions and
+touches no API.
+
+#### The aggregate is counts, never people
+
+`deal_progress_funnel` and `deal_progress_durations` are views with `security_invoker`,
+so a subscriber reading them sees only their own rows aggregated. The cross-subscriber
+picture belongs to the service role, which is the admin.
+
+Neither view carries an `owner_id` and neither can be joined back to one. The question
+being answered is "do the properties we pick complete", which does not need to know whose
+they were. A subscriber's deal flow is theirs.
 
 ### Stack it
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getWeekByRunId } from '@/lib/deals'
+import { currentStages } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
 import { AppShell } from '@/components/app-shell'
@@ -17,6 +18,10 @@ export default async function ArchivedWeekPage({ params }: { params: Promise<{ r
   // found rather than forbidden.
   const week = await getWeekByRunId(runId)
   if (!week) notFound()
+
+  // So a property you are already working does not read as untracked when you
+  // open the week it first appeared in.
+  const stages = await currentStages()
 
   return (
     <AppShell email={email}>
@@ -43,7 +48,9 @@ export default async function ArchivedWeekPage({ params }: { params: Promise<{ r
 
       <div className="mt-8 space-y-4">
         {week.deals.length ? (
-          week.deals.map((deal) => <DealCard key={deal.propertyId} deal={deal} />)
+          week.deals.map((deal) => (
+            <DealCard key={deal.propertyId} deal={deal} stage={stages.get(deal.propertyId)?.stage ?? null} />
+          ))
         ) : (
           <EmptyState title="Nothing was published that week">
             <p>The run completed and nothing met the threshold.</p>

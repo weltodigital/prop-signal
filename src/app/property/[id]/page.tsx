@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPropertyDetail } from '@/lib/deals'
+import { stageHistory } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { markReadAction } from '@/app/watchlist/actions'
 import { formatBedrooms, formatDate, formatListName, formatMoney, formatShortDate } from '@/lib/format'
@@ -12,6 +13,8 @@ import { StackedNumbers } from '@/components/stacked-numbers'
 import { StackIt } from '@/components/stack-it'
 import { Timeline } from '@/components/timeline'
 import { WatchButton } from '@/components/watch-button'
+import { StageControl } from '@/components/stage-control'
+import { STAGE_DEFINITIONS } from '@/lib/deal-stages'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +34,9 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   // rather than forbidden.
   const property = await getPropertyDetail(id)
   if (!property) notFound()
+
+  const progress = await stageHistory(id)
+  const stage = progress[0]?.stage ?? null
 
   const priceRange =
     property.lowestPriceSeen !== null &&
@@ -73,6 +79,30 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           ))}
         </p>
       ) : null}
+
+      <section className="mt-8">
+        <Card>
+          <h2 className="text-base font-medium">Where you got to</h2>
+          <p className="mt-1 text-sm text-muted">
+            Your own record of what you did next. Nothing is sent anywhere and nothing here costs a credit.
+          </p>
+
+          <div className="mt-4">
+            <StageControl propertyId={property.propertyId} stage={stage} />
+          </div>
+
+          {progress.length > 1 ? (
+            <ol className="mt-5 space-y-1.5 border-t border-line pt-4">
+              {progress.map((entry) => (
+                <li key={`${entry.stage}-${entry.enteredAt}`} className="flex justify-between gap-4 text-sm">
+                  <span>{STAGE_DEFINITIONS[entry.stage].happened}</span>
+                  <span className="nums shrink-0 text-muted">{formatShortDate(entry.enteredAt)}</span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </Card>
+      </section>
 
       <section className="mt-8">
         <Card>

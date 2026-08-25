@@ -19,6 +19,7 @@ const PROTECTED_PREFIXES = [
   '/subscribe',
   '/admin',
   '/watchlist',
+  '/deals',
   '/archive',
   '/property',
   // The reset link is the authentication. By the time this page renders the

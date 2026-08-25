@@ -347,4 +347,75 @@ suite('row level security', () => {
 
     expect(data?.map((row) => row.run_id)).toEqual([runIds.get(bob.id)])
   })
+
+  // --- deal_progress -------------------------------------------------------
+  //
+  // Skipped rather than failed where the table is not there yet, the same way
+  // the whole file skips without credentials: a migration that has not been
+  // applied is a deployment fact, not a broken isolation guarantee.
+
+  /**
+   * PostgREST answers a missing table from its schema cache rather than from
+   * Postgres, so the code is PGRST205 and not 42P01. Both are checked, because
+   * which one comes back depends on whether the cache has been reloaded.
+   */
+  function notMigrated(error: { code?: string; message?: string } | null): boolean {
+    if (!error) return false
+    return error.code === '42P01' || error.code === 'PGRST205' || /schema cache|does not exist/i.test(error.message ?? '')
+  }
+
+  it('keeps one user deal progress out of another user reach', async () => {
+    const seeded = await admin.from('deal_progress').insert({
+      owner_id: alice.id,
+      property_id: propertyIds.get(alice.id),
+      stage: 'offer',
+    })
+
+    if (notMigrated(seeded.error)) {
+      console.warn('[rls] deal_progress is not migrated yet — skipping its isolation checks.')
+      return
+    }
+    if (seeded.error) throw new Error(`Could not seed deal progress: ${seeded.error.message}`)
+
+    // Bob cannot read it.
+    const { data: read } = await bob.client.from('deal_progress').select('property_id')
+    expect(read).toEqual([])
+
+    // Nor record a stage against a property that is not his. The insert policy
+    // checks the property exists under his own row level security, so Alice's
+    // is invisible to it.
+    const { error: written } = await bob.client.from('deal_progress').insert({
+      owner_id: bob.id,
+      property_id: propertyIds.get(alice.id),
+      stage: 'interested',
+    })
+    expect(written).not.toBeNull()
+
+    // Nor delete hers.
+    const { data: deleted } = await bob.client
+      .from('deal_progress')
+      .delete()
+      .eq('property_id', propertyIds.get(alice.id))
+      .select('id')
+    expect(deleted).toEqual([])
+
+    // Alice still has exactly what she recorded.
+    const { data: hers } = await alice.client.from('deal_progress').select('stage')
+    expect(hers?.map((row) => row.stage)).toEqual(['offer'])
+  })
+
+  it('lets nobody rewrite a stage that was already recorded', async () => {
+    // There is no UPDATE policy: the record is append-only, so a correction is
+    // another row and the history cannot be quietly tidied.
+    const probe = await admin.from('deal_progress').select('id').limit(1)
+    if (notMigrated(probe.error)) return
+
+    const { data: touched } = await alice.client
+      .from('deal_progress')
+      .update({ stage: 'completed' })
+      .eq('owner_id', alice.id)
+      .select('id')
+
+    expect(touched).toEqual([])
+  })
 })

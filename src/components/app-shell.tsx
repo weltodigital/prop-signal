@@ -8,6 +8,7 @@ import { countUnread } from '@/lib/watchlist'
 const NAV = [
   { href: '/dashboard', label: 'This week' },
   { href: '/watchlist', label: 'Watchlist' },
+  { href: '/deals', label: 'Your deals' },
   { href: '/archive', label: 'Archive' },
   { href: '/account', label: 'Account' },
 ] as const

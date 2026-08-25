@@ -5,6 +5,8 @@ import { Card } from '@/components/ui'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
 import { RiskFlags } from '@/components/risk-flags'
+import { StageControl } from '@/components/stage-control'
+import type { DealStage } from '@/lib/deal-stages'
 import { WatchButton } from '@/components/watch-button'
 
 /**
@@ -16,7 +18,16 @@ import { WatchButton } from '@/components/watch-button'
  * PropertyData terms, so we link to the advert and describe the property in
  * words.
  */
-export function DealCard({ deal, isNew = false }: { deal: PublishedDeal; isNew?: boolean }) {
+export function DealCard({
+  deal,
+  isNew = false,
+  stage = null,
+}: {
+  deal: PublishedDeal
+  isNew?: boolean
+  /** Where this one got to, where the subscriber has started tracking it. */
+  stage?: DealStage | null
+}) {
   const winner = deal.strategyScores.find((s) => s.strategy === deal.winningStrategy) ?? null
   const runnersUp = deal.strategyScores
     .filter((s) => s.strategy !== deal.winningStrategy)
@@ -118,6 +129,10 @@ export function DealCard({ deal, isNew = false }: { deal: PublishedDeal; isNew?:
           />
         </div>
       </details>
+
+      <div className="mt-5 border-t border-line pt-4">
+        <StageControl propertyId={deal.propertyId} stage={stage} />
+      </div>
 
       <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <Link href={`/property/${deal.propertyId}`} className="underline underline-offset-4 hover:text-accent">

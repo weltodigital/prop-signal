@@ -822,3 +822,61 @@ meant before this change.
 already fetched, so they cost a credit per run rather than per property. They are fetched
 only for a profile whose strategies use them: a buy-to-let subscriber never pays for HMO
 room rates. Worst case a run goes from six area credits to nine, against a ceiling of 100.
+
+## Deal progress — 25 August 2026
+
+### It is append-only, because the current stage is not the point
+
+A `stage` column on a table of tracked properties answers "where is this now". The reason
+for building this is the other question: how many complete, and how long each step takes.
+Neither is answerable from a column that gets overwritten.
+
+So every transition is a row with the moment it happened, and the current stage is the
+newest one. Same reasoning as the watchlist — it cannot fall out of step with the history
+because it is the history.
+
+### Two ways out, kept apart
+
+Six forward stages and no exit means a dead deal sits at "viewing" for ever, and the
+completion rate reads far higher than the truth. That is worse than not measuring it.
+
+Passed and fell through are separate rather than one "dropped". Passing is choosing not to
+proceed, which says something about the properties being surfaced. Falling through is
+losing it after an offer, which says something about the market. They need different
+fixes, and one label would hide which was happening.
+
+### No UPDATE policy at all
+
+A correction is another row. Moving backwards is a real thing that happens to real deals,
+so it is allowed, and recording the same stage twice is harmless — it says somebody came
+back and confirmed it.
+
+Deleting is permitted, for a mis-click, and the wording in the app says so. A deal that
+ended should be `passed` or `fell_through`. A funnel that quietly drops its failures is
+not a funnel.
+
+### The aggregate carries no owner_id, and cannot get one
+
+`deal_progress_funnel` and `deal_progress_durations` are `security_invoker` views, so a
+subscriber querying them sees their own rows aggregated and the service role sees
+everyone's. Neither selects an owner and neither can be joined back to one.
+
+The question is "do the properties we pick complete". Answering it does not require
+knowing whose deals they were, and a product that quietly assembles a per-customer view of
+someone's negotiations is a different product from the one being sold.
+
+### Not called a pipeline
+
+That word already means the Sunday run in this codebase. Two things called pipeline would
+have been the second naming collision of the day, after `strategies`. It is
+`deal_progress` in the schema and "Deals you're working" in the app.
+
+### The RLS test skips rather than fails when it is not migrated
+
+`tests/rls.test.ts` checks isolation against a real project, and a table that has not been
+created yet is a deployment fact rather than a broken guarantee. It skips with a printed
+reason, the same way the whole file skips without credentials.
+
+Worth noting for the next person: PostgREST answers a missing table out of its schema
+cache, so the code is `PGRST205` rather than Postgres's `42P01`. Checking only the latter
+made the test fail rather than skip.
