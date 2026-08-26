@@ -161,9 +161,9 @@ export function SearchForm({
             <div>
               <p className="text-sm font-medium">Your own figure</p>
               <p className="mt-1 text-sm text-muted">
-                We do not hold this and will not guess it. PropertyData price building from nothing, and what
-                fraction of that a refurbishment costs is an assumed average inside a score, which is the thing this
-                product refuses everywhere else. You know your own build costs better than any data feed does.
+                We do not hold this and will not guess it. Any figure we could put here would be an assumed
+                average buried inside a score, which is the thing this product refuses everywhere else. You know your
+                own build costs better than we ever could.
               </p>
             </div>
 

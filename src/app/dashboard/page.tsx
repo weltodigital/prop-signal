@@ -125,8 +125,8 @@ export default async function DashboardPage({
         ) : profile.backfillCompletedAt === null ? (
           <EmptyState title="Your first list is not built yet">
             <p>
-              The opening list is a backfill. It draws on everything standing in your area rather than only what
-              appeared this week, so it takes a full run to put together.
+              Your opening list draws on everything standing in your area rather than only what appeared this
+              week, so it takes a little longer to put together.
             </p>
             <p className="mt-3">It runs on Sunday night and the list is here on Monday morning.</p>
           </EmptyState>

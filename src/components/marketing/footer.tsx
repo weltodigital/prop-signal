@@ -55,8 +55,8 @@ export function MarketingFooter() {
 
         <div className="mt-12 border-t border-line pt-6 text-sm text-muted">
           <p>
-            Property data supplied by PropertyData. Every figure carries the date it was observed. Listings link to
-            the original agent advert, and we never reproduce a listing photograph.
+            Every figure carries the date it was observed. Listings link to the original agent advert, and we never
+            reproduce a listing photograph.
           </p>
         </div>
       </div>

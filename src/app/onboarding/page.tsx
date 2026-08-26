@@ -46,10 +46,11 @@ export default async function OnboardingPage() {
 
       {isNew ? (
         <div className="mt-6">
-          <Notice title="Your first list is a backfill">
+          <Notice title="Your first list is the widest search">
             <p>
-              It draws on the whole standing inventory in your area, so it will be longer than five and it will
-              include properties that have been listed for months. Every list after it is the week&rsquo;s five.
+              It looks at everything standing in your area rather than only what appeared this week, so it will
+              include properties that have been listed for months. You get the best five of them, and up to five more
+              join your list each week after that.
             </p>
           </Notice>
         </div>

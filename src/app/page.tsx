@@ -64,7 +64,7 @@ const FAQS = [
   },
   {
     q: 'Where does the data come from?',
-    a: 'PropertyData, under licence. The events, the scores and the history are ours, built from what we observed and when. We link to the original agent advert and never reproduce a listing photograph. You are always one click from the listing itself, so nothing here asks to be taken on trust.',
+    a: 'We search the property portals across your area, under licence, and keep our own dated record of what we find. The events, the scores and the history are ours, built from what we observed and when. We link to the original agent advert and never reproduce a listing photograph, so you are always one click from the listing itself and nothing here asks to be taken on trust.',
   },
   {
     q: 'Does a property have to have dropped in price to appear?',
@@ -76,11 +76,11 @@ const FAQS = [
   },
   {
     q: 'Why is there no free tier?',
-    a: 'Every subscriber costs real data credits every week, whether they open the list or not. The newsletter is the free tier. The subscription is for people who want their own area on their own criteria.',
+    a: 'Searching a whole area properly costs us money every week, whether you open the list or not. The newsletter is the free tier. The subscription is for people who want their own area searched on their own criteria.',
   },
   {
     q: 'Can I change my area?',
-    a: 'Yes, three times per billing period. Each change means sourcing a new area from scratch, which is the most expensive thing the product does, so the counter is on your account page. Price, bedroom and type filters can be changed as often as you like, because those cost nothing.',
+    a: 'Yes, three times per billing period. Each change means searching a new area from scratch, so the counter is on your account page. Price, bedroom and type filters can be changed as often as you like, because those only narrow what we already have.',
   },
   {
     q: 'Is there an app or an email?',
@@ -273,8 +273,8 @@ export default async function HomePage() {
                   cent in March.
                 </p>
                 <p className="mt-4 text-muted">
-                  Every subscriber costs us real data credits every week, opened or not, which is why there is no free
-                  plan and no trial. The newsletter is the free tier.
+                  Searching a whole area every week costs us money whether you open the list or not, which is why
+                  there is no free plan and no trial. The newsletter is the free tier.
                 </p>
               </div>
 

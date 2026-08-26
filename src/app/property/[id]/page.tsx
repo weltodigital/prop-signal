@@ -84,7 +84,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         <Card>
           <h2 className="text-base font-medium">Where you got to</h2>
           <p className="mt-1 text-sm text-muted">
-            Your own record of what you did next. Nothing is sent anywhere and nothing here costs a credit.
+            Your own record of what you did next. Nothing here is sent anywhere.
           </p>
 
           <div className="mt-4">
