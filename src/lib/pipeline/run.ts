@@ -363,16 +363,23 @@ export async function runProfile(options: {
       const epc = epcRow ? { rating: epcRow.rating, score: epcRow.score } : null
       const taxRow = matchAddress(area.taxBandByAddress, address)
 
-      const propertyRisks: Risk[] = risks(listing, areaContext, epc, profile.sourcing_lists)
+      const propertyEnrichment =
+        enrichment.get(enrichmentKey(listing, profile.postcode)) ?? EMPTY_ENRICHMENT
+
+      // Gross yield on the asking price, only so a figure that cannot be right
+      // can say so beside itself.
+      const grossYield =
+        listing.price && listing.price > 0 && propertyEnrichment.estimatedRent
+          ? ((propertyEnrichment.estimatedRent * 12) / listing.price) * 100
+          : null
+
+      const propertyRisks: Risk[] = risks(listing, areaContext, epc, profile.sourcing_lists, grossYield)
 
       // A risk this severe is not a note beside a deal. It is not a deal.
       if (isExcluded(propertyRisks)) {
         summary.candidatesRiskExcluded += 1
         return []
       }
-
-      const propertyEnrichment =
-        enrichment.get(enrichmentKey(listing, profile.postcode)) ?? EMPTY_ENRICHMENT
 
       return [
         {

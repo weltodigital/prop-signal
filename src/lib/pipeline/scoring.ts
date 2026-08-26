@@ -176,6 +176,23 @@ export const CONDITION_LISTS = ['unmodernised-properties', 'repossessed-properti
 
 const SHORT_LEASE_LIST = 'short-lease-properties'
 
+/**
+ * A gross yield above this is almost always the rent estimate not applying.
+ *
+ * Rent comes from local asking rents for a postcode and a bedroom count, which
+ * is the honest thing an area figure can tell you and is usually close enough.
+ * It stops being close enough on a property priced far below its neighbours:
+ * the area average gets applied to a flat that is cheap for a reason nobody has
+ * explained yet, and the headline reads 22% gross.
+ *
+ * A genuine UK single-let yield tops out around twelve. Fifteen is the line
+ * where the figure is more likely to be an artefact than an opportunity.
+ *
+ * It is stated, not scored. The property keeps its place — that stock is what
+ * some subscribers are here for — and the number beside it stops overselling.
+ */
+const IMPLAUSIBLE_GROSS_YIELD = 15
+
 /** Someone who asked for these is buying the work, so an EPC of F is the point. */
 function buysRefurbishment(strategies: readonly string[]): boolean {
   return CONDITION_LISTS.some((list) => strategies.includes(list))
@@ -186,8 +203,18 @@ export function risks(
   area: AreaContext,
   epc: EnergyCertificate,
   strategies: readonly string[] = [],
+  grossYieldPercent: number | null = null,
 ): Risk[] {
   const found: Risk[] = []
+
+  if (grossYieldPercent !== null && grossYieldPercent > IMPLAUSIBLE_GROSS_YIELD) {
+    found.push({
+      label: `${grossYieldPercent.toFixed(1)}% yield looks too good`,
+      detail:
+        'The rent is the local average for this many bedrooms, not a valuation of this property. A yield this high usually means the property is priced well below its neighbours for a reason the listing has not given. Check the lease, the tenure and the construction before you rely on it.',
+      severity: 'note',
+    })
+  }
 
   if (epc && MEES_FAIL.has(epc.rating)) {
     found.push({

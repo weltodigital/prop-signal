@@ -373,3 +373,32 @@ describe('rank', () => {
     expect(only?.cappedBy).toBeNull()
   })
 })
+
+describe('an implausible yield', () => {
+  it('is flagged, because the rent is an area average and this is not an area', () => {
+    // The £50,000 one-bed next door to a £110,000 one-bed. The area rent gets
+    // applied to it and the card reads 22% gross, which is not a yield.
+    const found = risks(listing(), area(), null, [], 22.1)
+    const flag = found.find((r) => r.label.includes('too good'))
+
+    expect(flag).toBeDefined()
+    expect(flag?.severity).toBe('note')
+    expect(flag?.detail).toMatch(/local average/i)
+  })
+
+  it('leaves a strong but believable yield alone', () => {
+    expect(risks(listing(), area(), null, [], 13.3)).toHaveLength(0)
+    expect(risks(listing(), area(), null, [], 10.1)).toHaveLength(0)
+  })
+
+  it('does not cap the property, because that stock is deliberate', () => {
+    // A subscriber buying short-lease and auction flats wants these on the
+    // list. The flag says check the lease; it does not push it down the order.
+    const found = risks(listing(), area(), null, [], 30)
+    expect(found.every((r) => r.severity === 'note')).toBe(true)
+  })
+
+  it('says nothing where there is no yield to judge', () => {
+    expect(risks(listing(), area(), null, [], null)).toHaveLength(0)
+  })
+})
