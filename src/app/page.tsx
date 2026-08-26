@@ -6,23 +6,23 @@ import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 
 export const metadata: Metadata = {
-  title: 'Prop Signal. The deals, brought to you',
+  title: 'Prop Signal. Sourced deals for how you invest',
   description:
-    'Five investment opportunities in your area, in front of you every Monday. No portals to trawl, no saved searches to triage, no sourcing fee. Each one chosen because a seller moved, with the numbers already worked out. £29 a month.',
+    'Tell us where you buy and how you make your money. We source the best deals in your area against those criteria, score them, and keep them in front of you. BRRR in Portsmouth, HMOs in Leeds, whatever you actually run. £29 a month.',
 }
 
 const CLAIMS = [
   {
-    title: 'The searching is done',
-    body: 'We watch every property in your area, every week, and compare this week against last. You are shown something only when a seller has actually moved. There is no search to set up and nothing to check between Mondays.',
+    title: 'Sourced against your criteria',
+    body: 'Your area, your radius, your strategy. We look at everything in it every week and keep the ones that stack against the way you actually make money. A property that is a poor buy to let and a strong HMO is scored as both and ranked as whichever it is.',
   },
   {
     title: 'The maths is done',
     body: 'Cashflow, price against nearby sales and local demand are worked out before you open it, under the strategy you actually run. A property that does not stack is obvious without a spreadsheet or a phone call.',
   },
   {
-    title: 'The homework is done',
-    body: 'Every property comes with its full dated price history, so you know what it was asking, what it is asking now and how long it has been stuck. You ring the agent already knowing where they are.',
+    title: 'It stays until you say otherwise',
+    body: 'A good deal does not stop being one because you saw it last week. It stays on your list until you buy it, it sells, or you say it is not for you. When something changes on it, that is flagged rather than being the reason it appears.',
   },
 ] as const
 
@@ -34,13 +34,13 @@ const STEPS = [
   },
   {
     step: '02',
-    title: 'Your first list arrives full',
-    body: 'The opening list draws on every property standing in your area, not only this week, so there is something to act on from the first Monday.',
+    title: 'Your list is built from everything',
+    body: 'We look at every property standing in your area, not only what appeared this week, and keep the ones that clear the bar against your strategy. There is something to act on from the first Monday.',
   },
   {
     step: '03',
-    title: 'After that, only what changed',
-    body: 'Each Monday you get the properties where a seller has moved since you last looked. Nothing you have already seen and dismissed comes back.',
+    title: 'It stays and it stays current',
+    body: 'Deals stay on your list while they stack. Each Monday the scores are refreshed, anything new that qualifies is added, and anything that has moved since you last looked is flagged.',
   },
   {
     step: '04',
@@ -52,7 +52,7 @@ const STEPS = [
 const FAQS = [
   {
     q: 'How is this different from a portal alert?',
-    a: 'A portal tells you what is new, because that is all it can tell you. It has no memory of what it said last week. Almost everything worth buying was already listed and has since moved. We keep a dated record of every property in your area and compare each run against the last, so a property listed eight months ago can lead this week because it dropped twelve per cent on Thursday.',
+    a: 'A portal answers one question, which is what went up this morning. Whether something is a good buy for the way you invest is a different question and nothing on a portal asks it. We score every property in your area against your strategy, keep the ones that stack, and rank them. A property listed eight months ago and one listed this morning are judged the same way.',
   },
   {
     q: 'How is this different from a deal sourcer?',
@@ -60,11 +60,19 @@ const FAQS = [
   },
   {
     q: 'So I never have to search for anything?',
-    a: 'That is the idea. You set the area and the strategy once, and after that the properties come to you. There is no saved search to maintain, nothing to check between Mondays, and nothing you have already dismissed comes back unless the seller has moved again.',
+    a: 'That is the idea. You set the area and the strategy once and the deals come to you. There is no saved search to maintain and nothing to check between Mondays. Anything you mark as not for you never comes back.',
   },
   {
     q: 'Where does the data come from?',
     a: 'PropertyData, under licence. The events, the scores and the history are ours, built from what we observed and when. We link to the original agent advert and never reproduce a listing photograph. You are always one click from the listing itself, so nothing here asks to be taken on trust.',
+  },
+  {
+    q: 'Does a property have to have dropped in price to appear?',
+    a: 'No. A property is on your list because it is a good deal against your criteria, and it can be a good deal from the day it is listed. A price cut or a long stint unsold counts for something, because it tells you the seller is motivated, but it is worth half of what the deal itself is worth and it is never a way in. A property that does not stack is not shown however hard the seller has moved.',
+  },
+  {
+    q: 'Does the same property keep appearing?',
+    a: 'Yes, while it is still one of the best deals in your area, because hiding it would not make it a worse deal. What changes is the marking: something that has moved since you last looked is flagged as changed. When you are done with it, mark it as not for you and it is gone for good.',
   },
   {
     q: 'Why is there no free tier?',
@@ -108,13 +116,14 @@ export default async function HomePage() {
               </h1>
 
               <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">
-                Five investment opportunities in your area, waiting for you every Monday. Each one is there because a
-                seller moved. A price cut, a fall-through, a year on the market with no buyer. Each one arrives with
-                the numbers already worked out.
+                Tell us where you buy and how you make your money. BRRR in Portsmouth, HMOs in Leeds, buy to let
+                within ten miles of home. We source the whole area against those criteria and keep the best of it in
+                front of you, with the numbers already worked out.
               </p>
 
               <p className="mt-4 max-w-2xl text-muted">
-                No portal to trawl. No saved searches to triage. No sourcer taking a fee to hand you a deal they chose.
+                A deal earns its place by being a good deal. Not by having been cut last Tuesday, and not by being
+                new this morning.
               </p>
 
               <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -141,15 +150,15 @@ export default async function HomePage() {
         {/* Three claims -------------------------------------------------- */}
         <section id="inside" className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="display max-w-2xl text-3xl font-semibold sm:text-4xl">
-            The best deal in your area was probably listed months ago.
+            A portal can only tell you what is new.
           </h2>
           <p className="mt-5 max-w-2xl text-lg text-muted">
-            It has been sitting there, quietly coming down, while every alert you subscribe to shouts about what went
-            up this morning. Searching finds you what is new. It cannot find you what has changed, because a portal
-            has no memory of what it said last week.
+            That is the one question it can answer, so it is the one you get asked. Whether a property is a good buy
+            for the way you invest is a different question, and nothing on a portal is set up to ask it.
           </p>
           <p className="mt-4 max-w-2xl text-lg text-muted">
-            We keep that memory. Motivated sellers are made, not born, and they are made slowly.
+            The best deal in your area might have been listed this morning or eight months ago. We score both the same
+            way and put whichever is better in front of you.
           </p>
 
           <div className="mt-12 grid gap-10 sm:grid-cols-3">
@@ -178,8 +187,8 @@ export default async function HomePage() {
                   against that rather than against the asking price.
                 </p>
                 <p className="mt-4 text-muted">
-                  You get the whole record, dated. Small trims and properties going under offer are noted and left
-                  alone, because neither one means a seller is ready to move.
+                  None of that decides whether a property reaches you. A good deal reaches you because it is a good
+                  deal. What the seller has done since is how you price the offer once it has.
                 </p>
               </div>
               <TimelinePreview />
@@ -213,20 +222,20 @@ export default async function HomePage() {
                   Short when it should be short.
                 </h2>
                 <p className="mt-5 text-lg text-muted">
-                  A quiet week gets a shorter list and one sentence explaining why. You are never handed five when
-                  three qualified, so you never have to work out which two are filler.
+                  A quiet area gets a shorter list and one sentence explaining why. You are never handed five when
+                  two stack, so you never have to work out which three are filler.
                 </p>
                 <p className="mt-4 text-muted">
-                  Nothing you have already seen and passed on comes back unless the seller has moved again. The list
-                  stays worth the two minutes it takes to read.
+                  Anything you mark as not for you is gone for good, however well it scores later. The list stays
+                  worth the two minutes it takes to read because you decide what is on it.
                 </p>
               </div>
 
               <div className="rounded-xl border border-warn/30 bg-warn-soft p-6">
                 <p className="font-medium">A short list this week</p>
                 <p className="mt-2 text-muted">
-                  Three properties qualified in your area this week. Two more scored above threshold but were shown to
-                  you in earlier weeks and nothing has moved on them since.
+                  Only two properties in your area clear the bar at the moment. The rest do not stack against your
+                  strategy, so they are not here.
                 </p>
                 <p className="mt-4 text-sm text-muted">An example of a thin week, stated rather than padded.</p>
               </div>
@@ -279,7 +288,8 @@ export default async function HomePage() {
                   {[
                     'Your area, up to forty miles from your postcode',
                     'Scored for how you invest, whether that is a let, an HMO, a flip or a short let',
-                    'Five opportunities in front of you every Monday',
+                    'The best deals in your area, kept in front of you',
+                    'A deal stays on your list until you say it is not for you',
                     'The full price history, so you know what to offer',
                     'Yield and value gap worked out before you open it',
                     'A calculator that runs your own numbers, not ours',
@@ -327,7 +337,7 @@ export default async function HomePage() {
         <section className="bg-accent">
           <div className="mx-auto max-w-6xl px-6 py-20 text-center">
             <h2 className="display mx-auto max-w-2xl text-3xl font-semibold text-white sm:text-4xl">
-              Next Monday, five opportunities. Without you looking for one.
+              Tell us how you invest. We will find the deals.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-lg text-white/70">
               £29 a month for your area. Cancel any time.

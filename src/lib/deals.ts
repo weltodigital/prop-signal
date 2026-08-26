@@ -105,6 +105,12 @@ export type PublishedDeal = PropertySnapshot & {
    */
   winningStrategy: string | null
   strategyScores: StrategyScore[]
+  /**
+   * True where the qualifying event landed since this property was last shown
+   * to this subscriber. The list stands, so this is what marks what is worth a
+   * second look rather than what earned a place.
+   */
+  changedSinceSeen: boolean
   /** Whether the signed-in user has starred it. */
   watched: boolean
 }
@@ -327,7 +333,7 @@ async function loadWeek(selection: SelectionRow): Promise<PublishedWeek> {
   const { data: impressions } = await supabase
     .from('deal_impressions')
     .select(
-      'property_id, position, quality_score, movement_score, total_score, score_version, score_breakdown, winning_strategy, strategy_scores',
+      'property_id, position, quality_score, movement_score, total_score, score_version, score_breakdown, winning_strategy, strategy_scores, changed_since_seen',
     )
     .eq('run_id', selection.run_id)
     .order('position', { ascending: true })
@@ -365,6 +371,7 @@ async function loadWeek(selection: SelectionRow): Promise<PublishedWeek> {
         councilTaxBand: typeof breakdown.councilTaxBand === 'string' ? breakdown.councilTaxBand : null,
         winningStrategy: typeof impression.winning_strategy === 'string' ? impression.winning_strategy : null,
         strategyScores: asStrategyScores(impression.strategy_scores),
+        changedSinceSeen: impression.changed_since_seen === true,
         watched: watched.has(impression.property_id),
       },
     ]

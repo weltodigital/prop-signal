@@ -6,6 +6,7 @@ import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
 import { RiskFlags } from '@/components/risk-flags'
 import { StageControl } from '@/components/stage-control'
+import { setStageAction } from '@/app/deals/actions'
 import type { DealStage } from '@/lib/deal-stages'
 import { WatchButton } from '@/components/watch-button'
 
@@ -41,6 +42,13 @@ export function DealCard({
             {isNew ? (
               <span className="rounded-full bg-accent px-2 py-0.5 text-xs tracking-wide text-white uppercase">
                 New
+              </span>
+            ) : null}
+            {/* The list stands, so this marks what is worth a second look
+                rather than what earned its place. */}
+            {!isNew && deal.changedSinceSeen ? (
+              <span className="rounded-full bg-highlight px-2 py-0.5 text-xs tracking-wide text-ink uppercase">
+                Changed
               </span>
             ) : null}
             {deal.headline}
@@ -130,8 +138,23 @@ export function DealCard({
         </div>
       </details>
 
-      <div className="mt-5 border-t border-line pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <StageControl propertyId={deal.propertyId} stage={stage} />
+        {/* Taking it off the list is the subscriber's decision and it holds:
+            it will not come back however well it scores later. */}
+        {stage === null ? (
+          <form action={setStageAction}>
+            <input type="hidden" name="propertyId" value={deal.propertyId} />
+            <input type="hidden" name="stage" value="passed" />
+            <button
+              type="submit"
+              title="Take this off your list. It will not come back."
+              className="rounded-md px-2 py-1.5 text-sm text-muted underline underline-offset-4 hover:text-ink"
+            >
+              Not for me
+            </button>
+          </form>
+        ) : null}
       </div>
 
       <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm">

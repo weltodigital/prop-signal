@@ -7,8 +7,10 @@ import {
   isCapped,
   isExcluded,
   measureQuality,
+  MAX_TOTAL,
   MIN_QUALITY_FACTORS,
   movement,
+  MOVEMENT_SHARE,
   percentile,
   qualityScores,
   rank,
@@ -313,22 +315,45 @@ describe('rank', () => {
   const still: Score = { score: 0, factors: [], version: SCORE_VERSION }
   const moved: Score = { score: 40, factors: [], version: SCORE_VERSION }
 
-  it('adds the two scores into a total out of 200', () => {
+  it('counts quality in full and movement at half, out of 150', () => {
     const [top] = rank([{ candidate: 'a', quality: strong, movement: moved }])
-    expect(top?.total).toBe(130)
+    expect(top?.total).toBe(90 + 40 * MOVEMENT_SHARE)
   })
 
-  it('breaks a tie towards the one that moved', () => {
+  it('puts the better deal above the one that merely moved', () => {
+    // This is the product. At parity the mover used to win, which meant a
+    // mediocre property that dropped 12% beat an excellent one listed
+    // yesterday. A sourcing product has to answer the other way.
     const ordered = rank([
-      { candidate: 'static', quality: { score: 80, factors: [], version: SCORE_VERSION }, movement: still },
+      { candidate: 'better deal', quality: { score: 80, factors: [], version: SCORE_VERSION }, movement: still },
       { candidate: 'mover', quality: { score: 40, factors: [], version: SCORE_VERSION }, movement: moved },
     ])
-    expect(ordered[0]?.candidate).toBe('mover')
+    expect(ordered[0]?.candidate).toBe('better deal')
+  })
+
+  it('still lets movement separate two comparable deals', () => {
+    const ordered = rank([
+      { candidate: 'quiet', quality: { score: 70, factors: [], version: SCORE_VERSION }, movement: still },
+      { candidate: 'moved', quality: { score: 70, factors: [], version: SCORE_VERSION }, movement: moved },
+    ])
+    expect(ordered[0]?.candidate).toBe('moved')
+  })
+
+  it('caps a brand new deal at 100 of 150 rather than 100 of 200', () => {
+    // A property listed yesterday has no movement and never will have. What
+    // matters is how much of the scale that leaves it.
+    const [only] = rank([
+      { candidate: 'perfect but new', quality: { score: 100, factors: [], version: SCORE_VERSION }, movement: still },
+    ])
+    expect(only?.total).toBe(100)
+    expect(MAX_TOTAL).toBe(150)
   })
 
   it('holds a capped property below the ceiling', () => {
     const capping = [{ label: 'EPC G', detail: '', severity: 'cap' as const }]
-    const [only] = rank([{ candidate: 'a', quality: strong, movement: { ...moved, score: 90 }, risks: capping }])
+    const [only] = rank([
+      { candidate: 'a', quality: { score: 100, factors: [], version: SCORE_VERSION }, movement: { ...moved, score: 100 }, risks: capping },
+    ])
 
     expect(only?.total).toBe(RISK_CAPPED_TOTAL)
     expect(only?.cappedBy).toBe('EPC G')

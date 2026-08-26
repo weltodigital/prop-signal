@@ -880,3 +880,66 @@ reason, the same way the whole file skips without credentials.
 Worth noting for the next person: PostgREST answers a missing table out of its schema
 cache, so the code is `PGRST205` rather than Postgres's `42P01`. Checking only the latter
 made the test fail rather than skip.
+
+## Scoring v5, and the standing list — 26 August 2026
+
+The product is deal sourcing. It had been built as an events feed, and the difference
+turned out to be two rules rather than a rewrite.
+
+### A deal earns its place by being a good deal
+
+Movement was half the total. That meant a property listed yesterday, with no history and
+nothing having happened to it, could reach at most 100 of 200 however good it was, and
+lost to anything decent that had been reduced.
+
+Measured on identical properties: quality 62.5 on both, one of them cut 12% and 200 days
+unsold. The new listing totalled 62.5 and the mover 107.6. To beat it, an identical new
+listing would have needed 45 more quality points, which is 45% of the entire quality
+scale.
+
+Movement now counts for half of what it did. A seller who has cut twice and sat a year is
+telling you something worth knowing, and it is worth less than the property being a good
+buy in the first place.
+
+### Whether a property appears is decided on quality alone
+
+The old threshold was 25 of a combined 200, which movement could carry on its own. A 20%
+reduction on something that loses money every month is still something that loses money
+every month, and showing it because the seller moved is the padding this codebase refuses
+everywhere else.
+
+The floor is now on quality, out of 100. It is partly relative, because 40 of those 100
+come from a percentile against the rest of the run. That is a known consequence of v4's
+percentile rather than a new one, and worth remembering when the floor is retuned.
+
+### The list stands until the subscriber removes something
+
+A property used to need a first sighting or a fresh material event to appear, enforced
+twice: in `qualifies()` and by a unique index on `deal_impressions`. The best deal in an
+area therefore became invisible in week two, purely because it had already been seen.
+
+A sourcing product that hides its best deal because you looked at it once is not sourcing.
+So a property stays while it stays good, and leaves when the subscriber says it is not for
+them. Events keep their job of saying what changed, and `changed_since_seen` marks it.
+
+What this costs: the list no longer refreshes itself into novelty every week, so a quiet
+area shows the same properties for a while. That is honest. They are still the best deals
+in it.
+
+### Removal is the `passed` stage, not a second table
+
+Marking a property passed in the deal tracker and taking it off the sourced list are the
+same decision. Two mechanisms for one decision is how they drift apart, so removal reads
+the newest `deal_progress` row and treats `passed` as off the list. Putting it back is
+another row, which is why the tracker is append-only.
+
+### The test that encoded the old guarantee was deleted, not adapted
+
+`tests/weekly-mechanic.test.ts` asserted that a property "is shown when something happened
+to it, and is not shown again until something else does", and the README called it the
+guarantee the whole product rests on. That guarantee is now deliberately inverted.
+
+`tests/standing-list.test.ts` replaces it and asserts the new one over the same fifty-two
+weeks: it appears in all of them, is flagged the week it is cut and not the week after,
+goes the moment the subscriber removes it, and falls off on its own when the asking price
+rises far enough that it stops being a good buy.

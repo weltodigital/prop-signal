@@ -1,19 +1,22 @@
 import type { PropertyEvent } from './events'
 
 /**
- * Whether a property belongs on a user's list this week.
+ * Whether a property belongs on a user's list.
  *
- * Two ways in, and no others:
+ * This product sources deals. A deal is good because of what it is, not
+ * because something happened to it, so the only question asked here is whether
+ * it clears the quality bar and whether the subscriber has removed it.
  *
- *   - it has never been shown to that user and scores above threshold, or
- *   - it has been shown before and a new material event has fired since it was
- *     last shown to them.
+ * That is a change from how this worked. A property used to need either a
+ * first sighting or a fresh material event to appear, which meant the best deal
+ * in an area became invisible in week two purely because it had already been
+ * seen. A sourcing product that hides its best deal is not sourcing.
  *
- * A property must never appear twice for the same event. That rule is what
- * stops the list becoming repetitive, and it is enforced twice: here, and by a
- * unique index on `deal_impressions`.
+ * So the list stands. A property stays on it while it stays good, and the
+ * events say what has changed since the subscriber last looked rather than
+ * deciding whether they get to see it at all.
  *
- * Pure. The impressions and events are read by the caller and passed in.
+ * Pure. The impressions, events and removals are read by the caller.
  */
 
 /** What we have already shown this user about this property. */
@@ -26,19 +29,34 @@ export type PriorImpression = {
 export type StoredEvent = PropertyEvent & { id: string }
 
 export type Qualification =
-  | { qualifies: true; reason: 'unseen'; event: StoredEvent | null }
-  | { qualifies: true; reason: 'new_material_event'; event: StoredEvent }
-  | { qualifies: false; reason: 'below_threshold' | 'already_shown' | 'no_new_event' }
+  | {
+      qualifies: true
+      /** New to this subscriber, or standing on the list from a previous run. */
+      reason: 'new' | 'standing'
+      /** The most recent material change, for the headline. Null where nothing has happened. */
+      event: StoredEvent | null
+      /** True where that event landed since they last saw this property. */
+      changedSinceSeen: boolean
+    }
+  | { qualifies: false; reason: 'below_quality_floor' | 'removed' }
 
 export type QualificationOptions = {
-  /** Total score a never-shown property must beat to earn a place. */
-  scoreThreshold: number
+  /**
+   * Quality a property must reach to be worth showing, out of 100.
+   *
+   * On quality alone, not on the total. Movement is a bonus for a motivated
+   * seller and cannot carry a property that does not stack — a 20% reduction on
+   * something that loses money every month is still something that loses money
+   * every month.
+   *
+   * Chosen against v5's normalised scale and never tested against real output,
+   * because the pipeline has not run. First thing to retune after it does.
+   */
+  qualityFloor: number
 }
 
 export const DEFAULT_QUALIFICATION: QualificationOptions = {
-  // Deliberately not zero. A property with no yield figure, no valuation and no
-  // movement scores close to nothing, and showing it would be padding.
-  scoreThreshold: 25,
+  qualityFloor: 50,
 }
 
 export function qualifies(
@@ -47,40 +65,41 @@ export function qualifies(
     events: StoredEvent[]
     /** Every time this property has been shown to this user. */
     impressions: PriorImpression[]
-    totalScore: number
+    /** Quality alone, out of 100. Not the total. */
+    qualityScore: number
+    /** True where the subscriber has taken this property off their list. */
+    removed: boolean
   },
   options: QualificationOptions = DEFAULT_QUALIFICATION,
 ): Qualification {
-  const { events, impressions, totalScore } = input
+  const { events, impressions, qualityScore, removed } = input
+
+  // The subscriber's own decision outranks the score. Once it is off the list
+  // it stays off, however well it scores later.
+  if (removed) return { qualifies: false, reason: 'removed' }
+
+  if (qualityScore < options.qualityFloor) {
+    return { qualifies: false, reason: 'below_quality_floor' }
+  }
+
+  const event = strongestMaterialEvent(events)
 
   if (impressions.length === 0) {
-    if (totalScore < options.scoreThreshold) {
-      return { qualifies: false, reason: 'below_threshold' }
-    }
-
-    // The strongest material event is what we lead with. On a backfill there
-    // may be none beyond first_seen, and that is a good enough reason on its own.
-    const event = strongestMaterialEvent(events)
-    return { qualifies: true, reason: 'unseen', event }
+    return { qualifies: true, reason: 'new', event, changedSinceSeen: Boolean(event) }
   }
 
+  // Something they have already seen. It stays on the list, and the only
+  // question left is whether there is anything new to say about it.
   const lastShownAt = new Date(Math.max(...impressions.map((impression) => impression.shownAt.getTime())))
-  const alreadyUsed = new Set(
-    impressions.map((impression) => impression.qualifyingEventId).filter((id): id is string => id !== null),
-  )
+  const fresh = events.filter((e) => e.isMaterial && e.observedAt > lastShownAt)
+  const newest = strongestMaterialEvent(fresh)
 
-  const fresh = events.filter(
-    (event) => event.isMaterial && event.observedAt > lastShownAt && !alreadyUsed.has(event.id),
-  )
-
-  if (!fresh.length) {
-    return { qualifies: false, reason: 'no_new_event' }
+  return {
+    qualifies: true,
+    reason: 'standing',
+    event: newest ?? event,
+    changedSinceSeen: newest !== null,
   }
-
-  const event = strongestMaterialEvent(fresh)
-  if (!event) return { qualifies: false, reason: 'no_new_event' }
-
-  return { qualifies: true, reason: 'new_material_event', event }
 }
 
 /**
@@ -141,26 +160,29 @@ export function describeEvent(event: Pick<StoredEvent, 'type' | 'magnitude'> | n
 }
 
 /**
- * How many to publish, and whether to say the week was thin.
+ * How many to publish, and what to say when there are few.
  *
- * Never pad. A short honest list builds more trust than five with two duds, and
- * the entire product is that we filtered.
+ * The list stands rather than churning, so this is a ceiling on one run's
+ * output rather than a weekly quota. Nothing is padded to reach it: a short
+ * honest list builds more trust than five with two duds, and the entire
+ * product is that we filtered.
  */
-export const WEEKLY_TARGET = 5
+export const LIST_CEILING = 25
 
-export function selectionSize(qualifyingCount: number, kind: 'backfill' | 'weekly' | 'manual'): number {
-  // The opening list draws on the whole standing inventory, and is the moment a
-  // subscriber decides whether they wasted £29. It is allowed to be longer.
-  if (kind === 'backfill') return Math.min(qualifyingCount, 15)
-  return Math.min(qualifyingCount, WEEKLY_TARGET)
+export function selectionSize(qualifyingCount: number): number {
+  return Math.min(qualifyingCount, LIST_CEILING)
 }
 
-export function thinReason(published: number, kind: 'backfill' | 'weekly' | 'manual'): string | null {
-  if (kind === 'backfill' || published >= WEEKLY_TARGET) return null
+/**
+ * Said when an area is not producing much, so a short list reads as a finding
+ * rather than as the product being broken.
+ */
+export function thinReason(published: number): string | null {
+  if (published >= 3) return null
 
   if (published === 0) {
-    return 'Nothing in your area moved enough to qualify this week. Rather than pad the list, we have shown you none.'
+    return 'Nothing in your area clears the bar at the moment. Rather than pad the list with deals that do not stack, we have shown you none.'
   }
 
-  return `Only ${published} ${published === 1 ? 'property' : 'properties'} qualified this week. The rest of your area did not move enough to be worth your time.`
+  return `Only ${published} ${published === 1 ? 'property' : 'properties'} in your area clears the bar at the moment. The rest do not stack, so they are not here.`
 }

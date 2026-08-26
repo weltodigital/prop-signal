@@ -6,10 +6,15 @@ import type { PropertyEvent } from './events'
 /**
  * Scoring. Pure functions, versioned weights, no LLM anywhere in this path.
  *
- * Two scores, each on 0..100, added into a 0..200 total. Quality asks whether
- * the property makes money. Movement asks how hard and how recently it moved.
- * A mediocre property that just dropped 12% can outrank a good one that has not
- * moved, which is the whole premise of the product.
+ * Two scores. Quality asks whether the property makes money, on 0..100.
+ * Movement asks how hard and how recently the seller moved, also on 0..100, and
+ * then counts for half.
+ *
+ * That weighting is the product. This sources deals, and a deal is good because
+ * of what it is rather than because something happened to it. A great property
+ * listed yesterday has no movement at all and must still be able to lead the
+ * list, so movement is a bonus for a motivated seller rather than half the
+ * answer. Totals run 0..150.
  *
  * Quality cannot be scored one property at a time, because cashflow is ranked
  * against the rest of the run. So it comes in two phases: `measureQuality` per
@@ -19,7 +24,7 @@ import type { PropertyEvent } from './events'
  * version, and old scores stay readable as what they were.
  */
 
-export const SCORE_VERSION = 'v4'
+export const SCORE_VERSION = 'v5'
 
 export type Weights = {
   quality: {
@@ -50,9 +55,7 @@ export type Weights = {
 
 /**
  * Quality sums to 100 and is then normalised over the factors actually held.
- * Movement sums to 85 and is scaled to 100, which is how the reduction and
- * stale weights can be 35 and 10 without the two scores having different
- * ceilings. Equal ceilings are what stop either dominating by construction.
+ * Movement sums to 85 and is scaled to 100 before being halved into the total.
  */
 export const DEFAULT_WEIGHTS: Weights = {
   quality: { strategyReturn: 40, comparables: 30, demand: 15, condition: 15 },
@@ -76,11 +79,11 @@ const MOVEMENT_TOTAL = 85
 export const MIN_QUALITY_FACTORS = 3
 
 /**
- * What a property capped by a risk can reach, out of 200.
+ * What a property capped by a risk can reach, out of 150.
  *
  * Enough to appear on a thin week, not enough to lead a real one.
  */
-export const RISK_CAPPED_TOTAL = 120
+export const RISK_CAPPED_TOTAL = 90
 
 export type Factor = {
   /** Plain English, shown to the user. */
@@ -582,26 +585,39 @@ export type RankedCandidate<T> = {
   candidate: T
   quality: Score
   movement: Score
-  /** Quality plus movement, on 0..200, after any risk cap. */
+  /** Quality plus half of movement, on 0..150, after any risk cap. */
   total: number
   /** Set where a risk held the total below what the factors earned. */
   cappedBy: string | null
 }
 
 /**
+ * What a movement score is worth in the total.
+ *
+ * Half. A seller who has cut twice and sat unsold for a year is telling you
+ * something worth knowing, and it is not worth as much as the property being a
+ * good buy in the first place. At parity a mediocre property that moved beat an
+ * excellent one that had not, which is the wrong answer for a product that
+ * sources deals rather than reports news.
+ */
+export const MOVEMENT_SHARE = 0.5
+
+/** The most a property can total: 100 of quality and 50 of movement. */
+export const MAX_TOTAL = 150
+
+/**
  * Combines the two scores and orders the result.
  *
- * Straight addition of two 0..100 scores, so the total runs 0..200 and the two
- * halves carry equal weight. A weighted blend would let a good-but-static
- * property beat a mediocre one that just dropped twelve per cent, and that is
- * precisely the outcome this product exists to avoid.
+ * Quality in full, movement at half. A property listed yesterday can reach 100
+ * of 150 on its own merits; movement is what separates two good deals rather
+ * than what earns a place.
  */
 export function rank<T>(
   scored: Array<{ candidate: T; quality: Score; movement: Score; risks?: readonly Risk[] }>,
 ): Array<RankedCandidate<T>> {
   return scored
     .map((entry) => {
-      const earned = round(entry.quality.score + entry.movement.score)
+      const earned = round(entry.quality.score + entry.movement.score * MOVEMENT_SHARE)
       const capping = entry.risks?.find((risk) => risk.severity === 'cap')
 
       return {

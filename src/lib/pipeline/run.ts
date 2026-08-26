@@ -112,6 +112,8 @@ export type RunSummary = {
   candidatesRiskExcluded: number
   /** Dropped for holding too few quality factors to rank honestly. */
   candidatesThinData: number
+  /** Left out because the subscriber removed them from their list. */
+  candidatesRemoved: number
   dealsSelected: number
   creditsSpent: number
   cacheHits: number
@@ -218,6 +220,7 @@ export async function runProfile(options: {
     eventsWritten: 0,
     candidatesRiskExcluded: 0,
     candidatesThinData: 0,
+    candidatesRemoved: 0,
     dealsSelected: 0,
     creditsSpent: 0,
     cacheHits: 0,
@@ -308,6 +311,10 @@ export async function runProfile(options: {
 
     // --- 5. Score, qualify, rank -------------------------------------------
     const history = await loadHistory(supabase, profile.owner_id, [...propertyIds.values()])
+
+    // Properties the subscriber has taken off their list. Their decision
+    // outranks the score, and it holds until they put it back.
+    const removed = await loadRemovals(supabase, profile.owner_id)
 
     const areaContext = {
       soldPricePerSqFt: area.sold.averagePricePerSqFt,
@@ -427,10 +434,20 @@ export async function runProfile(options: {
       const best = perStrategy.reduce((winner, entry) => (entry.total > winner.total ? entry : winner))
 
       const verdict = qualifies(
-        { events: entry.events, impressions: entry.impressions, totalScore: best.total },
+        {
+          events: entry.events,
+          impressions: entry.impressions,
+          // The quality floor is on quality alone. A 20% reduction on something
+          // that loses money every month is still something that loses money.
+          qualityScore: best.quality.score,
+          removed: removed.has(entry.propertyId),
+        },
         DEFAULT_QUALIFICATION,
       )
-      if (!verdict.qualifies) return []
+      if (!verdict.qualifies) {
+        if (verdict.reason === 'removed') summary.candidatesRemoved += 1
+        return []
+      }
 
       return [
         {
@@ -457,8 +474,7 @@ export async function runProfile(options: {
     })
 
     const ranked = rank(scored)
-    const take = selectionSize(ranked.length, kind)
-    const selected = ranked.slice(0, take)
+    const selected = ranked.slice(0, selectionSize(ranked.length))
 
     // --- 6. Publish --------------------------------------------------------
     await publish(supabase, {
@@ -523,6 +539,7 @@ export async function runProfile(options: {
     // to explain, and these say whether the filter or the data did it.
     candidates_risk_excluded: summary.candidatesRiskExcluded,
     candidates_thin_data: summary.candidatesThinData,
+    candidates_removed: summary.candidatesRemoved,
     deals_selected: summary.dealsSelected,
     credits_spent: summary.creditsSpent,
     cache_hits: summary.cacheHits,
@@ -917,6 +934,34 @@ async function persistEnrichment(
 // History and publishing
 // ---------------------------------------------------------------------------
 
+/**
+ * Properties this subscriber has taken off their list.
+ *
+ * Removal is the `passed` stage of deal_progress rather than a table of its
+ * own. Marking a property passed and removing it from the list are the same
+ * decision, and two mechanisms for one decision is how they drift apart.
+ */
+async function loadRemovals(supabase: SupabaseClient, ownerId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('deal_progress')
+    .select('property_id, stage, entered_at')
+    .eq('owner_id', ownerId)
+    .order('entered_at', { ascending: false })
+
+  if (error) {
+    log('removals_read_failed', { owner_id: ownerId, message: error.message })
+    return new Set()
+  }
+
+  // Newest row per property wins, so putting one back on the list works.
+  const newest = new Map<string, string>()
+  for (const row of data ?? []) {
+    if (!newest.has(row.property_id)) newest.set(row.property_id, row.stage)
+  }
+
+  return new Set([...newest.entries()].filter(([, stage]) => stage === 'passed').map(([id]) => id))
+}
+
 async function loadHistory(
   supabase: SupabaseClient,
   ownerId: string,
@@ -968,7 +1013,7 @@ type SelectedCandidate = {
   candidate: {
     listing: Listing
     propertyId: string
-    verdict: { event: StoredEvent | null }
+    verdict: { event: StoredEvent | null; changedSinceSeen: boolean }
     epc: { rating: string; score: number | null } | null
     councilTaxBand: string | null
     risks: Array<{ label: string; detail: string; severity: string }>
@@ -1001,6 +1046,7 @@ async function publish(
       run_id: runId,
       shown_at: observedAt.toISOString(),
       qualifying_event_id: entry.candidate.verdict.event?.id ?? null,
+      changed_since_seen: entry.candidate.verdict.changedSinceSeen,
       position: index + 1,
       quality_score: entry.quality.score,
       movement_score: entry.movement.score,
@@ -1045,7 +1091,7 @@ async function publish(
       week_of: weekOf(observedAt),
       deal_count: published,
       is_thin: thin,
-      thin_reason: thinReason(published, kind),
+      thin_reason: thinReason(published),
     },
     { onConflict: 'owner_id,run_id' },
   )

@@ -1,12 +1,21 @@
 # Prop Signal
 
-A £29/month subscription for UK landlords and property investors. Pick an area and a
-strategy, and every Monday morning five properties are waiting in the dashboard, each
-with the numbers stacked and a stated reason it is on the list this week.
+A £29/month deal sourcing subscription for UK landlords and property investors. Tell it
+where you buy and how you make your money, and it sources the best deals in that area
+against those criteria, scores them, and keeps them in front of you.
 
-The five are event-driven, not listing-driven. What has *moved* — reduced twice, back
-on after a fall-through, 140 days unsold — beats what merely appeared. That comes from
-our own week-on-week diffing.
+**A deal earns its place by being a good deal.** Not by having been cut last Tuesday and
+not by being new this morning. A property listed yesterday and one listed eight months
+ago are judged the same way, and whichever is the better buy ranks higher.
+
+Movement still counts. A seller who has reduced twice and sat unsold for a year is
+telling you something worth knowing, so it is worth up to half again on top of the
+quality score. It is never a way in: a property that does not stack is not shown however
+hard the seller has moved.
+
+**The list stands.** A good deal does not stop being one because you saw it last week, so
+it stays on your list until you buy it, it sells, or you say it is not for you. What has
+changed since you last looked is flagged rather than being the reason anything appears.
 
 ## Where the build has got to
 
@@ -422,21 +431,41 @@ overspending. Actuals are logged per run and stored on `pipeline_runs`.
 
 ### The core mechanic
 
-Every run diffs against the last one and writes events. Events are permanent, dated, and
-marked as historical observations. A property qualifies for a user's five when either it
-has never been shown to them and scores above threshold, or a new material event has
-fired since it was last shown to them.
+Every run scores every property in the subscriber's area against every strategy they
+run, and keeps the ones that clear the quality floor. Two rules decide the list:
 
+1. **Quality alone decides whether a property appears.** Out of 100, normalised over the
+   factors held, against a floor in `DEFAULT_QUALIFICATION.qualityFloor`. Movement takes
+   no part in this. A 20% reduction on something that loses money every month is still
+   something that loses money every month.
+2. **The subscriber decides what leaves.** Marking a property as not for you takes it off
+   the list for good, however well it scores later. Nothing else removes it.
+
+Runs still diff against the last one and write events, because the events are what say
+*what changed*. Events are permanent, dated, and marked as historical observations.
 Material means a price reduction of at least 5%, a return to market, or crossing a
 days-on-market mark. A £500 trim on a £250,000 house is recorded and is not material.
-Going under offer is recorded and is not material — it is going, not coming.
+Going under offer is recorded and is not material, because it is going rather than
+coming.
 
-`deal_impressions` records what was shown and the event that justified it, with a unique
-index on `(owner_id, property_id, qualifying_event_id)`. That is what stops the same
-property returning on the strength of a move it was already shown for.
+`deal_impressions` records the list as it stood in each run, one row per property per
+run, with `changed_since_seen` marking anything whose qualifying event landed since that
+subscriber last saw it.
 
-`tests/weekly-mechanic.test.ts` runs fifty-two weeks against one property and asserts it
-appears exactly when something happened to it.
+`tests/standing-list.test.ts` runs fifty-two weeks against one property and asserts it
+appears in all fifty-two, is flagged the week it is reduced and not the week after,
+disappears the moment the subscriber removes it, and falls off on its own if the asking
+price rises far enough that it stops being a good buy.
+
+#### What this replaced, and why
+
+Until v5 a property needed either a first sighting or a fresh material event to appear,
+and `deal_impressions` carried a unique index enforcing "never twice for the same event".
+That made the best deal in an area invisible from week two, purely because the subscriber
+had already seen it. A sourcing product that hides its best deal is not sourcing.
+
+Movement also used to be half the total. At parity a mediocre property that had dropped
+12% beat an excellent one listed yesterday, which is the wrong answer for this product.
 
 ### Area-level enrichment
 
@@ -505,11 +534,22 @@ ceilings are what stop either dominating by construction.
 | Slow to sell | 10 | 60 → 365 days |
 | Recency | 15 | Moved today → 28 days ago |
 
-**The total is quality plus movement, on 0 to 200.** Straight addition, so a mediocre
-property that just dropped twelve per cent can outrank a good one that has not moved.
-A tie goes to the one that moved. The qualification threshold of 25 is 25 of that 200,
-and it applies only to a property that has never been shown to this subscriber — one
-that has needs a new material event instead, whatever it scores.
+**The total is quality in full plus half of movement, on 0 to 150.** A property listed
+yesterday has no movement and never will have, so it can still reach 100 of 150 on its
+own merits. Movement separates two comparable deals rather than earning a place.
+
+At parity the two used to be equal, which meant a mediocre property that had dropped
+twelve per cent beat an excellent one listed yesterday. That is the wrong answer for a
+product that sources deals rather than reports news.
+
+**Whether a property appears is decided on quality alone**, against the floor in
+`DEFAULT_QUALIFICATION.qualityFloor`, currently 50 of 100. Movement takes no part in it.
+The floor was chosen against v5's normalised scale and has never been tested against real
+output, because the pipeline has not run. It is the first thing to retune after it does.
+
+One wrinkle worth knowing: 40 of the 100 quality points come from a percentile against
+the rest of the run, so the floor is partly relative. A lone candidate scores 0.5 on that
+factor by definition, which leaves the other 60 points to carry it over the floor.
 
 #### The strategy decides what the 40 points measure
 

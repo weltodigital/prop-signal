@@ -1,208 +1,156 @@
+/**
+ * Who gets on the list.
+ *
+ * The rule this product now holds to: a property is on the list because it is
+ * a good deal, and it stays there until the subscriber removes it. Events say
+ * what has changed since they last looked. They do not decide who appears.
+ *
+ * This file used to assert the opposite, and the difference is the product.
+ */
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_QUALIFICATION,
-  describeEvent,
   qualifies,
   selectionSize,
-  strongestMaterialEvent,
   thinReason,
-  WEEKLY_TARGET,
+  LIST_CEILING,
   type PriorImpression,
   type StoredEvent,
 } from '@/lib/pipeline/qualification'
 
-const WEEK_1 = new Date('2026-06-01T22:00:00.000Z')
-const WEEK_2 = new Date('2026-06-08T22:00:00.000Z')
-const WEEK_3 = new Date('2026-06-15T22:00:00.000Z')
+const NOW = new Date('2026-08-26T00:00:00.000Z')
+const FLOOR = DEFAULT_QUALIFICATION.qualityFloor
 
 function event(overrides: Partial<StoredEvent> = {}): StoredEvent {
   return {
-    id: `event-${Math.random().toString(36).slice(2, 8)}`,
+    id: 'e1',
     type: 'price_reduced',
-    observedAt: WEEK_2,
-    previousValue: { price: 250_000 },
-    currentValue: { price: 220_000 },
+    observedAt: NOW,
+    previousValue: null,
+    currentValue: null,
     magnitude: -12,
     isMaterial: true,
-    dedupeKey: 'price:250000:220000',
+    dedupeKey: 'k',
     ...overrides,
   }
 }
 
-function impression(overrides: Partial<PriorImpression> = {}): PriorImpression {
-  return { shownAt: WEEK_1, qualifyingEventId: null, ...overrides }
+function shownAt(date: string, qualifyingEventId: string | null = null): PriorImpression {
+  return { shownAt: new Date(date), qualifyingEventId }
 }
 
-describe('a property the user has never been shown', () => {
-  it('qualifies when it scores above the threshold', () => {
-    const verdict = qualifies({ events: [event()], impressions: [], totalScore: 60 })
+describe('a deal is on the list because it is a good deal', () => {
+  it('takes a property that has never moved, if the quality is there', () => {
+    // The case the old rule handled badly: listed yesterday, nothing has
+    // happened to it, and it is an excellent buy.
+    const verdict = qualifies({ events: [], impressions: [], qualityScore: 90, removed: false })
 
     expect(verdict.qualifies).toBe(true)
-    expect(verdict).toMatchObject({ reason: 'unseen' })
+    expect(verdict).toMatchObject({ reason: 'new' })
   })
 
-  it('does not qualify when it scores below it', () => {
-    const verdict = qualifies({ events: [event()], impressions: [], totalScore: 10 })
-
-    expect(verdict.qualifies).toBe(false)
-    expect(verdict).toMatchObject({ reason: 'below_threshold' })
-  })
-
-  it('has a threshold above zero, so a property with nothing behind it is not padding', () => {
-    expect(DEFAULT_QUALIFICATION.scoreThreshold).toBeGreaterThan(0)
-  })
-})
-
-describe('a property the user has already been shown', () => {
-  it('does not come back on the strength of the event it was shown for', () => {
-    const shown = event({ id: 'event-1', observedAt: WEEK_1 })
+  it('keeps it there next week, with nothing new having happened', () => {
+    // The whole point. A sourcing product that hides its best deal because you
+    // already saw it is not sourcing.
     const verdict = qualifies({
-      events: [shown],
-      impressions: [impression({ shownAt: WEEK_1, qualifyingEventId: 'event-1' })],
-      totalScore: 90,
-    })
-
-    expect(verdict.qualifies).toBe(false)
-    expect(verdict).toMatchObject({ reason: 'no_new_event' })
-  })
-
-  it('comes back when a new material event fires after it was last shown', () => {
-    const old = event({ id: 'event-1', observedAt: WEEK_1 })
-    const fresh = event({ id: 'event-2', observedAt: WEEK_2, dedupeKey: 'price:220000:200000' })
-
-    const verdict = qualifies({
-      events: [old, fresh],
-      impressions: [impression({ shownAt: WEEK_1, qualifyingEventId: 'event-1' })],
-      totalScore: 90,
+      events: [],
+      impressions: [shownAt('2026-08-01')],
+      qualityScore: 90,
+      removed: false,
     })
 
     expect(verdict.qualifies).toBe(true)
-    expect(verdict).toMatchObject({ reason: 'new_material_event' })
-    if (verdict.qualifies && verdict.reason === 'new_material_event') {
-      expect(verdict.event.id).toBe('event-2')
-    }
+    expect(verdict).toMatchObject({ reason: 'standing', changedSinceSeen: false })
   })
 
-  it('does not come back on an event that fired before it was last shown', () => {
-    const stale = event({ id: 'event-2', observedAt: WEEK_1 })
+  it('refuses a property that does not stack, however hard the seller moved', () => {
+    // Movement is a bonus, not a way in. A 20% cut on something that loses
+    // money every month is still something that loses money every month.
     const verdict = qualifies({
-      events: [stale],
-      impressions: [impression({ shownAt: WEEK_2, qualifyingEventId: 'event-1' })],
-      totalScore: 90,
+      events: [event({ magnitude: -20 })],
+      impressions: [],
+      qualityScore: FLOOR - 1,
+      removed: false,
     })
 
     expect(verdict.qualifies).toBe(false)
+    expect(verdict).toMatchObject({ reason: 'below_quality_floor' })
   })
 
-  it('does not come back on an immaterial event, however recent', () => {
-    const trivial = event({ id: 'event-2', observedAt: WEEK_3, isMaterial: false })
-    const verdict = qualifies({
-      events: [trivial],
-      impressions: [impression({ shownAt: WEEK_2, qualifyingEventId: 'event-1' })],
-      totalScore: 90,
-    })
+  it('takes it at exactly the floor', () => {
+    expect(qualifies({ events: [], impressions: [], qualityScore: FLOOR, removed: false }).qualifies).toBe(true)
+  })
+})
+
+describe('the subscriber decides what leaves', () => {
+  it('drops a property they removed, however well it scores', () => {
+    const verdict = qualifies({ events: [], impressions: [], qualityScore: 100, removed: true })
 
     expect(verdict.qualifies).toBe(false)
-    expect(verdict).toMatchObject({ reason: 'no_new_event' })
+    expect(verdict).toMatchObject({ reason: 'removed' })
   })
 
-  it('ignores the score once it has been shown before — the event is the reason', () => {
-    const fresh = event({ id: 'event-2', observedAt: WEEK_3 })
+  it('checks removal before the score, so the reason is theirs and not ours', () => {
+    const verdict = qualifies({ events: [], impressions: [], qualityScore: 0, removed: true })
+    expect(verdict).toMatchObject({ reason: 'removed' })
+  })
+})
+
+describe('events say what changed, not who appears', () => {
+  it('marks a property whose event landed since it was last shown', () => {
     const verdict = qualifies({
-      events: [fresh],
-      impressions: [impression({ shownAt: WEEK_2, qualifyingEventId: 'event-1' })],
-      totalScore: 1,
+      events: [event({ observedAt: new Date('2026-08-20') })],
+      impressions: [shownAt('2026-08-01')],
+      qualityScore: 80,
+      removed: false,
     })
 
-    expect(verdict.qualifies).toBe(true)
+    expect(verdict).toMatchObject({ qualifies: true, reason: 'standing', changedSinceSeen: true })
   })
 
-  it('never uses the same event twice even if it fired after the last impression', () => {
-    // Guards the case where a run repeats: the event id is already spent.
-    const reused = event({ id: 'event-2', observedAt: WEEK_3 })
+  it('does not mark one whose only event predates the last time they saw it', () => {
     const verdict = qualifies({
-      events: [reused],
-      impressions: [
-        impression({ shownAt: WEEK_1, qualifyingEventId: 'event-1' }),
-        impression({ shownAt: WEEK_2, qualifyingEventId: 'event-2' }),
-      ],
-      totalScore: 90,
+      events: [event({ observedAt: new Date('2026-07-01') })],
+      impressions: [shownAt('2026-08-01')],
+      qualityScore: 80,
+      removed: false,
     })
 
-    expect(verdict.qualifies).toBe(false)
+    expect(verdict).toMatchObject({ qualifies: true, changedSinceSeen: false })
+  })
+
+  it('leads with the strongest material event either way', () => {
+    const verdict = qualifies({
+      events: [event({ id: 'small', magnitude: -6 }), event({ id: 'big', magnitude: -18 })],
+      impressions: [],
+      qualityScore: 80,
+      removed: false,
+    })
+
+    expect(verdict.qualifies && verdict.event?.id).toBe('big')
+  })
+
+  it('ignores an immaterial event when choosing the headline', () => {
+    const verdict = qualifies({
+      events: [event({ id: 'trim', magnitude: -0.2, isMaterial: false })],
+      impressions: [],
+      qualityScore: 80,
+      removed: false,
+    })
+
+    expect(verdict.qualifies && verdict.event).toBeNull()
   })
 })
 
-describe('which event to lead with', () => {
-  it('prefers a return to market over a reduction', () => {
-    const chosen = strongestMaterialEvent([
-      event({ id: 'a', type: 'price_reduced', magnitude: -20 }),
-      event({ id: 'b', type: 'returned_to_market', magnitude: null }),
-    ])
-
-    expect(chosen?.id).toBe('b')
+describe('how many are published', () => {
+  it('caps one run rather than enforcing a weekly quota', () => {
+    expect(selectionSize(3)).toBe(3)
+    expect(selectionSize(100)).toBe(LIST_CEILING)
   })
 
-  it('prefers a reduction over a days-on-market crossing', () => {
-    const chosen = strongestMaterialEvent([
-      event({ id: 'a', type: 'days_on_market_crossed', magnitude: 365 }),
-      event({ id: 'b', type: 'price_reduced', magnitude: -6 }),
-    ])
-
-    expect(chosen?.id).toBe('b')
-  })
-
-  it('prefers the bigger move within a type', () => {
-    const chosen = strongestMaterialEvent([
-      event({ id: 'a', type: 'price_reduced', magnitude: -6 }),
-      event({ id: 'b', type: 'price_reduced', magnitude: -18 }),
-    ])
-
-    expect(chosen?.id).toBe('b')
-  })
-
-  it('ignores events that are not material', () => {
-    expect(strongestMaterialEvent([event({ isMaterial: false })])).toBeNull()
-  })
-})
-
-describe('the headline', () => {
-  it.each([
-    ['returned_to_market', null, 'Back on the market'],
-    ['price_reduced', -12.4, 'Reduced 12%'],
-    ['price_reduced', -6.25, 'Reduced 6.3%'],
-    ['days_on_market_crossed', 140, '140 days unsold'],
-    ['first_seen', null, 'New to your area'],
-  ] as const)('describes %s as %s', (type, magnitude, expected) => {
-    expect(describeEvent(event({ type, magnitude }))).toBe(expected)
-  })
-
-  it('has something to say when there is no event at all', () => {
-    expect(describeEvent(null)).toBe('New to your area')
-  })
-})
-
-describe('thin weeks', () => {
-  it('publishes five in an ordinary week', () => {
-    expect(selectionSize(20, 'weekly')).toBe(WEEKLY_TARGET)
-  })
-
-  it('publishes fewer rather than padding', () => {
-    expect(selectionSize(2, 'weekly')).toBe(2)
-    expect(selectionSize(0, 'weekly')).toBe(0)
-  })
-
-  it('lets the opening backfill be longer than five', () => {
-    expect(selectionSize(40, 'backfill')).toBeGreaterThan(WEEKLY_TARGET)
-  })
-
-  it('says so when the week was thin', () => {
-    expect(thinReason(2, 'weekly')).toContain('Only 2')
-    expect(thinReason(0, 'weekly')).toContain('Nothing in your area')
-  })
-
-  it('says nothing when the week was full, or when it was the backfill', () => {
-    expect(thinReason(5, 'weekly')).toBeNull()
-    expect(thinReason(3, 'backfill')).toBeNull()
+  it('explains a short list rather than padding it', () => {
+    expect(thinReason(0)).toMatch(/rather than pad/i)
+    expect(thinReason(1)).toMatch(/do not stack/i)
+    expect(thinReason(5)).toBeNull()
   })
 })
