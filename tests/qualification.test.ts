@@ -14,6 +14,7 @@ import {
   selectionSize,
   thinReason,
   LIST_CEILING,
+  OPENING_LIST,
   type PriorImpression,
   type StoredEvent,
 } from '@/lib/pipeline/qualification'
@@ -146,6 +147,17 @@ describe('how many are published', () => {
   it('caps one run rather than enforcing a weekly quota', () => {
     expect(selectionSize(3)).toBe(3)
     expect(selectionSize(100)).toBe(LIST_CEILING)
+  })
+
+  it('keeps the opening list to five', () => {
+    // The moment somebody decides whether they wasted £29. Five they can act
+    // on beats twenty-five they have to triage.
+    expect(selectionSize(100, 'backfill')).toBe(OPENING_LIST)
+    expect(OPENING_LIST).toBe(5)
+  })
+
+  it('publishes fewer than five on a backfill that found fewer', () => {
+    expect(selectionSize(2, 'backfill')).toBe(2)
   })
 
   it('explains a short list rather than padding it', () => {

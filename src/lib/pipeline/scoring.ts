@@ -329,7 +329,6 @@ const RETURN_LABELS: Record<InvestmentStrategy, string> = {
   btl: 'Monthly cashflow',
   hmo: 'Monthly cashflow as an HMO',
   brrr: 'Money back out on refinance',
-  r2sa: 'Monthly cashflow as a short let',
 }
 
 /**

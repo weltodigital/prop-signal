@@ -109,11 +109,7 @@ function readAssumptions(stored: unknown): StrategyAssumptions {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null
   }
 
-  return {
-    refurbCostPerSqFt: positive(record.refurbCostPerSqFt),
-    nightlyRate: positive(record.nightlyRate),
-    occupancyPercent: positive(record.occupancyPercent),
-  }
+  return { refurbCostPerSqFt: positive(record.refurbCostPerSqFt) }
 }
 
 export const searchProfileSchema = z
@@ -138,18 +134,7 @@ export const searchProfileSchema = z
       .min(1, 'Choose at least one strategy.')
       .transform((value) => [...new Set(value)].filter(isInvestmentStrategy))
       .refine((value) => value.length > 0, 'Choose at least one strategy we can score.'),
-    assumptions: z.object({
-      refurbCostPerSqFt: optionalMoney,
-      nightlyRate: optionalMoney,
-      occupancyPercent: z
-        .string()
-        .trim()
-        .transform((value) => (value === '' ? null : Number(value)))
-        .refine(
-          (value) => value === null || (Number.isFinite(value) && value > 0 && value <= 100),
-          'Occupancy is a percentage between 1 and 100.',
-        ),
-    }),
+    assumptions: z.object({ refurbCostPerSqFt: optionalMoney }),
     minPrice: optionalMoney,
     maxPrice: optionalMoney,
     minBedrooms: z

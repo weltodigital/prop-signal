@@ -8,7 +8,7 @@ function form(overrides: Record<string, unknown> = {}) {
     radiusMiles: '10',
     sourcingLists: ['reduced-properties'],
     investmentStrategies: ['btl'],
-    assumptions: { refurbCostPerSqFt: '', nightlyRate: '', occupancyPercent: '' },
+    assumptions: { refurbCostPerSqFt: '' },
     minPrice: '',
     maxPrice: '',
     minBedrooms: '',
@@ -117,9 +117,14 @@ describe('limits', () => {
 })
 
 describe('investment strategies', () => {
-  it('takes the four the pipeline can score', () => {
-    const result = searchProfileSchema.safeParse(form({ investmentStrategies: ['btl', 'hmo', 'brrr', 'r2sa'] }))
-    expect(result.data?.investmentStrategies).toEqual(['btl', 'hmo', 'brrr', 'r2sa'])
+  it('takes the three the pipeline can score', () => {
+    const result = searchProfileSchema.safeParse(form({ investmentStrategies: ['btl', 'hmo', 'brrr'] }))
+    expect(result.data?.investmentStrategies).toEqual(['btl', 'hmo', 'brrr'])
+  })
+
+  it('drops serviced accommodation, which is no longer offered', () => {
+    const result = searchProfileSchema.safeParse(form({ investmentStrategies: ['btl', 'r2sa'] }))
+    expect(result.data?.investmentStrategies).toEqual(['btl'])
   })
 
   it('drops one this build cannot score rather than storing it', () => {
@@ -133,16 +138,13 @@ describe('investment strategies', () => {
     expect(searchProfileSchema.safeParse(form({ investmentStrategies: ['rent-to-rent'] })).success).toBe(false)
   })
 
-  it('takes the figures we do not hold, and refuses an impossible occupancy', () => {
-    const good = searchProfileSchema.safeParse(
-      form({ assumptions: { refurbCostPerSqFt: '65', nightlyRate: '110', occupancyPercent: '70' } }),
-    )
-    expect(good.data?.assumptions.refurbCostPerSqFt).toBe(65)
-    expect(good.data?.assumptions.occupancyPercent).toBe(70)
+  it('takes the refurb figure we do not hold', () => {
+    const parsed = searchProfileSchema.safeParse(form({ assumptions: { refurbCostPerSqFt: '65' } }))
+    expect(parsed.data?.assumptions.refurbCostPerSqFt).toBe(65)
+  })
 
-    const bad = searchProfileSchema.safeParse(
-      form({ assumptions: { refurbCostPerSqFt: '', nightlyRate: '', occupancyPercent: '140' } }),
-    )
-    expect(bad.success).toBe(false)
+  it('leaves it null when it is not needed', () => {
+    const parsed = searchProfileSchema.safeParse(form({ assumptions: { refurbCostPerSqFt: '' } }))
+    expect(parsed.data?.assumptions.refurbCostPerSqFt).toBeNull()
   })
 })

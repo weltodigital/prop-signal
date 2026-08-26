@@ -114,48 +114,15 @@ describe('BRRR', () => {
   })
 })
 
-describe('serviced accommodation', () => {
-  it('uses the subscriber own nightly rate and occupancy, and says so', () => {
-    const result = strategyReturn(
-      'r2sa',
-      listing(),
-      1_100,
-      EMPTY_STRATEGY_AREA,
-      assumptions({ nightlyRate: 120, occupancyPercent: 70 }),
-    )
-
-    expect(result.value).not.toBeNull()
-    expect(result.detail).toMatch(/your own figures/i)
-  })
-
-  it('refuses to score with only half of them', () => {
-    const result = strategyReturn(
-      'r2sa',
-      listing(),
-      1_100,
-      EMPTY_STRATEGY_AREA,
-      assumptions({ nightlyRate: 120 }),
-    )
-    expect(result.value).toBeNull()
-  })
-
-  it('falls with occupancy', () => {
-    const busy = strategyReturn('r2sa', listing(), null, EMPTY_STRATEGY_AREA, assumptions({ nightlyRate: 120, occupancyPercent: 80 }))
-    const quiet = strategyReturn('r2sa', listing(), null, EMPTY_STRATEGY_AREA, assumptions({ nightlyRate: 120, occupancyPercent: 40 }))
-
-    expect(busy.value).toBeGreaterThan(quiet.value!)
-  })
-})
-
 describe('every strategy', () => {
   it('refuses to score a property with no asking price', () => {
-    for (const strategy of ['btl', 'hmo', 'brrr', 'r2sa'] as const) {
+    for (const strategy of ['btl', 'hmo', 'brrr'] as const) {
       const result = strategyReturn(
         strategy,
         listing({ price: null }),
         1_100,
         { hmoRoomRatePerMonth: 550, developmentGdvPerSqFt: 320 },
-        assumptions({ refurbCostPerSqFt: 60, nightlyRate: 120, occupancyPercent: 70 }),
+        assumptions({ refurbCostPerSqFt: 60 }),
       )
       expect(result.value, strategy).toBeNull()
     }

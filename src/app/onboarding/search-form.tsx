@@ -52,7 +52,6 @@ export function SearchForm({
     profile?.investmentStrategies ?? ['btl'],
   )
   const needsRefurb = strategies.includes('brrr')
-  const needsNightly = strategies.includes('r2sa')
 
   const [showOptional, setShowOptional] = useState(
     Boolean(profile?.minPrice || profile?.maxPrice || profile?.minBedrooms || profile?.propertyTypes?.length),
@@ -157,14 +156,14 @@ export function SearchForm({
         </fieldset>
         <FieldError message={errors.investmentStrategies} />
 
-        {needsRefurb || needsNightly ? (
+        {needsRefurb ? (
           <div className="mt-6 space-y-5 rounded-md border border-line bg-paper p-4">
             <div>
-              <p className="text-sm font-medium">Your own figures</p>
+              <p className="text-sm font-medium">Your own figure</p>
               <p className="mt-1 text-sm text-muted">
-                We do not hold these and will not guess them. PropertyData publish no refurbishment cost and no
-                nightly rate, and an assumed average inside a score is the thing this product refuses everywhere
-                else. You know your own numbers better than any data feed does.
+                We do not hold this and will not guess it. PropertyData price building from nothing, and what
+                fraction of that a refurbishment costs is an assumed average inside a score, which is the thing this
+                product refuses everywhere else. You know your own build costs better than any data feed does.
               </p>
             </div>
 
@@ -188,41 +187,6 @@ export function SearchForm({
               </div>
             ) : null}
 
-            {needsNightly ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="nightlyRate" className="block text-sm font-medium">
-                    Nightly rate
-                  </label>
-                  <input
-                    id="nightlyRate"
-                    name="nightlyRate"
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    defaultValue={profile?.assumptions.nightlyRate ?? ''}
-                    className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                    placeholder="110"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="occupancyPercent" className="block text-sm font-medium">
-                    Occupancy, %
-                  </label>
-                  <input
-                    id="occupancyPercent"
-                    name="occupancyPercent"
-                    type="number"
-                    min="1"
-                    max="100"
-                    inputMode="numeric"
-                    defaultValue={profile?.assumptions.occupancyPercent ?? ''}
-                    className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                    placeholder="65"
-                  />
-                </div>
-              </div>
-            ) : null}
           </div>
         ) : null}
       </Card>

@@ -11,7 +11,7 @@
  * nothing here reads the database or spends a credit.
  */
 
-export const INVESTMENT_STRATEGIES = ['btl', 'hmo', 'brrr', 'r2sa'] as const
+export const INVESTMENT_STRATEGIES = ['btl', 'hmo', 'brrr'] as const
 export type InvestmentStrategy = (typeof INVESTMENT_STRATEGIES)[number]
 
 export function isInvestmentStrategy(value: string): value is InvestmentStrategy {
@@ -22,25 +22,17 @@ export function isInvestmentStrategy(value: string): value is InvestmentStrategy
  * Figures the subscriber supplies, because we do not hold them and will not
  * invent them.
  *
- * Every one of these is a number the investor knows better than any API does.
- * A refurbishment costs what their builder charges, and a short let achieves
- * what their own listing achieves. The alternative to asking is an assumed
- * average buried inside a score, which is the thing this product refuses
- * everywhere else.
+ * A refurbishment costs what their builder charges. The alternative to asking
+ * is an assumed average buried inside a score, which is the thing this product
+ * refuses everywhere else.
  */
 export type StrategyAssumptions = {
   /** BRRR. Works, per square foot of internal area. */
   refurbCostPerSqFt: number | null
-  /** R2SA. What a night goes for locally, in pounds. */
-  nightlyRate: number | null
-  /** R2SA. Share of nights let across a year, 0 to 100. */
-  occupancyPercent: number | null
 }
 
 export const EMPTY_ASSUMPTIONS: StrategyAssumptions = {
   refurbCostPerSqFt: null,
-  nightlyRate: null,
-  occupancyPercent: null,
 }
 
 /**
@@ -48,19 +40,14 @@ export const EMPTY_ASSUMPTIONS: StrategyAssumptions = {
  *
  * A buy-to-let landlord pays management, insurance and maintenance. An HMO
  * landlord pays those and every bill in the building, plus the licence and the
- * higher wear. A short let pays cleaning between every stay and a platform fee
- * on top. These are ordinary industry figures, stated here rather than buried
- * so a subscriber can see what they are being judged against.
+ * higher wear. These are ordinary industry figures, stated here rather than
+ * buried so a subscriber can see what they are being judged against.
  */
 export const COSTS_PERCENT_OF_RENT: Record<InvestmentStrategy, number> = {
   btl: 20,
   hmo: 35,
   brrr: 20,
-  r2sa: 40,
 }
-
-/** Nights in an average month, for turning a nightly rate into a monthly one. */
-export const NIGHTS_PER_MONTH = 30.4
 
 export type StrategyDefinition = {
   id: InvestmentStrategy
@@ -112,18 +99,6 @@ export const STRATEGY_DEFINITIONS: Record<InvestmentStrategy, StrategyDefinition
     // will not derive one — see DECISIONS.md on /build-cost.
     requiresAssumptions: ['refurbCostPerSqFt'],
     sortOrder: 30,
-  },
-  r2sa: {
-    id: 'r2sa',
-    label: 'Serviced accommodation',
-    description: 'Let it by the night. Highest income, highest costs, most work.',
-    measures: 'Monthly cashflow at your own nightly rate and occupancy.',
-    needs: { hmoRents: false, developmentGdv: false },
-    // PropertyData publish no nightly rate and no occupancy figure — there is
-    // no endpoint for either. Until a second source is bought, these are the
-    // subscriber's own numbers for their own area.
-    requiresAssumptions: ['nightlyRate', 'occupancyPercent'],
-    sortOrder: 40,
   },
 }
 

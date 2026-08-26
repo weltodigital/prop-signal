@@ -943,3 +943,42 @@ guarantee the whole product rests on. That guarantee is now deliberately inverte
 weeks: it appears in all of them, is flagged the week it is cut and not the week after,
 goes the moment the subscriber removes it, and falls off on its own when the asking price
 rises far enough that it stops being a good buy.
+
+## The first run, and one strategy fewer — 26 August 2026
+
+### The dashboard runs the opening backfill itself
+
+A subscriber signed up, paid, answered the questions, and got an empty dashboard with a
+note saying the list would arrive on Sunday. That is a bad first five minutes for £29,
+and it was avoidable: the run is a function and nothing was stopping us calling it.
+
+`POST /api/runs/first` does it on demand. It is guarded four ways because it spends real
+credits — a session, an active subscription checked with the service role, the backfill
+not already done, and no run already in flight — and the last two are what make it safe
+against a double-click, a refresh, or a second tab.
+
+It runs while the subscriber watches, with a panel that says what is happening. Sourcing
+a whole area is a few minutes of rate-limited calls, so this is the one place in the
+product where somebody waits, and a spinner would be worse than a sentence.
+
+The Sunday cron is unchanged and still handles everyone from then on.
+
+### The opening list is five, not twenty-five
+
+The standing list ceiling is twenty-five, which is right for a list that accumulates and
+wrong for the first thing somebody sees. Five they can act on beats twenty-five they have
+to triage, and the opening list is the moment they decide whether they wasted their money.
+
+### Serviced accommodation is gone
+
+It was the one strategy scored entirely on figures this product does not hold. Across all
+69 PropertyData endpoints there is no nightly rate and no occupancy, so it ran on two
+numbers the subscriber typed in, and a strategy where every input is a guess is a
+calculator rather than a sourcing product.
+
+Removed from the code rather than hidden in the UI. A stored strategy that nothing can
+score would publish a list ranked on nothing, so the trigger, the type and the scoring
+function all go together, and anyone who had picked it falls back to buy to let.
+
+The seam it left is clean. If a short-let feed is ever bought, the strategy comes back as
+one definition and one return function.

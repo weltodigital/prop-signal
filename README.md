@@ -327,9 +327,12 @@ Three questions, and an optional fourth.
 **Where** — a full UK postcode and a radius.
 
 **Your strategy** — how the subscriber makes money, which is what decides whether a
-property is any good. Buy to let, HMO, flip/BRRR, serviced accommodation. Pick as many
-as you actually run: each property is scored under all of them and ranked by whichever
-suits it best.
+property is any good. Buy to let, HMO, flip/BRRR. Pick as many as you actually run: each
+property is scored under all of them and ranked by whichever suits it best.
+
+Serviced accommodation was built and removed. It was the one strategy scored entirely on
+figures this product does not hold, because PropertyData publish no nightly rate and no
+occupancy anywhere in their API.
 
 **What to look for** — the PropertyData sourcing lists, which decide what stock gets
 pulled out of the market at all. Needs work, price reduced, repossession, high yield,
@@ -350,17 +353,15 @@ called strategy would confuse the subscriber and everyone reading this.
 
 ### The figures we ask for, and why
 
-Two strategies need numbers PropertyData do not publish. Rather than invent them or drop
+One strategy needs a number PropertyData do not publish. Rather than invent it or drop
 the strategy, the subscriber supplies their own:
 
 | Strategy | Asked for | Why |
 | --- | --- | --- |
 | Flip / BRRR | Refurb cost per square foot | `/build-cost` prices building from nothing, and what fraction of that a refurbishment costs is exactly the invented number this codebase refuses. See DECISIONS.md. |
-| Serviced accommodation | Nightly rate and occupancy | There is no nightly-rate or occupancy endpoint anywhere in PropertyData's API — all 69 were checked. |
 
-A strategy whose figures are missing is skipped for that run and logged, rather than
-being scored on a guess. The seam is deliberate: buy a short-let data feed later and only
-those two inputs change.
+A strategy whose figure is missing is skipped for that run and logged, rather than being
+scored on a guess.
 
 ### The limits are constraints, not form validation
 
@@ -410,6 +411,27 @@ price. It is enforced in three places, and all three are tested.
 
 Derived material — events, scores, aggregates — is kept permanently and is not touched
 by any of this. It is a dated historical observation, not an answer about the present.
+
+## The first run
+
+A subscriber who has just answered the questions should not have to wait until Sunday to
+find out whether they wasted £29, so the dashboard runs the opening backfill itself.
+
+`POST /api/runs/first` takes no arguments and reads the caller's own profile through row
+level security. It spends real credits, so it checks four things: a session, an active
+subscription verified with the service role rather than the caller's claim, that the
+backfill has not already been done, and that no run is already in flight for that
+profile. The last two are what make it safe to call twice, because a double-click, a
+refresh mid-run or a second tab must not buy the same list twice.
+
+The panel on the dashboard says what is happening rather than showing a spinner. Sourcing
+a whole area is a few minutes of rate-limited calls, and it is the one place in the
+product where somebody waits.
+
+**The opening list is five.** It is the moment somebody decides whether they wasted their
+money, and five deals they can act on beats twenty-five they have to triage. Every run
+after it publishes up to twenty-five, because from then on the list stands and
+accumulates.
 
 ## The weekly pipeline
 
@@ -561,10 +583,9 @@ mean the same thing whatever you intend to do with a property; the return does n
 | Buy to let | Net monthly cashflow on a single-household rent |
 | HMO | Net monthly cashflow at local room rates, bills and licensing in the costs |
 | Flip / BRRR | How much of your money comes back out on the refinance |
-| Serviced accommodation | Net monthly cashflow at your own nightly rate and occupancy |
 
-Running costs differ by strategy and are stated rather than buried — 20% of rent for a
-let, 35% for an HMO, 40% for a short let. A property is scored under every strategy the
+Running costs differ by strategy and are stated rather than buried: 20% of rent for a
+let and a BRRR, 35% for an HMO. A property is scored under every strategy the
 subscriber runs and ranked by whichever suits it best, and the card says which.
 
 Each strategy is percentiled against its own cohort, so a room rate is never ranked

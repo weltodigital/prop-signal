@@ -72,7 +72,7 @@ export default async function SubscribePage({
           <li>No searching, no saved alerts, and nothing to check in between.</li>
           <li>The qualifying event stated on every one, with the date it was observed.</li>
           <li>Cashflow, price against comparables and a score breakdown you can argue with.</li>
-          <li>Scored for how you invest, whether that is a let, an HMO, a flip or a short let.</li>
+          <li>Scored for how you invest, whether that is a let, an HMO or a flip.</li>
           <li>A backfill on your first run, drawing on everything standing in your area.</li>
         </ul>
 

@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/format'
 import { AppShell } from '@/components/app-shell'
 import { DealCard } from '@/components/deal-card'
 import { DealTracker } from '@/components/deal-tracker'
+import { FirstRun } from '@/components/first-run'
 import { MarkSeen } from '@/components/mark-seen'
 import { EmptyState, Notice } from '@/components/ui'
 import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
@@ -32,6 +33,10 @@ export default async function DashboardPage({
   // Read before the marker is cleared, so this render still shows it. The
   // clearing happens in MarkSeen, on the visit rather than on publish.
   const unseen = week !== null && week.seenAt === null
+
+  // Nothing has ever been sourced for this subscriber. The dashboard kicks the
+  // first run off itself rather than waiting for the Sunday cron.
+  const awaitingFirstRun = profile.backfillCompletedAt === null && week === null
 
   return (
     <AppShell email={email}>
@@ -91,6 +96,11 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
+      {/* The opening backfill has not happened yet. Run it now rather than
+          leaving somebody who has just paid looking at an empty dashboard
+          until Sunday. */}
+      {awaitingFirstRun ? <FirstRun /> : null}
+
       {/* Above the week's five, because a deal at "offer accepted" wants
           attention today and a new listing can wait. Renders nothing when
           there is nothing in it. */}
@@ -108,19 +118,23 @@ export default async function DashboardPage({
               stage={stages.get(deal.propertyId)?.stage ?? null}
             />
           ))
+        ) : awaitingFirstRun ? (
+          // The panel above is doing it. Saying "not built yet" underneath
+          // would read as a contradiction.
+          null
         ) : profile.backfillCompletedAt === null ? (
           <EmptyState title="Your first list is not built yet">
             <p>
               The opening list is a backfill. It draws on everything standing in your area rather than only what
               appeared this week, so it takes a full run to put together.
             </p>
-            <p className="mt-3">The run happens on Sunday night and the list is here on Monday morning.</p>
+            <p className="mt-3">It runs on Sunday night and the list is here on Monday morning.</p>
           </EmptyState>
         ) : (
-          <EmptyState title="Nothing qualified this week">
+          <EmptyState title="Nothing clears the bar right now">
             <p>
-              A quiet week in a quiet area will not always produce five that meet the threshold, and we would rather
-              show you a short list than pad it out.
+              Nothing in your area clears the bar at the moment. We would rather show you a short list than pad it out
+              with deals that do not stack.
             </p>
             <p className="mt-3">
               <Link href="/archive" className="underline underline-offset-4 hover:text-ink">

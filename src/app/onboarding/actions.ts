@@ -30,11 +30,7 @@ export async function saveSearch(_prev: OnboardingState, formData: FormData): Pr
     radiusMiles: formData.get('radiusMiles') ?? '',
     sourcingLists: formData.getAll('sourcingLists').map(String),
     investmentStrategies: formData.getAll('investmentStrategies').map(String),
-    assumptions: {
-      refurbCostPerSqFt: formData.get('refurbCostPerSqFt') ?? '',
-      nightlyRate: formData.get('nightlyRate') ?? '',
-      occupancyPercent: formData.get('occupancyPercent') ?? '',
-    },
+    assumptions: { refurbCostPerSqFt: formData.get('refurbCostPerSqFt') ?? '' },
     minPrice: formData.get('minPrice') ?? '',
     maxPrice: formData.get('maxPrice') ?? '',
     minBedrooms: formData.get('minBedrooms') ?? '',

@@ -169,8 +169,17 @@ export function describeEvent(event: Pick<StoredEvent, 'type' | 'magnitude'> | n
  */
 export const LIST_CEILING = 25
 
-export function selectionSize(qualifyingCount: number): number {
-  return Math.min(qualifyingCount, LIST_CEILING)
+/**
+ * The opening list is five.
+ *
+ * It is the moment somebody decides whether they wasted £29, and five good
+ * deals they can act on beats twenty-five they have to triage. The list grows
+ * from there as the standing inventory is worked through week by week.
+ */
+export const OPENING_LIST = 5
+
+export function selectionSize(qualifyingCount: number, kind: 'backfill' | 'weekly' | 'manual' = 'weekly'): number {
+  return Math.min(qualifyingCount, kind === 'backfill' ? OPENING_LIST : LIST_CEILING)
 }
 
 /**

@@ -1,7 +1,6 @@
 import { stack } from '@/lib/stack'
 import {
   COSTS_PERCENT_OF_RENT,
-  NIGHTS_PER_MONTH,
   STRATEGY_DEFINITIONS,
   type InvestmentStrategy,
   type StrategyAssumptions,
@@ -208,41 +207,6 @@ function brrr(
   }
 }
 
-/**
- * Serviced accommodation. Cashflow at the subscriber's own nightly rate.
- *
- * PropertyData publish no nightly rate and no occupancy figure — there is no
- * endpoint for either across all 69 of them. Rather than leave the strategy
- * unavailable or invent a rate, the subscriber gives their own numbers for
- * their own area, which is what they would use to underwrite it anyway.
- *
- * The seam is deliberate: swap these two inputs for a real market feed and
- * nothing else here changes.
- */
-function servicedAccommodation(
-  price: number | null,
-  nightlyRate: number | null,
-  occupancyPercent: number | null,
-): StrategyReturn {
-  if (!price) return missing('r2sa', 'No asking price held')
-  if (!nightlyRate || !occupancyPercent) {
-    return missing('r2sa', 'No nightly rate and occupancy set on your account')
-  }
-
-  const gross = nightlyRate * NIGHTS_PER_MONTH * (occupancyPercent / 100)
-  const cashflow = cashflowOn(price, gross, COSTS_PERCENT_OF_RENT.r2sa)
-
-  return {
-    value: cashflow,
-    detail: describeCashflow(
-      'r2sa',
-      cashflow,
-      `${money(nightlyRate)} a night at ${Math.round(occupancyPercent)}% occupancy, your own figures`,
-    ),
-    belowWater: cashflow < 0,
-  }
-}
-
 export function strategyReturn(
   strategy: InvestmentStrategy,
   listing: Listing,
@@ -265,7 +229,5 @@ export function strategyReturn(
         area.developmentGdvPerSqFt,
         assumptions.refurbCostPerSqFt,
       )
-    case 'r2sa':
-      return servicedAccommodation(price, assumptions.nightlyRate, assumptions.occupancyPercent)
   }
 }

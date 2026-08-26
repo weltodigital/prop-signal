@@ -144,11 +144,7 @@ function readAssumptions(stored: Record<string, unknown> | null): StrategyAssump
 
   if (!stored) return EMPTY_ASSUMPTIONS
 
-  return {
-    refurbCostPerSqFt: positive(stored.refurbCostPerSqFt),
-    nightlyRate: positive(stored.nightlyRate),
-    occupancyPercent: positive(stored.occupancyPercent),
-  }
+  return { refurbCostPerSqFt: positive(stored.refurbCostPerSqFt) }
 }
 
 function log(event: string, fields: Record<string, unknown>): void {
@@ -474,7 +470,7 @@ export async function runProfile(options: {
     })
 
     const ranked = rank(scored)
-    const selected = ranked.slice(0, selectionSize(ranked.length))
+    const selected = ranked.slice(0, selectionSize(ranked.length, kind))
 
     // --- 6. Publish --------------------------------------------------------
     await publish(supabase, {

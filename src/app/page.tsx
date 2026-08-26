@@ -8,7 +8,7 @@ import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketi
 export const metadata: Metadata = {
   title: 'Prop Signal. Sourced deals for how you invest',
   description:
-    'Tell us where you buy and how you make your money. We source the best deals in your area against those criteria, score them, and keep them in front of you. BRRR in Portsmouth, HMOs in Leeds, whatever you actually run. £29 a month.',
+    'Tell us where you buy and how you make your money. We source the best deals in your area against those criteria, score them, and keep them in front of you. BRRR in Portsmouth, HMOs in Leeds, buy to let near home. £29 a month.',
 }
 
 const CLAIMS = [
@@ -30,7 +30,7 @@ const STEPS = [
   {
     step: '01',
     title: 'Tell us where you buy',
-    body: 'A postcode, how far you will travel, and how you make your money, whether that is buy to let, HMO, flip or serviced accommodation. It takes about a minute, and it is the last search you will ever set up.',
+    body: 'A postcode, how far you will travel, and how you make your money, whether that is buy to let, an HMO or a flip. It takes about a minute, and it is the last search you will ever set up.',
   },
   {
     step: '02',
@@ -287,7 +287,7 @@ export default async function HomePage() {
                 <ul className="mt-6 space-y-3 text-muted">
                   {[
                     'Your area, up to forty miles from your postcode',
-                    'Scored for how you invest, whether that is a let, an HMO, a flip or a short let',
+                    'Scored for how you invest, whether that is a let, an HMO or a flip',
                     'The best deals in your area, kept in front of you',
                     'A deal stays on your list until you say it is not for you',
                     'The full price history, so you know what to offer',
