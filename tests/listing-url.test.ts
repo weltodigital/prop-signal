@@ -14,10 +14,25 @@ describe('directListingUrl', () => {
     )
   })
 
-  it('leaves a portal we have not confirmed alone', () => {
-    // A link with an extra hop beats a link that 404s.
-    const zoopla = 'https://propertydata.co.uk/outbound/zoopla/73543942'
-    expect(directListingUrl(zoopla)).toBe(zoopla)
+  it('sends a Zoopla listing to Zoopla', () => {
+    // Confirmed against the supplier's own /forward redirect, not guessed. An
+    // earlier version left this alone because a plain request came back 403,
+    // which was Cloudflare refusing curl rather than a broken URL.
+    expect(directListingUrl('https://propertydata.co.uk/outbound/zoopla/72676674')).toBe(
+      'https://www.zoopla.co.uk/for-sale/details/72676674/',
+    )
+  })
+
+  it('sends an OnTheMarket listing to OnTheMarket', () => {
+    // The supplier abbreviates the portal to otm; the site does not.
+    expect(directListingUrl('https://propertydata.co.uk/outbound/otm/16140942')).toBe(
+      'https://www.onthemarket.com/details/16140942/',
+    )
+  })
+
+  it('leaves a portal we have never seen alone', () => {
+    const unknown = 'https://propertydata.co.uk/outbound/someportal/12345'
+    expect(directListingUrl(unknown)).toBe(unknown)
   })
 
   it('passes anything else through untouched', () => {
@@ -45,8 +60,13 @@ describe('listingPortal', () => {
     expect(listingPortal('https://propertydata.co.uk/outbound/rightmove/165082280')).toBe('Rightmove')
   })
 
+  it('names each portal it knows', () => {
+    expect(listingPortal('https://propertydata.co.uk/outbound/zoopla/1')).toBe('Zoopla')
+    expect(listingPortal('https://propertydata.co.uk/outbound/otm/1')).toBe('OnTheMarket')
+  })
+
   it('is null where we do not', () => {
-    expect(listingPortal('https://propertydata.co.uk/outbound/zoopla/1')).toBeNull()
+    expect(listingPortal('https://propertydata.co.uk/outbound/someportal/1')).toBeNull()
     expect(listingPortal(null)).toBeNull()
   })
 })
