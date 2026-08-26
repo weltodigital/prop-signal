@@ -19,7 +19,7 @@ export function RiskFlags({ risks, compact = false }: { risks: Risk[]; compact?:
   // the property page, where somebody has already stopped to read.
   if (compact) {
     return (
-      <p className="mt-3 flex flex-wrap gap-1.5">
+      <p className="mt-1.5 flex flex-wrap gap-1.5">
         {risks.map((risk) => (
           <span
             key={risk.label}

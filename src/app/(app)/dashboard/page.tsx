@@ -43,9 +43,7 @@ export default async function DashboardPage({
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {week?.kind === 'backfill' ? 'Your opening list' : 'This week'}
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Your properties</h1>
         <p className="text-sm text-muted">
           {describeArea(profile.postcode, profile.radiusMiles)} ·{' '}
           <Link href="/onboarding" className="underline underline-offset-4 hover:text-ink">
@@ -63,10 +61,8 @@ export default async function DashboardPage({
               New
             </span>
           ) : null}
-          Published {formatDate(week.publishedAt)}
-          {week.kind === 'backfill'
-            ? '. Drawn from everything standing in your area, not only what appeared this week.'
-            : `, for the week of ${formatDate(week.weekOf)}.`}
+          {week.dealCount} {week.dealCount === 1 ? 'property' : 'properties'} that stack in your area, last
+          checked {formatDate(week.publishedAt)}.
         </p>
       ) : null}
 
@@ -108,7 +104,7 @@ export default async function DashboardPage({
           there is nothing in it. */}
       <DealTracker deals={tracked} />
 
-      {tracked.length ? <h2 className="mt-10 text-lg font-medium">This week&rsquo;s list</h2> : null}
+      {tracked.length ? <h2 className="mt-10 text-lg font-medium">Your properties</h2> : null}
 
       <div className="stagger mt-8 space-y-3">
         {week && week.deals.length > 0 ? (
@@ -127,8 +123,8 @@ export default async function DashboardPage({
         ) : profile.backfillCompletedAt === null ? (
           <EmptyState title="Your first list is not built yet">
             <p>
-              Your opening list draws on everything standing in your area rather than only what appeared this
-              week, so it takes a little longer to put together.
+              We look at everything standing in your area rather than only what appeared this week, so the first
+              one takes a little longer to put together.
             </p>
             <p className="mt-3">It runs on Sunday night and the list is here on Monday morning.</p>
           </EmptyState>

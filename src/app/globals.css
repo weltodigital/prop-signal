@@ -89,3 +89,76 @@ body {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Loading
+   ---------------------------------------------------------------------------
+   A flat pulse says "something is missing". A sweep says "something is coming",
+   which is the more honest of the two and the better one to look at.
+
+   The gradient rides on the surface colour, so a skeleton sits in the page
+   rather than on top of it.
+--------------------------------------------------------------------------- */
+
+@keyframes sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-line) 0%,
+    var(--color-line) 35%,
+    color-mix(in oklab, var(--color-accent-soft) 85%, white) 50%,
+    var(--color-line) 65%,
+    var(--color-line) 100%
+  );
+  background-size: 200% 100%;
+  animation: sweep 1.4s linear infinite;
+  border-radius: 0.25rem;
+}
+
+/* An indeterminate bar. It says work is happening and refuses to imply how much
+   is left, because we do not know and a number that guesses is a lie. */
+@keyframes travel {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.track {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-line);
+  border-radius: 999px;
+}
+
+.track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 33%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--color-highlight), transparent);
+  animation: travel 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    background: var(--color-line);
+  }
+  .track::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}

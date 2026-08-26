@@ -1,9 +1,15 @@
+/**
+ * The signed-out fallback.
+ *
+ * Pages outside the app frame carry their own chrome, so this stands in for a
+ * whole page rather than for content under a header.
+ */
 export default function Loading() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-16" role="status" aria-live="polite">
-      <div className="h-7 w-48 animate-pulse rounded bg-line" />
-      <div className="mt-4 h-4 w-full max-w-md animate-pulse rounded bg-line" />
-      <div className="mt-8 h-40 w-full animate-pulse rounded-lg bg-line" />
+      <div className="shimmer h-8 w-56" />
+      <div className="shimmer mt-4 h-4 w-full max-w-md" />
+      <div className="shimmer mt-8 h-40 w-full rounded-lg" />
       <span className="sr-only">Loading</span>
     </div>
   )

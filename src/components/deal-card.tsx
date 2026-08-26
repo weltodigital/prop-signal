@@ -23,14 +23,19 @@ import { WatchButton } from '@/components/watch-button'
  * the advert and describe the property in words.
  */
 
-/** One figure in the summary strip. */
-function Figure({ label, value, note }: { label: string; value: string; note?: string | null }) {
+/**
+ * One figure, on the same line as the others.
+ *
+ * A grid gave every figure a label above it and a note below, which reserved
+ * three lines of height whether or not there was anything to put on two of
+ * them. Inline, the label sits beside the value and the row costs one line.
+ */
+function Figure({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[11px] tracking-wide text-muted uppercase">{label}</p>
-      <p className="nums truncate text-[15px] font-medium">{value}</p>
-      {note ? <p className="truncate text-xs text-muted">{note}</p> : null}
-    </div>
+    <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
+      <span className="text-xs text-muted">{label}</span>
+      <span className="nums font-medium">{value}</span>
+    </span>
   )
 }
 
@@ -83,11 +88,11 @@ export function DealCard({
       : null
 
   return (
-    <article className="group rounded-xl border border-line bg-card p-5 transition-colors duration-150 hover:border-accent/40">
+    <article className="group rounded-lg border border-line bg-card px-4 py-3 transition-colors duration-150 hover:border-accent/40">
       {/* Line one: why it is here, what it is, and how good it is. */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-accent">
+          <p className="flex flex-wrap items-center gap-x-2 text-[13px] font-medium text-accent">
             {isNew ? (
               <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] tracking-wider text-white uppercase">
                 New
@@ -103,23 +108,16 @@ export function DealCard({
             <span className="truncate">{deal.headline}</span>
           </p>
 
-          <h3 className="mt-1 truncate text-[17px] leading-snug font-medium">
+          {/* Address and what it is, on one line. The meta was its own line
+              and said four short things that fit beside the name. */}
+          <h3 className="mt-0.5 truncate text-[15px] leading-snug font-medium">
             <Link href={`/property/${deal.propertyId}`} className="transition-colors hover:text-accent">
               {deal.address ?? 'Address not held'}
             </Link>
+            <span className="ml-2 text-[13px] font-normal text-muted">
+              {[deal.postcode, formatBedrooms(deal.bedrooms), deal.propertyType].filter(Boolean).join(' · ')}
+            </span>
           </h3>
-
-          <p className="mt-0.5 truncate text-sm text-muted">
-            {[deal.postcode, formatBedrooms(deal.bedrooms), deal.propertyType].filter(Boolean).join(' · ')}
-            {/* Only worth saying where there is a comparison to draw. */}
-            {winner && deal.strategyScores.length > 1 ? (
-              <>
-                {' · '}
-                <span className="text-ink">best as a {winner.label.toLowerCase()}</span>
-                <span> against {runnersUp.map((s) => `${s.label.toLowerCase()} ${s.total.toFixed(0)}`).join(', ')}</span>
-              </>
-            ) : null}
-          </p>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -128,24 +126,22 @@ export function DealCard({
         </div>
       </div>
 
-      {/* Line two: the four figures that decide whether to stop. */}
-      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
-        <Figure label="Asking" value={formatMoney(deal.price)} note={perSqFt} />
+      {/* Line two: the figures that decide whether to stop, on one line. */}
+      <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+        <Figure label="Asking" value={formatMoney(deal.price)} />
         <Figure
           label="Rent"
           value={deal.enrichment.estimatedRent ? `${formatMoney(deal.enrichment.estimatedRent)} pcm` : NOT_HELD}
-          note={grossYield}
         />
+        {grossYield ? <Figure label="Yield" value={grossYield.replace(' gross', '')} /> : null}
+        {perSqFt ? <Figure label="Per sq ft" value={perSqFt.replace('£', '£').replace(' per sq ft', '')} /> : null}
         <Figure
-          label="Est. value"
-          value={formatMoney(deal.enrichment.estimatedValue)}
-          note={deal.internalAreaSqFt ? `${deal.internalAreaSqFt.toLocaleString('en-GB')} sq ft` : null}
+          label="Listed"
+          value={deal.daysOnMarket === null ? NOT_HELD : `${deal.daysOnMarket}d`}
         />
-        <Figure
-          label="On the market"
-          value={deal.daysOnMarket === null ? NOT_HELD : `${deal.daysOnMarket} days`}
-          note={deal.enrichment.areaDemandRating === null ? null : `demand ${Math.round(deal.enrichment.areaDemandRating)}/100`}
-        />
+        {winner && deal.strategyScores.length > 1 ? (
+          <span className="text-xs text-muted">best as a {winner.label.toLowerCase()}</span>
+        ) : null}
       </div>
 
       {deal.state === 'sstc' ? (
@@ -158,8 +154,8 @@ export function DealCard({
       <RiskFlags risks={deal.risks} compact />
 
       {/* Line three: everything somebody who has stopped will want. */}
-      <details className="group/details mt-4 border-t border-line pt-3">
-        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm text-muted transition-colors hover:text-ink">
+      <details className="group/details mt-2.5">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-ink">
           <span
             aria-hidden="true"
             className="inline-block transition-transform duration-150 group-open/details:rotate-90"
@@ -169,7 +165,7 @@ export function DealCard({
           <span className="underline underline-offset-4">The figures and the workings</span>
         </summary>
 
-        <div className="mt-4 space-y-5">
+        <div className="mt-4 space-y-5 border-t border-line pt-4">
           <StackedNumbers property={deal} />
 
           {deal.epc || deal.councilTaxBand ? (
@@ -199,7 +195,7 @@ export function DealCard({
       </details>
 
       {/* Line four: what to do about it. */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-3 text-sm">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-2.5 text-[13px]">
         <StageControl propertyId={deal.propertyId} stage={stage} compact />
 
         <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">

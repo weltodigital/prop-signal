@@ -31,7 +31,7 @@ export default async function ArchivedWeekPage({ params }: { params: Promise<{ r
       </p>
 
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-        {week.kind === 'backfill' ? 'Your opening list' : `Week of ${formatDate(week.weekOf)}`}
+        {`Week of ${formatDate(week.weekOf)}`}
       </h1>
       <p className="mt-2 text-sm text-muted">
         Published {formatDate(week.publishedAt)}. Every figure below is as it was observed then.

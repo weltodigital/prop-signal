@@ -6,7 +6,7 @@ import { hasUnseenWeek } from '@/lib/deals'
 import { countUnread } from '@/lib/watchlist'
 
 const NAV = [
-  { href: '/dashboard', label: 'This week' },
+  { href: '/dashboard', label: 'Properties' },
   { href: '/watchlist', label: 'Watchlist' },
   { href: '/deals', label: 'Your deals' },
   { href: '/archive', label: 'Archive' },

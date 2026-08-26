@@ -72,7 +72,7 @@ export default async function SubscribePage({
           <li>The qualifying event stated on every one, with the date it was observed.</li>
           <li>Cashflow, price against comparables and a score breakdown you can argue with.</li>
           <li>Scored for how you invest, whether that is a let, an HMO or a flip.</li>
-          <li>An opening list drawn from everything standing in your area, not just this week.</li>
+          <li>Your first list drawn from everything standing in your area, not just this week.</li>
         </ul>
 
         <form action="/api/stripe/checkout" method="post" className="mt-8">

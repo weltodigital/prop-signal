@@ -923,10 +923,13 @@ export function chooseEnrichmentTargets(
  * in the score. Every one of those calls failed on the first live run, which is
  * how this was found: the run spent nothing on them, because an error is free.
  *
- * `/rents` and `/sold-prices-per-sqf` answer on a postcode alone, and both are
- * read for the *property's* postcode rather than the profile's. A forty-mile
- * search otherwise compares a Southampton asking price against a Havant sold
- * price and calls the difference a discount.
+ * `/rents`, `/sold-prices-per-sqf` and `/demand` all answer on a postcode
+ * alone, and all three are read for the *property's* postcode rather than the
+ * profile's. A forty-mile search otherwise compares a Southampton asking price
+ * against a Havant sold price and calls the difference a discount, and reports
+ * Havant's demand for every property in it — which showed up as every row
+ * reading 23 out of 100. A factor that is identical everywhere cannot rank
+ * anything; it is weight in the score doing no work.
  *
  * Both are cached, so candidates sharing a postcode share the credit.
  */
@@ -937,16 +940,6 @@ async function enrichCandidates(
 ): Promise<Map<string, Enrichment>> {
   const results = new Map<string, Enrichment>()
 
-  // Demand is one figure for the search and is cached for 30 days, so it is one
-  // credit at most and often none.
-  let demand: number | null = null
-  try {
-    const response = await client.call<Record<string, unknown>>('demand', { postcode: fallbackPostcode })
-    demand = readDemand(response.data)
-  } catch (error) {
-    log('demand_unavailable', { message: error instanceof Error ? error.message : String(error) })
-  }
-
   for (const listing of listings) {
     const key = enrichmentKey(listing, fallbackPostcode)
     if (results.has(key)) continue
@@ -955,6 +948,7 @@ async function enrichCandidates(
 
     let estimatedRent: number | null = null
     let soldPricePerSqFt: number | null = null
+    let demand: number | null = null
 
     if (listing.bedrooms !== null) {
       try {
@@ -979,6 +973,14 @@ async function enrichCandidates(
     } catch (error) {
       if (error instanceof CreditRefusal) break
       log('local_sold_unavailable', { postcode, message: error instanceof Error ? error.message : String(error) })
+    }
+
+    try {
+      const response = await client.call<Record<string, unknown>>('demand', { postcode })
+      demand = readDemand(response.data)
+    } catch (error) {
+      if (error instanceof CreditRefusal) break
+      log('demand_unavailable', { postcode, message: error instanceof Error ? error.message : String(error) })
     }
 
     // Not a valuation, and not presented as one. It is what this floor area
