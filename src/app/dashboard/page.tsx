@@ -36,7 +36,10 @@ export default async function DashboardPage({
 
   // Nothing has ever been sourced for this subscriber. The dashboard kicks the
   // first run off itself rather than waiting for the Sunday cron.
-  const awaitingFirstRun = profile.backfillCompletedAt === null && week === null
+  // The flag is the signal on its own. Requiring an empty dashboard as well
+  // meant a subscriber whose opening run had published something could never
+  // trigger another, which is wrong whenever the first one needs redoing.
+  const awaitingFirstRun = profile.backfillCompletedAt === null
 
   return (
     <AppShell email={email}>

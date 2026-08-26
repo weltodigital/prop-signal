@@ -80,3 +80,4 @@ describe('chooseEnrichmentTargets', () => {
     expect(chooseEnrichmentTargets(many, new Map(), AREA_PER_SQ_FT, 25)).toHaveLength(25)
   })
 })
+

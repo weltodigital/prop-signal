@@ -15,6 +15,7 @@ import { Timeline } from '@/components/timeline'
 import { WatchButton } from '@/components/watch-button'
 import { StageControl } from '@/components/stage-control'
 import { STAGE_DEFINITIONS } from '@/lib/deal-stages'
+import { directListingUrl, listingPortal } from '@/lib/listing-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -124,12 +125,14 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           <div className="mt-5 border-t border-line pt-4 text-sm">
             {property.listingUrl ? (
               <a
-                href={property.listingUrl}
+                href={directListingUrl(property.listingUrl) ?? property.listingUrl}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="underline underline-offset-4 hover:text-accent"
               >
-                View the original listing
+                {listingPortal(property.listingUrl)
+                  ? `View on ${listingPortal(property.listingUrl)}`
+                  : 'View the original listing'}
               </a>
             ) : (
               <span className="text-muted">No link to the advert was held</span>

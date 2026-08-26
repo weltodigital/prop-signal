@@ -7,6 +7,7 @@ import { StackedNumbers } from '@/components/stacked-numbers'
 import { RiskFlags } from '@/components/risk-flags'
 import { StageControl } from '@/components/stage-control'
 import { setStageAction } from '@/app/deals/actions'
+import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import type { DealStage } from '@/lib/deal-stages'
 import { WatchButton } from '@/components/watch-button'
 
@@ -163,12 +164,12 @@ export function DealCard({
         </Link>
         {deal.listingUrl ? (
           <a
-            href={deal.listingUrl}
+            href={directListingUrl(deal.listingUrl) ?? deal.listingUrl}
             target="_blank"
             rel="noreferrer noopener"
             className="underline underline-offset-4 hover:text-accent"
           >
-            View the original listing
+            {listingPortal(deal.listingUrl) ? `View on ${listingPortal(deal.listingUrl)}` : 'View the original listing'}
           </a>
         ) : (
           <span className="text-muted">No link to the advert was held</span>

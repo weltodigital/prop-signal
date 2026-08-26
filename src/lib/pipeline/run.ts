@@ -668,7 +668,20 @@ async function allowedRadius(supabase: SupabaseClient, profile: ProfileRow): Pro
 // Persistence
 // ---------------------------------------------------------------------------
 
-type ExistingProperty = PreviousObservation & { id: string; lowestPrice: number | null; highestPrice: number | null }
+type ExistingProperty = PreviousObservation & {
+  id: string
+  lowestPrice: number | null
+  highestPrice: number | null
+  /**
+   * Carried so a repeat run can send it straight back.
+   *
+   * PostgREST's upsert is an INSERT with an ON CONFLICT clause, so the row it
+   * builds has to satisfy every NOT NULL even when the conflict path is the one
+   * that runs. Omitting this for a property we already hold made the insert
+   * arm fail, which meant every property upsert after the first run failed.
+   */
+  firstObservedAt: string
+}
 
 async function loadExistingProperties(
   supabase: SupabaseClient,
@@ -676,7 +689,9 @@ async function loadExistingProperties(
 ): Promise<Map<string, ExistingProperty>> {
   const { data, error } = await supabase
     .from('properties')
-    .select('id, property_key, price, state, days_on_market, last_observed_at, lowest_price_seen, highest_price_seen')
+    .select(
+      'id, property_key, price, state, days_on_market, first_observed_at, last_observed_at, lowest_price_seen, highest_price_seen',
+    )
     .eq('owner_id', ownerId)
 
   if (error) throw new Error(`Could not read stored properties: ${error.message}`)
@@ -692,6 +707,7 @@ async function loadExistingProperties(
         lastObservedAt: new Date(row.last_observed_at),
         lowestPrice: row.lowest_price_seen,
         highestPrice: row.highest_price_seen,
+        firstObservedAt: row.first_observed_at,
       },
     ]),
   )
@@ -727,7 +743,11 @@ async function diffAndPersist(
           property_key: listing.key,
           last_observed_at: observedAt.toISOString(),
           last_run_id: runId,
-          ...(previous ? {} : { first_observed_at: observedAt.toISOString() }),
+          // Always sent, never omitted. The conflict path would not touch it,
+          // but the insert path this is built from still has to satisfy the
+          // NOT NULL, and a property we already hold keeps the date we first
+          // saw it rather than being reset to today.
+          first_observed_at: previous?.firstObservedAt ?? observedAt.toISOString(),
           address: listing.address,
           precise_address: listing.preciseAddress,
           postcode: listing.postcode,
@@ -931,9 +951,13 @@ async function enrichCandidates(
 
     if (listing.bedrooms !== null) {
       try {
+        // The endpoint takes 0 to 5 and rejects anything above with "Invalid
+        // filter: bedrooms". A six-bed is priced as a five-bed, which
+        // understates its rent — the safe direction, since it can only make a
+        // deal look worse than it is rather than better.
         const response = await client.call<Record<string, unknown>>('rents', {
           postcode,
-          bedrooms: listing.bedrooms,
+          bedrooms: Math.max(0, Math.min(5, listing.bedrooms)),
         })
         estimatedRent = readLocalRent(response.data)
       } catch (error) {

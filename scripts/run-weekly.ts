@@ -24,7 +24,7 @@ async function main() {
 
     let query = admin
       .from('search_profiles')
-      .select('owner_id, postcode, radius_miles, strategies, backfill_completed_at')
+      .select('owner_id, postcode, radius_miles, sourcing_lists, investment_strategies, backfill_completed_at')
     if (ownerId) query = query.eq('owner_id', ownerId)
 
     const { data, error } = await query
@@ -34,7 +34,7 @@ async function main() {
     for (const profile of data ?? []) {
       const kind = profile.backfill_completed_at === null ? 'backfill' : 'weekly'
       console.log(
-        `  ${profile.owner_id}  ${profile.postcode.padEnd(9)} ${String(profile.radius_miles).padStart(2)}mi  ${kind.padEnd(8)} ${profile.strategies.join(', ')}`,
+        `  ${profile.owner_id}  ${profile.postcode.padEnd(9)} ${String(profile.radius_miles).padStart(2)}mi  ${kind.padEnd(8)} ${profile.investment_strategies.join(", ")} on ${profile.sourcing_lists.join(", ")}`,
       )
     }
     return
