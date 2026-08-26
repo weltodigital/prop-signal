@@ -19,7 +19,7 @@ export async function AppShell({ email, children }: { email: string; children: R
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-line bg-card">
+      <header className="sticky top-0 z-40 border-b border-line bg-card/85 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
           {/* The mark, with the name in text beside it. The full lockup is
               stacked, and at header height its wordmark would be unreadable. */}
@@ -30,7 +30,11 @@ export async function AppShell({ email, children }: { email: string; children: R
 
           <nav className="flex gap-4 text-sm">
             {NAV.map((item) => (
-              <Link key={item.href} href={item.href} className="text-muted hover:text-ink">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="relative rounded px-1 py-0.5 text-muted transition-colors hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
                 {item.label}
                 {item.href === '/dashboard' && unseenWeek ? (
                   <span
@@ -53,7 +57,7 @@ export async function AppShell({ email, children }: { email: string; children: R
           <div className="ml-auto flex items-center gap-4 text-sm text-muted">
             <span className="hidden sm:inline">{email}</span>
             <form action="/auth/signout" method="post">
-              <button type="submit" className="underline underline-offset-4 hover:text-ink">
+              <button type="submit" className="underline underline-offset-4 transition-colors hover:text-ink">
                 Sign out
               </button>
             </form>

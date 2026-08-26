@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { listNotifications, listWatchlist } from '@/lib/watchlist'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatBedrooms, formatDate, formatMoney, formatPercent, formatShortDate } from '@/lib/format'
-import { AppShell } from '@/components/app-shell'
 import { Button, Card, EmptyState } from '@/components/ui'
 import { WatchButton } from '@/components/watch-button'
 import { markReadAction } from './actions'
@@ -21,7 +20,7 @@ export default async function WatchlistPage() {
   const [watched, notifications] = await Promise.all([listWatchlist(), listNotifications()])
 
   return (
-    <AppShell email={email}>
+    <>
       <h1 className="text-2xl font-semibold tracking-tight">Watchlist</h1>
       <p className="mt-2 text-sm text-muted">
         Star a property and anything material that happens to it turns up here. It reads the diff the Sunday run
@@ -130,6 +129,6 @@ export default async function WatchlistPage() {
           )}
         </div>
       </section>
-    </AppShell>
+    </>
   )
 }

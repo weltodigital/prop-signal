@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
-import { AppShell } from '@/components/app-shell'
 import { Button, Card, Notice } from '@/components/ui'
 
 const MESSAGES: Record<string, { tone: 'info' | 'warn'; title: string; body: string }> = {
@@ -36,7 +35,7 @@ export default async function SubscribePage({
   const message = MESSAGES[params.error ?? params.checkout ?? '']
 
   return (
-    <AppShell email={user.email}>
+    <>
       <h1 className="text-2xl font-semibold tracking-tight">Subscribe</h1>
       <p className="mt-2 max-w-prose text-muted">
         £29 a month. One area, searched every week, with the best of it kept on your list. Cancel any time from your account page.
@@ -84,6 +83,6 @@ export default async function SubscribePage({
           Payment is handled by Stripe. We never see your card details.
         </p>
       </Card>
-    </AppShell>
+    </>
   )
 }

@@ -1,6 +1,8 @@
-import { setStageAction, untrackAction } from '@/app/deals/actions'
+'use client'
+
+import { useOptimistic, useTransition } from 'react'
+import { setStageAction, untrackAction } from '@/app/(app)/deals/actions'
 import {
-  DEAL_STAGES,
   EXIT_STAGES,
   FORWARD_STAGES,
   nextStage,
@@ -11,111 +13,124 @@ import {
 /**
  * Where a deal has got to, and the one button that moves it on.
  *
- * Plain forms posting to server functions, so it works before any JavaScript
- * has loaded and there is no client bundle behind it — the same way the star
- * does. Nothing here can cost a credit: it is the subscriber's record of their
- * own actions and touches no API.
+ * Optimistic, for the same reason the star is: moving a deal from Contacted to
+ * Viewing is a decision somebody has already made, and waiting on a round trip
+ * to see it makes the app feel like it is thinking about whether to agree. The
+ * stage changes immediately and the write follows. Nothing here costs a credit.
  *
  * The common move gets a button and the rest get a select, because in practice
  * a deal goes forward one step at a time and everything else is a correction.
  */
-export function StageControl({ propertyId, stage }: { propertyId: string; stage: DealStage | null }) {
-  const current = stage ? STAGE_DEFINITIONS[stage] : null
-  const onwards = stage ? nextStage(stage) : 'interested'
+export function StageControl({
+  propertyId,
+  stage,
+  compact = false,
+}: {
+  propertyId: string
+  stage: DealStage | null
+  /** Card view: the forward button and nothing else, to keep rows short. */
+  compact?: boolean
+}) {
+  const [pending, startTransition] = useTransition()
+  const [optimistic, setOptimistic] = useOptimistic(stage)
 
-  if (!stage) {
+  const move = (to: DealStage) =>
+    startTransition(async () => {
+      setOptimistic(to)
+      const data = new FormData()
+      data.set('propertyId', propertyId)
+      data.set('stage', to)
+      await setStageAction(data)
+    })
+
+  const current = optimistic ? STAGE_DEFINITIONS[optimistic] : null
+  const onwards = optimistic ? nextStage(optimistic) : 'interested'
+
+  const chrome = `rounded-md border px-2.5 py-1.5 text-sm transition-all duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+    pending ? 'opacity-70' : ''
+  }`
+
+  if (!optimistic) {
     return (
-      <form action={setStageAction} className="inline-flex">
-        <input type="hidden" name="propertyId" value={propertyId} />
-        <input type="hidden" name="stage" value="interested" />
-        <button
-          type="submit"
-          className="inline-flex items-center gap-1.5 rounded-md border border-line bg-card px-2.5 py-1.5 text-sm text-muted transition-colors hover:border-accent/30 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          Track this
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={() => move('interested')}
+        className={`${chrome} border-line bg-card text-muted hover:border-accent/30 hover:text-accent`}
+      >
+        Track this
+      </button>
     )
   }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span
-        className={`inline-flex items-center rounded-md border px-2.5 py-1.5 text-sm ${
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
           current?.lost
             ? 'border-line bg-paper text-muted'
-            : current?.terminal
-              ? 'border-accent/30 bg-accent-soft text-accent'
-              : 'border-accent/30 bg-accent-soft text-accent'
+            : 'border-accent/30 bg-accent-soft font-medium text-accent'
         }`}
       >
         {current?.label}
       </span>
 
       {onwards ? (
-        <form action={setStageAction} className="inline-flex">
-          <input type="hidden" name="propertyId" value={propertyId} />
-          <input type="hidden" name="stage" value={onwards} />
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-md border border-line bg-card px-2.5 py-1.5 text-sm text-muted transition-colors hover:border-accent/30 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            → {STAGE_DEFINITIONS[onwards].label}
-          </button>
-        </form>
+        <button
+          type="button"
+          onClick={() => move(onwards)}
+          className={`${chrome} border-line bg-card text-muted hover:border-accent/30 hover:text-accent`}
+        >
+          → {STAGE_DEFINITIONS[onwards].label}
+        </button>
       ) : null}
 
-      {/* Everything else: a correction, a jump, or one of the two exits. A
-          submit button beside the select keeps it working without JavaScript. */}
-      <form action={setStageAction} className="inline-flex items-center gap-1.5">
-        <input type="hidden" name="propertyId" value={propertyId} />
-        <label htmlFor={`stage-${propertyId}`} className="sr-only">
-          Move this deal to another stage
-        </label>
-        <select
-          id={`stage-${propertyId}`}
-          name="stage"
-          defaultValue={stage}
-          className="rounded-md border border-line bg-card px-2 py-1.5 text-sm text-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-        >
-          <optgroup label="Progress">
-            {FORWARD_STAGES.map((id) => (
-              <option key={id} value={id}>
-                {STAGE_DEFINITIONS[id].label}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label="Out">
-            {EXIT_STAGES.map((id) => (
-              <option key={id} value={id}>
-                {STAGE_DEFINITIONS[id].label}
-              </option>
-            ))}
-          </optgroup>
-        </select>
-        <button
-          type="submit"
-          className="rounded-md border border-line bg-card px-2.5 py-1.5 text-sm text-muted transition-colors hover:border-accent/30 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          Move
-        </button>
-      </form>
+      {compact ? null : (
+        <>
+          {/* Everything else: a correction, a jump, or one of the two exits. */}
+          <label htmlFor={`stage-${propertyId}`} className="sr-only">
+            Move this deal to another stage
+          </label>
+          <select
+            id={`stage-${propertyId}`}
+            value={optimistic}
+            onChange={(event) => move(event.target.value as DealStage)}
+            className="rounded-md border border-line bg-card px-2 py-1.5 text-sm text-muted outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+          >
+            <optgroup label="Progress">
+              {FORWARD_STAGES.map((id) => (
+                <option key={id} value={id}>
+                  {STAGE_DEFINITIONS[id].label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Out">
+              {EXIT_STAGES.map((id) => (
+                <option key={id} value={id}>
+                  {STAGE_DEFINITIONS[id].label}
+                </option>
+              ))}
+            </optgroup>
+          </select>
 
-      {/* Untracking is for a mis-click. A deal that died should be passed or
-          marked fallen through, so the record keeps saying what happened. */}
-      <form action={untrackAction} className="inline-flex">
-        <input type="hidden" name="propertyId" value={propertyId} />
-        <button
-          type="submit"
-          title="Remove this from your deals. Use Passed or Fell through for a deal that ended."
-          className="rounded-md px-1.5 py-1.5 text-sm text-muted underline underline-offset-4 hover:text-ink"
-        >
-          Untrack
-        </button>
-      </form>
+          {/* Untracking is for a mis-click. A deal that died should be passed
+              or marked fallen through, so the record keeps saying what happened. */}
+          <button
+            type="button"
+            onClick={() =>
+              startTransition(async () => {
+                setOptimistic(null)
+                const data = new FormData()
+                data.set('propertyId', propertyId)
+                await untrackAction(data)
+              })
+            }
+            title="Remove this from your deals. Use Passed or Fell through for a deal that ended."
+            className="rounded-md px-1.5 py-1.5 text-sm text-muted underline underline-offset-4 transition-colors hover:text-ink"
+          >
+            Untrack
+          </button>
+        </>
+      )}
     </div>
   )
 }
-
-/** Every stage, for a legend or a summary row. */
-export const ALL_STAGES = DEAL_STAGES

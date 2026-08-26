@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { listPublishedWeeks } from '@/lib/deals'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
-import { AppShell } from '@/components/app-shell'
 import { Card, EmptyState } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -18,7 +17,7 @@ export default async function ArchivePage() {
   const weeks = await listPublishedWeeks()
 
   return (
-    <AppShell email={email}>
+    <>
       <h1 className="text-2xl font-semibold tracking-tight">Archive</h1>
       <p className="mt-2 text-sm text-muted">
         Every list published to you. The figures in an old week are what we observed then and have not been updated
@@ -54,6 +53,6 @@ export default async function ArchivePage() {
           ))
         )}
       </div>
-    </AppShell>
+    </>
   )
 }

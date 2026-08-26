@@ -3,9 +3,8 @@ import { notFound } from 'next/navigation'
 import { getPropertyDetail } from '@/lib/deals'
 import { stageHistory } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
-import { markReadAction } from '@/app/watchlist/actions'
+import { markReadAction } from '@/app/(app)/watchlist/actions'
 import { formatBedrooms, formatDate, formatListName, formatMoney, formatShortDate } from '@/lib/format'
-import { AppShell } from '@/components/app-shell'
 import { Button, Card } from '@/components/ui'
 import { RiskFlags } from '@/components/risk-flags'
 import { ScoreBreakdown } from '@/components/score-breakdown'
@@ -45,7 +44,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
     property.lowestPriceSeen !== property.highestPriceSeen
 
   return (
-    <AppShell email={email}>
+    <>
       <p className="text-sm text-muted">
         <Link href="/dashboard" className="underline underline-offset-4 hover:text-ink">
           This week
@@ -226,6 +225,6 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           />
         </Card>
       </section>
-    </AppShell>
+    </>
   )
 }

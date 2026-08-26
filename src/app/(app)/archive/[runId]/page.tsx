@@ -4,7 +4,6 @@ import { getWeekByRunId } from '@/lib/deals'
 import { currentStages } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
-import { AppShell } from '@/components/app-shell'
 import { DealCard } from '@/components/deal-card'
 import { EmptyState, Notice } from '@/components/ui'
 
@@ -24,7 +23,7 @@ export default async function ArchivedWeekPage({ params }: { params: Promise<{ r
   const stages = await currentStages()
 
   return (
-    <AppShell email={email}>
+    <>
       <p className="text-sm text-muted">
         <Link href="/archive" className="underline underline-offset-4 hover:text-ink">
           Archive
@@ -57,6 +56,6 @@ export default async function ArchivedWeekPage({ params }: { params: Promise<{ r
           </EmptyState>
         )}
       </div>
-    </AppShell>
+    </>
   )
 }

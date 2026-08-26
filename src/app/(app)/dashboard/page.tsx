@@ -3,7 +3,6 @@ import { getCurrentWeek } from '@/lib/deals'
 import { currentStages, listTrackedDeals } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
-import { AppShell } from '@/components/app-shell'
 import { DealCard } from '@/components/deal-card'
 import { DealTracker } from '@/components/deal-tracker'
 import { FirstRun } from '@/components/first-run'
@@ -42,7 +41,7 @@ export default async function DashboardPage({
   const awaitingFirstRun = profile.backfillCompletedAt === null
 
   return (
-    <AppShell email={email}>
+    <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           {week?.kind === 'backfill' ? 'Your opening list' : 'This week'}
@@ -111,7 +110,7 @@ export default async function DashboardPage({
 
       {tracked.length ? <h2 className="mt-10 text-lg font-medium">This week&rsquo;s list</h2> : null}
 
-      <div className="mt-8 space-y-4">
+      <div className="stagger mt-8 space-y-3">
         {week && week.deals.length > 0 ? (
           week.deals.map((deal) => (
             <DealCard
@@ -150,6 +149,6 @@ export default async function DashboardPage({
       </div>
 
       {unseen && week ? <MarkSeen runId={week.runId} /> : null}
-    </AppShell>
+    </>
   )
 }

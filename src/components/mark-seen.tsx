@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { markWeekSeenAction } from '@/app/dashboard/actions'
+import { markWeekSeenAction } from '@/app/(app)/dashboard/actions'
 
 /**
  * Clears the unseen marker once the week has actually been looked at.

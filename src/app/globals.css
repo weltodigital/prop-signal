@@ -44,3 +44,48 @@ body {
   letter-spacing: -0.03em;
   line-height: 1.05;
 }
+
+/* ---------------------------------------------------------------------------
+   Motion
+   ---------------------------------------------------------------------------
+   The header is in the layout now and does not move between pages, so the only
+   thing that changes is the content under it. A short rise on arrival is what
+   makes that read as a transition rather than a flicker.
+
+   Small on purpose. Anything longer than a fifth of a second stops feeling like
+   response and starts feeling like a wait.
+--------------------------------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-in {
+  animation: rise 0.18s ease-out both;
+}
+
+/* Each row a beat behind the one above it, so a list arrives as a list rather
+   than as a block. Capped at six: past that it is a wait, not a flourish. */
+.stagger > * {
+  animation: rise 0.2s ease-out both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 30ms; }
+.stagger > *:nth-child(3) { animation-delay: 60ms; }
+.stagger > *:nth-child(4) { animation-delay: 90ms; }
+.stagger > *:nth-child(5) { animation-delay: 120ms; }
+.stagger > *:nth-child(n + 6) { animation-delay: 150ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .stagger > * {
+    animation: none;
+  }
+}

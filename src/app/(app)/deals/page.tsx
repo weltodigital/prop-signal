@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { listTrackedDeals, stageCounts } from '@/lib/deal-progress'
 import { DEAL_STAGES, isActive, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
 import { requireSubscriber } from '@/lib/require-subscriber'
-import { AppShell } from '@/components/app-shell'
 import { StageSummary, TrackedRow } from '@/components/deal-tracker'
 import { EmptyState } from '@/components/ui'
 
@@ -28,7 +27,7 @@ export default async function DealsPage() {
   )
 
   return (
-    <AppShell email={email}>
+    <>
       <h1 className="text-2xl font-semibold tracking-tight">Your deals</h1>
       <p className="mt-2 max-w-prose text-muted">
         Where each property got to, and when. Nothing here is sent anywhere or costs anything. It is your own record
@@ -82,6 +81,6 @@ export default async function DealsPage() {
           {finished.filter((d) => STAGE_DEFINITIONS[d.stage].lost === false).length} of {deals.length} completed.
         </p>
       ) : null}
-    </AppShell>
+    </>
   )
 }

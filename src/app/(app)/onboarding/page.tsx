@@ -7,7 +7,6 @@ import {
   listSourcingLists,
   SEARCH_CHANGE_LIMIT,
 } from '@/lib/search-profile'
-import { AppShell } from '@/components/app-shell'
 import { SearchForm } from './search-form'
 import { Notice } from '@/components/ui'
 
@@ -33,7 +32,7 @@ export default async function OnboardingPage() {
   const isNew = profile === null
 
   return (
-    <AppShell email={user.email}>
+    <>
       <h1 className="text-2xl font-semibold tracking-tight">
         {isNew ? 'Three questions' : 'Your area and strategy'}
       </h1>
@@ -64,6 +63,6 @@ export default async function OnboardingPage() {
           searchChangeLimit={SEARCH_CHANGE_LIMIT}
         />
       </div>
-    </AppShell>
+    </>
   )
 }

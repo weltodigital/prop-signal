@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
 import { countSearchChanges, getSearchProfile, listSourcingLists, SEARCH_CHANGE_LIMIT } from '@/lib/search-profile'
 import { ButtonLink } from '@/components/ui'
-import { AppShell } from '@/components/app-shell'
 import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
 import { ChangePasswordForm } from './change-password-form'
 import { Button, Card, Notice } from '@/components/ui'
@@ -51,7 +50,7 @@ export default async function AccountPage({
   const listLabels = new Map(sourcingLists.map((list) => [list.id, list.label]))
 
   return (
-    <AppShell email={user.email}>
+    <>
       <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
 
       {params.saved === '1' ? (
@@ -184,6 +183,6 @@ export default async function AccountPage({
         </p>
         <ChangePasswordForm />
       </Card>
-    </AppShell>
+    </>
   )
 }
