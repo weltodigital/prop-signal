@@ -43,7 +43,13 @@ function listing(overrides: Record<string, unknown> = {}): Listing {
 }
 
 function enrichment(overrides: Partial<Enrichment> = {}): Enrichment {
-  return { estimatedValue: 220_000, estimatedRent: 1_100, areaDemandRating: 60, ...overrides }
+  return {
+    estimatedValue: 220_000,
+    estimatedRent: 1_100,
+    areaDemandRating: 60,
+    soldPricePerSqFt: null,
+    ...overrides,
+  }
 }
 
 function area(overrides: Partial<AreaContext> = {}): AreaContext {

@@ -30,7 +30,12 @@ import { qualifies, type PriorImpression, type StoredEvent } from '@/lib/pipelin
  * a percentile has nothing to rank against. That is the point of this file —
  * it tests the mechanic, not the ranking.
  */
-const ENRICHMENT: Enrichment = { estimatedValue: 260_000, estimatedRent: 1_500, areaDemandRating: 65 }
+const ENRICHMENT: Enrichment = {
+  estimatedValue: 260_000,
+  estimatedRent: 1_500,
+  areaDemandRating: 65,
+  soldPricePerSqFt: null,
+}
 const AREA: AreaContext = {
   soldPricePerSqFt: 300,
   localGrossYieldPercent: 6,

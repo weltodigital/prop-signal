@@ -3,9 +3,11 @@ import {
   matchAddress,
   normaliseAddress,
   readCouncilTax,
+  readDemand,
   readEpc,
   readFloodRisk,
   readGrowth,
+  readLocalRent,
   readLocalYield,
   readSoldComparables,
 } from '@/lib/pipeline/area'
@@ -168,5 +170,61 @@ describe('matching an address across two sources', () => {
 
   it('strips the joining words that only one source uses', () => {
     expect(normaliseAddress('APARTMENT 1 AT 113, NEWTON STREET')).toBe('apartment 1 113 newton street')
+  })
+})
+
+describe('readLocalRent', () => {
+  it('converts a weekly figure to a monthly one', () => {
+    // The endpoint answers in pounds per week. Reading it as monthly would
+    // understate rent more than fourfold and make every property a loss.
+    const payload = { data: { long_let: { average: 209, unit: 'gbp_per_week' } } }
+    expect(readLocalRent(payload)).toBe(906)
+  })
+
+  it('passes a monthly figure through', () => {
+    const payload = { data: { long_let: { average: 900, unit: 'gbp_per_month' } } }
+    expect(readLocalRent(payload)).toBe(900)
+  })
+
+  it('refuses a unit it does not recognise rather than guessing', () => {
+    expect(readLocalRent({ data: { long_let: { average: 209, unit: 'doubloons' } } })).toBeNull()
+    expect(readLocalRent({ data: { long_let: { average: 209 } } })).toBeNull()
+  })
+
+  it('is null where there is no figure', () => {
+    expect(readLocalRent({})).toBeNull()
+    expect(readLocalRent({ data: { long_let: { average: 0, unit: 'gbp_per_week' } } })).toBeNull()
+  })
+})
+
+describe('readDemand', () => {
+  it('reads the numbers, not the phrase', () => {
+    // demand_rating is "Buyer's market". Reading it as a number is why every
+    // property on the first live run scored zero for demand.
+    const payload = {
+      months_of_inventory: '14.3',
+      turnover_per_month: '7%',
+      demand_rating: "Buyer's market",
+    }
+    const rating = readDemand(payload)
+
+    expect(rating).not.toBeNull()
+    expect(rating).toBeGreaterThan(0)
+  })
+
+  it('rates a fast-clearing market above a stagnant one', () => {
+    const brisk = readDemand({ months_of_inventory: '2' })
+    const stagnant = readDemand({ months_of_inventory: '17' })
+
+    expect(brisk).toBeGreaterThan(stagnant!)
+    expect(brisk).toBe(100)
+  })
+
+  it('falls back to turnover where inventory is absent', () => {
+    expect(readDemand({ turnover_per_month: '5%' })).toBeGreaterThan(0)
+  })
+
+  it('is null where neither figure is there', () => {
+    expect(readDemand({ demand_rating: "Buyer's market" })).toBeNull()
   })
 })

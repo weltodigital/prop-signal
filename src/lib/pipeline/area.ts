@@ -156,6 +156,63 @@ export function readDevelopmentGdv(payload: unknown): number | null {
   )
 }
 
+/**
+ * `/rents`. Local asking rents for a property of this size.
+ *
+ * Replaces `/valuation-rent`, which needs a construction date, a finish quality
+ * and an outdoor-space description before it will answer. We hold none of
+ * those and inventing them would put a guess inside the biggest factor in the
+ * score. This takes a postcode and a bedroom count, which we do hold.
+ *
+ * It answers in pounds per week. Reading it as a monthly figure understates
+ * rent by more than four times, which would make every property look like a
+ * loss, so the unit is checked rather than assumed.
+ */
+export function readLocalRent(payload: unknown): number | null {
+  const longLet = record(record(record(payload).data).long_let)
+  const average = asNumber(longLet.average)
+  if (average === null || average <= 0) return null
+
+  const unit = asText(longLet.unit)?.toLowerCase() ?? ''
+
+  // gbp_per_week is what it returns today. Anything monthly passes through,
+  // and anything unrecognised is refused rather than guessed at.
+  if (unit.includes('week')) return Math.round((average * 52) / 12)
+  if (unit.includes('month')) return Math.round(average)
+
+  return null
+}
+
+/**
+ * `/demand`. How quickly the local market is clearing.
+ *
+ * `demand_rating` is a phrase — "Buyer's market" — and was being read as a
+ * number, which is why every property scored zero for demand. The numbers are
+ * elsewhere in the same payload.
+ *
+ * Months of inventory is the standard measure: how long the stock for sale
+ * would take to clear at the current rate. Six months is the conventional line
+ * between a buyer's and a seller's market, so it is the middle of the scale.
+ */
+export function readDemand(payload: unknown): number | null {
+  const data = record(payload)
+  const months = asNumber(data.months_of_inventory)
+
+  if (months !== null && months > 0) {
+    // Two months or less is a market clearing fast. Eighteen is stagnant.
+    const share = Math.min(1, Math.max(0, (18 - months) / 16))
+    return Math.round(share * 100)
+  }
+
+  // Some postcodes report the turnover instead. 1% a month is slow, 5% is brisk.
+  const turnover = asNumber(data.turnover_per_month)
+  if (turnover !== null && turnover > 0) {
+    return Math.round(Math.min(1, Math.max(0, (turnover - 0.5) / 4.5)) * 100)
+  }
+
+  return null
+}
+
 /** `/flood-risk`. A band, worded rather than numbered. */
 export function readFloodRisk(payload: unknown): string | null {
   return asText(record(payload).flood_risk)

@@ -14,8 +14,10 @@ import {
 import {
   matchAddress,
   readCouncilTax,
+  readDemand,
   readDevelopmentGdv,
   readHmoRoomRate,
+  readLocalRent,
   readRegisteredHmos,
   readEpc,
   readFloodRisk,
@@ -284,7 +286,18 @@ export async function runProfile(options: {
     summary.eventsWritten = [...events.values()].reduce((total, list) => total + list.length, 0)
 
     // --- 4. Enrich a capped number of candidates ---------------------------
-    const enrichmentTargets = chooseEnrichmentTargets(filtered, events)
+    //
+    // The area figures come first, because choosing which candidates to enrich
+    // is itself a judgement about which look like good deals, and the benchmark
+    // is what makes that judgement possible.
+    const area = await loadAreaInsights(
+      client,
+      profile.postcode,
+      observedAt,
+      areaDataNeeded(readStrategies(profile.investment_strategies)),
+    )
+
+    const enrichmentTargets = chooseEnrichmentTargets(filtered, events, area.sold.averagePricePerSqFt)
     if (filtered.length > enrichmentTargets.length) {
       log('enrichment_capped', {
         run_id: run.id,
@@ -293,14 +306,6 @@ export async function runProfile(options: {
         dropped: filtered.length - enrichmentTargets.length,
       })
     }
-    // Area-level, one call per endpoint per run. Every candidate in this search
-    // shares them, so twenty-five properties cost the same as one.
-    const area = await loadAreaInsights(
-      client,
-      profile.postcode,
-      observedAt,
-      areaDataNeeded(readStrategies(profile.investment_strategies)),
-    )
 
     const enrichment = await enrichCandidates(client, enrichmentTargets, profile.postcode)
     summary.candidatesEnriched = enrichment.size
@@ -807,7 +812,12 @@ async function writeEvents(
 // Enrichment
 // ---------------------------------------------------------------------------
 
-const EMPTY_ENRICHMENT: Enrichment = { estimatedValue: null, estimatedRent: null, areaDemandRating: null }
+const EMPTY_ENRICHMENT: Enrichment = {
+  estimatedValue: null,
+  estimatedRent: null,
+  areaDemandRating: null,
+  soldPricePerSqFt: null,
+}
 
 /**
  * Enrichment is shared by every property the valuation would treat the same:
@@ -833,24 +843,66 @@ function enrichmentKey(listing: Listing, fallbackPostcode: string): string {
 export function chooseEnrichmentTargets(
   listings: Listing[],
   events: Map<string, PropertyEvent[]>,
+  areaPricePerSqFt: number | null = null,
   cap: number = ENRICHMENT_CAP,
 ): Listing[] {
-  const weight = (listing: Listing): number => {
-    const own = events.get(listing.key) ?? []
-    const material = own.filter((event) => event.isMaterial)
+  /**
+   * The same shape as the score this feeds: what the property looks like
+   * first, how hard the seller has moved second, at half the weight.
+   *
+   * It used to rank on movement alone, which quietly undid the thing the
+   * scoring was changed to do. A property cannot clear the quality floor
+   * without a rent estimate, it cannot get a rent estimate without being
+   * enriched, and it could not be enriched without having moved. A great deal
+   * listed yesterday was unreachable however good it was.
+   *
+   * Neither half is available in full yet, because that is what enrichment is
+   * for. This is a screen rather than a score, and asking price against the
+   * area benchmark is the best proxy available before spending anything.
+   */
+  const looksCheap = (listing: Listing): number => {
+    if (!areaPricePerSqFt || !listing.price || !listing.internalAreaSqFt) return 0
+
+    const askingPerSqFt = listing.price / listing.internalAreaSqFt
+    const discount = ((areaPricePerSqFt - askingPerSqFt) / areaPricePerSqFt) * 100
+
+    // 0% to 25% below, the band the real factor uses.
+    return Math.min(1, Math.max(0, discount / 25))
+  }
+
+  const hasMoved = (listing: Listing): number => {
+    const material = (events.get(listing.key) ?? []).filter((event) => event.isMaterial)
     if (!material.length) return 0
 
-    const size = Math.max(...material.map((event) => Math.abs(event.magnitude ?? 0)), 1)
-    return material.length * 100 + size
+    const deepest = Math.max(...material.map((event) => Math.abs(event.magnitude ?? 0)), 0)
+    // 2% to 20%, again matching the real factor.
+    return Math.min(1, Math.max(0, (deepest - 2) / 18))
   }
 
   return [...listings]
-    .map((listing) => ({ listing, weight: weight(listing) }))
+    .map((listing) => ({ listing, weight: looksCheap(listing) + hasMoved(listing) * 0.5 }))
     .sort((a, b) => b.weight - a.weight)
     .slice(0, cap)
     .map((entry) => entry.listing)
 }
 
+/**
+ * What we can learn about a candidate, from its own postcode.
+ *
+ * The valuation endpoints are deliberately not called. `/valuation-sale` and
+ * `/valuation-rent` refuse without a construction date, a bathroom count, a
+ * finish quality and an outdoor-space description. We hold one of those four,
+ * and supplying the rest would mean inventing the inputs to the biggest factor
+ * in the score. Every one of those calls failed on the first live run, which is
+ * how this was found: the run spent nothing on them, because an error is free.
+ *
+ * `/rents` and `/sold-prices-per-sqf` answer on a postcode alone, and both are
+ * read for the *property's* postcode rather than the profile's. A forty-mile
+ * search otherwise compares a Southampton asking price against a Havant sold
+ * price and calls the difference a discount.
+ *
+ * Both are cached, so candidates sharing a postcode share the credit.
+ */
 async function enrichCandidates(
   client: ReturnType<typeof createPropertyDataClient>,
   listings: Listing[],
@@ -858,12 +910,12 @@ async function enrichCandidates(
 ): Promise<Map<string, Enrichment>> {
   const results = new Map<string, Enrichment>()
 
-  // Area demand is one figure for the whole search and is cached for 30 days,
-  // so it is one credit at most and often none.
+  // Demand is one figure for the search and is cached for 30 days, so it is one
+  // credit at most and often none.
   let demand: number | null = null
   try {
     const response = await client.call<Record<string, unknown>>('demand', { postcode: fallbackPostcode })
-    demand = readNumber(response.data, ['demand_rating', 'rating', 'demand'])
+    demand = readDemand(response.data)
   } catch (error) {
     log('demand_unavailable', { message: error instanceof Error ? error.message : String(error) })
   }
@@ -873,40 +925,43 @@ async function enrichCandidates(
     if (results.has(key)) continue
 
     const postcode = listing.postcode ?? fallbackPostcode
-    const attributes: Record<string, unknown> = { postcode }
-    if (listing.bedrooms !== null) attributes.bedrooms = listing.bedrooms
-    if (listing.propertyType) attributes.property_type = listing.propertyType
-    // The payload carries the floor area, and /valuation-sale takes it. Passing
-    // it costs nothing and is the difference between valuing a postcode and
-    // valuing this property.
-    if (listing.internalAreaSqFt !== null) attributes.internal_area = listing.internalAreaSqFt
 
-    let estimatedValue: number | null = null
     let estimatedRent: number | null = null
+    let soldPricePerSqFt: number | null = null
 
-    try {
-      const sale = await client.call<Record<string, unknown>>('valuation-sale', attributes)
-      estimatedValue = readNumber(sale.data, ['result', 'estimate', 'valuation', 'value'])
-    } catch (error) {
-      if (error instanceof CreditRefusal) break
-      log('valuation_sale_unavailable', { postcode, message: error instanceof Error ? error.message : String(error) })
+    if (listing.bedrooms !== null) {
+      try {
+        const response = await client.call<Record<string, unknown>>('rents', {
+          postcode,
+          bedrooms: listing.bedrooms,
+        })
+        estimatedRent = readLocalRent(response.data)
+      } catch (error) {
+        if (error instanceof CreditRefusal) break
+        log('rents_unavailable', { postcode, message: error instanceof Error ? error.message : String(error) })
+      }
     }
 
     try {
-      const rentResponse = await client.call<Record<string, unknown>>('valuation-rent', attributes)
-      estimatedRent = readNumber(rentResponse.data, ['result', 'estimate', 'valuation', 'rent'])
+      const response = await client.call<unknown>('sold-prices-per-sqf', { postcode })
+      soldPricePerSqFt = readSoldComparables(response.data).averagePricePerSqFt
     } catch (error) {
       if (error instanceof CreditRefusal) break
-      log('valuation_rent_unavailable', { postcode, message: error instanceof Error ? error.message : String(error) })
+      log('local_sold_unavailable', { postcode, message: error instanceof Error ? error.message : String(error) })
     }
 
-    results.set(key, { estimatedValue, estimatedRent, areaDemandRating: demand })
+    // Not a valuation, and not presented as one. It is what this floor area
+    // would fetch at what nearby homes actually sold for, which is a stated
+    // calculation from two figures we hold rather than a third-party estimate.
+    const estimatedValue =
+      soldPricePerSqFt && listing.internalAreaSqFt ? Math.round(soldPricePerSqFt * listing.internalAreaSqFt) : null
+
+    results.set(key, { estimatedValue, estimatedRent, areaDemandRating: demand, soldPricePerSqFt })
   }
 
   return results
 }
 
-/** PropertyData nest their figures differently per endpoint. Look in the likely places. */
 function readNumber(payload: unknown, keys: string[]): number | null {
   if (!payload || typeof payload !== 'object') return null
   const record = payload as Record<string, unknown>

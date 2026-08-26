@@ -20,6 +20,10 @@ export type EndpointName =
   | 'valuation-rent'
   | 'demand'
   | 'demand-rent'
+  // Local asking rents, and completed sales per square foot, both read for the
+  // property's own postcode rather than the profile's. See DECISIONS.md on why
+  // the valuation endpoints are no longer called.
+  | 'rents'
   // Area-level, one call per profile postcode per run. Every candidate in the
   // same search shares them, so the cache turns twenty-five lookups into one.
   | 'sold-prices-per-sqf'
@@ -95,6 +99,13 @@ export const ENDPOINTS: Record<EndpointName, EndpointSpec> = {
     ttlMs: 30 * DAY_MS,
     cost: 1,
     reason: 'Area-level and slow. Shared by every candidate in the same area, so this TTL saves the most credits of any entry here.',
+  },
+  rents: {
+    path: '/rents',
+    ttlMs: 30 * DAY_MS,
+    cost: 1,
+    reason:
+      'Local asking rents by bedroom count. Answers on a postcode and a bedroom count alone, which is what makes it usable where the valuation endpoints are not. Asking rents move with the market rather than the week.',
   },
   'demand-rent': {
     path: '/demand-rent',

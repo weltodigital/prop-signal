@@ -107,6 +107,15 @@ export type Enrichment = {
   estimatedValue: number | null
   estimatedRent: number | null
   areaDemandRating: number | null
+  /**
+   * Completed sales per square foot in *this property's* postcode.
+   *
+   * A profile may search forty miles. One figure for that whole circle compares
+   * a Southampton asking price against a Havant sold price and calls the
+   * difference a discount. Where this is held it wins; the profile-level figure
+   * is the fallback.
+   */
+  soldPricePerSqFt: number | null
 }
 
 /**
@@ -296,10 +305,13 @@ export function measureQuality(
 ): QualityMeasurement {
   const price = listing.price && listing.price > 0 ? listing.price : null
 
+  // The property's own postcode first, and the profile's only as a fallback.
+  const localPerSqFt = enrichment.soldPricePerSqFt ?? area.soldPricePerSqFt
+
   let comparableDiscount: number | null = null
-  if (price && listing.internalAreaSqFt && area.soldPricePerSqFt) {
+  if (price && listing.internalAreaSqFt && localPerSqFt) {
     const askingPerSqFt = price / listing.internalAreaSqFt
-    comparableDiscount = ((area.soldPricePerSqFt - askingPerSqFt) / area.soldPricePerSqFt) * 100
+    comparableDiscount = ((localPerSqFt - askingPerSqFt) / localPerSqFt) * 100
   }
 
   // Condition, relative to what the subscriber already asked for.
