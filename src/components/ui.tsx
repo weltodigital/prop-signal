@@ -98,3 +98,47 @@ export function FormError({ message }: { message?: string }) {
     </p>
   )
 }
+
+/**
+ * The compact chrome the card actions share.
+ *
+ * Small enough to sit in a row without adding height, and the same shape as the
+ * stage controls beside them, so an action bar reads as one set of controls
+ * rather than as buttons next to loose underlined text.
+ */
+const actionBase =
+  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
+
+const actionTones = {
+  /** The outbound link. The one thing on a card somebody leaves to do. */
+  lead: 'border-accent/30 bg-accent-soft text-accent hover:border-accent/50 hover:bg-accent hover:text-white',
+  plain: 'border-line bg-card text-muted hover:border-accent/30 hover:text-accent',
+  /** Taking it off the list. Present, never inviting. */
+  quiet: 'border-transparent text-muted hover:border-line hover:text-ink',
+} as const
+
+export type ActionTone = keyof typeof actionTones
+
+export function ActionLink({
+  tone = 'plain',
+  className = '',
+  ...props
+}: ComponentProps<typeof Link> & { tone?: ActionTone }) {
+  return <Link className={`${actionBase} ${actionTones[tone]} ${className}`} {...props} />
+}
+
+export function ActionAnchor({
+  tone = 'plain',
+  className = '',
+  ...props
+}: ComponentProps<'a'> & { tone?: ActionTone }) {
+  return <a className={`${actionBase} ${actionTones[tone]} ${className}`} {...props} />
+}
+
+export function ActionButton({
+  tone = 'plain',
+  className = '',
+  ...props
+}: ComponentProps<'button'> & { tone?: ActionTone }) {
+  return <button className={`${actionBase} ${actionTones[tone]} ${className}`} {...props} />
+}

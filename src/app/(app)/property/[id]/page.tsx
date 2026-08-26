@@ -5,7 +5,7 @@ import { stageHistory } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { markReadAction } from '@/app/(app)/deals/mark-read'
 import { formatBedrooms, formatDate, formatListName, formatMoney, formatShortDate } from '@/lib/format'
-import { Button, Card } from '@/components/ui'
+import { ActionAnchor, Button, Card } from '@/components/ui'
 import { RiskFlags } from '@/components/risk-flags'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
@@ -120,16 +120,19 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
           <div className="mt-5 border-t border-line pt-4 text-sm">
             {property.listingUrl ? (
-              <a
+              <ActionAnchor
+                tone="lead"
                 href={directListingUrl(property.listingUrl) ?? property.listingUrl}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="underline underline-offset-4 hover:text-accent"
               >
                 {listingPortal(property.listingUrl)
                   ? `View on ${listingPortal(property.listingUrl)}`
-                  : 'View the original listing'}
-              </a>
+                  : 'View the listing'}
+                <span aria-hidden="true" className="text-[11px] opacity-70">
+                  ↗
+                </span>
+              </ActionAnchor>
             ) : (
               <span className="text-muted">No link to the advert was held</span>
             )}

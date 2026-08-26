@@ -6,6 +6,7 @@ import { StackedNumbers } from '@/components/stacked-numbers'
 import { RiskFlags } from '@/components/risk-flags'
 import { StageControl } from '@/components/stage-control'
 import { setStageAction } from '@/app/(app)/deals/actions'
+import { ActionAnchor, ActionButton, ActionLink } from '@/components/ui'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import type { DealStage } from '@/lib/deal-stages'
 
@@ -203,25 +204,23 @@ export function DealCard({
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-2.5 text-[13px]">
         <StageControl propertyId={deal.propertyId} stage={stage} compact />
 
-        <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link
-            href={`/property/${deal.propertyId}`}
-            className="text-muted underline underline-offset-4 transition-colors hover:text-accent"
-          >
-            Timeline
-          </Link>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <ActionLink href={`/property/${deal.propertyId}`}>Timeline</ActionLink>
 
           {deal.listingUrl ? (
-            <a
+            <ActionAnchor
+              tone="lead"
               href={directListingUrl(deal.listingUrl) ?? deal.listingUrl}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-muted underline underline-offset-4 transition-colors hover:text-accent"
             >
               {listingPortal(deal.listingUrl)
                 ? `View on ${listingPortal(deal.listingUrl)}`
-                : 'View the original listing'}
-            </a>
+                : 'View the listing'}
+              <span aria-hidden="true" className="text-[11px] opacity-70">
+                ↗
+              </span>
+            </ActionAnchor>
           ) : null}
 
           {/* Taking it off the list is the subscriber's decision and it holds:
@@ -230,13 +229,13 @@ export function DealCard({
             <form action={setStageAction}>
               <input type="hidden" name="propertyId" value={deal.propertyId} />
               <input type="hidden" name="stage" value="passed" />
-              <button
+              <ActionButton
+                tone="quiet"
                 type="submit"
                 title="Take this off your list. It will not come back."
-                className="text-muted underline underline-offset-4 transition-colors hover:text-ink"
               >
                 Not for me
-              </button>
+              </ActionButton>
             </form>
           ) : null}
         </div>
