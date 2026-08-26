@@ -160,38 +160,66 @@ export function describeEvent(event: Pick<StoredEvent, 'type' | 'magnitude'> | n
 }
 
 /**
- * How many to publish, and what to say when there are few.
+ * How many to publish.
  *
- * The list stands rather than churning, so this is a ceiling on one run's
- * output rather than a weekly quota. Nothing is padded to reach it: a short
- * honest list builds more trust than five with two duds, and the entire
- * product is that we filtered.
+ * The list stands, so this is not a quota on the list. It is a cap on how many
+ * properties are *added* to it in one run.
+ *
+ * Splitting it that way is what lets both rules hold at once. A property the
+ * subscriber has already been shown stays on the list however many better ones
+ * turn up, because it does not stop being a good deal when a better one
+ * appears. What is limited is the intake: five new ones a week is a list
+ * somebody reads, and twenty-five is a list somebody triages.
  */
-export const LIST_CEILING = 25
+export const NEW_PER_RUN = 5
 
 /**
- * The opening list is five.
- *
- * It is the moment somebody decides whether they wasted £29, and five good
- * deals they can act on beats twenty-five they have to triage. The list grows
- * from there as the standing inventory is worked through week by week.
+ * The opening list is five, and on a backfill everything is new, so the two
+ * numbers are the same. Kept separate because they answer different questions
+ * and will not always agree.
  */
 export const OPENING_LIST = 5
 
-export function selectionSize(qualifyingCount: number, kind: 'backfill' | 'weekly' | 'manual' = 'weekly'): number {
-  return Math.min(qualifyingCount, kind === 'backfill' ? OPENING_LIST : LIST_CEILING)
+export type Publishable<T> = { entry: T; standing: boolean }
+
+/**
+ * Everything already on the list, plus the best few that are not on it yet.
+ *
+ * Order in, order out. The caller ranks first, so the new ones taken are the
+ * best-scoring new ones.
+ */
+export function selectForPublication<T>(
+  candidates: ReadonlyArray<Publishable<T>>,
+  kind: 'backfill' | 'weekly' | 'manual' = 'weekly',
+): T[] {
+  const intake = kind === 'backfill' ? OPENING_LIST : NEW_PER_RUN
+  let taken = 0
+
+  return candidates
+    .filter((candidate) => {
+      if (candidate.standing) return true
+      if (taken >= intake) return false
+      taken += 1
+      return true
+    })
+    .map((candidate) => candidate.entry)
 }
 
 /**
- * Said when an area is not producing much, so a short list reads as a finding
- * rather than as the product being broken.
+ * Said when an area is not producing much.
+ *
+ * Measured on what the run *added*, not on the size of the list. A subscriber
+ * with fourteen deals they are working and nothing new this week has not had a
+ * thin week, and telling them they have would be nonsense.
  */
-export function thinReason(published: number): string | null {
-  if (published >= 3) return null
+export function thinReason(added: number, listSize: number): string | null {
+  if (added >= 3) return null
 
-  if (published === 0) {
-    return 'Nothing in your area clears the bar at the moment. Rather than pad the list with deals that do not stack, we have shown you none.'
+  if (added === 0) {
+    return listSize > 0
+      ? 'Nothing new in your area clears the bar this week. Everything already on your list is still there.'
+      : 'Nothing in your area clears the bar at the moment. Rather than pad the list with deals that do not stack, we have shown you none.'
   }
 
-  return `Only ${published} ${published === 1 ? 'property' : 'properties'} in your area clears the bar at the moment. The rest do not stack, so they are not here.`
+  return `${added} new ${added === 1 ? 'property' : 'properties'} in your area clears the bar this week. The rest do not stack, so they are not here.`
 }

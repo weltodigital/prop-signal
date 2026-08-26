@@ -429,9 +429,13 @@ a whole area is a few minutes of rate-limited calls, and it is the one place in 
 product where somebody waits.
 
 **The opening list is five.** It is the moment somebody decides whether they wasted their
-money, and five deals they can act on beats twenty-five they have to triage. Every run
-after it publishes up to twenty-five, because from then on the list stands and
-accumulates.
+money, and five deals they can act on beats twenty-five they have to triage.
+
+**The list itself is not capped.** What is capped is the intake: each weekly run adds at
+most five new properties, and everything already on the list stays. A property does not
+stop being a good deal because a better one turned up this week, so it is not pushed off
+by one. The list is bounded by the quality floor and by the subscriber removing what they
+are done with, which are the two limits that mean something.
 
 ## The weekly pipeline
 

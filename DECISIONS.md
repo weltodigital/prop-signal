@@ -963,11 +963,10 @@ product where somebody waits, and a spinner would be worse than a sentence.
 
 The Sunday cron is unchanged and still handles everyone from then on.
 
-### The opening list is five, not twenty-five
+### The opening list is five
 
-The standing list ceiling is twenty-five, which is right for a list that accumulates and
-wrong for the first thing somebody sees. Five they can act on beats twenty-five they have
-to triage, and the opening list is the moment they decide whether they wasted their money.
+Five they can act on beats twenty-five they have to triage, and the opening list is the
+moment somebody decides whether they wasted their money.
 
 ### Serviced accommodation is gone
 
@@ -1010,3 +1009,29 @@ Three things came out of it:
 The lesson worth keeping: a column rename is not done when the code compiles. Postgres
 function bodies are not checked until they run, so `grep` for the old name across every
 function body is part of the rename.
+
+### The cap is on the intake, not on the list
+
+Publishing was capped at twenty-five per run, which quietly made twenty-five the size of
+the list: the standing list works by re-publishing everything that still qualifies, so a
+cap on the run was a cap on the total. The twenty-sixth best deal fell off, which
+contradicts the rule that a property stays until the subscriber removes it.
+
+So the two are separated. `selectForPublication` keeps every standing property and takes
+at most five new ones, and there is no total ceiling at all. A property does not stop
+being a good deal because a better one turned up this week.
+
+The list is bounded by the two limits that mean something: the quality floor, and the
+subscriber removing what they are done with. Neither is arbitrary, which a number like
+twenty-five was.
+
+A consequence worth watching: in a busy area the list grows by five a week and nothing
+sheds it but the subscriber. If that turns out to be too much to work through, the answer
+is a higher quality floor rather than a cap, because a cap silently drops good deals and
+a floor says why.
+
+### A thin week is about what arrived
+
+`thinReason` counted everything published, so a subscriber working fourteen deals with
+nothing new would have been told they had a thin week. It counts the intake now, and says
+plainly that everything already on the list is still there.

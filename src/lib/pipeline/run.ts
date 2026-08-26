@@ -53,7 +53,7 @@ import {
   DEFAULT_QUALIFICATION,
   describeEvent,
   qualifies,
-  selectionSize,
+  selectForPublication,
   thinReason,
   type PriorImpression,
   type StoredEvent,
@@ -114,6 +114,8 @@ export type RunSummary = {
   candidatesThinData: number
   /** Left out because the subscriber removed them from their list. */
   candidatesRemoved: number
+  /** New to this subscriber, as opposed to already standing on their list. */
+  dealsAdded: number
   dealsSelected: number
   creditsSpent: number
   cacheHits: number
@@ -217,6 +219,7 @@ export async function runProfile(options: {
     candidatesRiskExcluded: 0,
     candidatesThinData: 0,
     candidatesRemoved: 0,
+    dealsAdded: 0,
     dealsSelected: 0,
     creditsSpent: 0,
     cacheHits: 0,
@@ -470,7 +473,19 @@ export async function runProfile(options: {
     })
 
     const ranked = rank(scored)
-    const selected = ranked.slice(0, selectionSize(ranked.length, kind))
+
+    // The list is not capped. What is capped is the intake: everything already
+    // on the list stays, and at most a handful of new ones join it, because a
+    // property does not stop being a good deal when a better one turns up.
+    const selected = selectForPublication(
+      ranked.map((entry) => ({
+        entry,
+        standing: entry.candidate.verdict.reason === 'standing',
+      })),
+      kind,
+    )
+
+    const added = selected.filter((entry) => entry.candidate.verdict.reason === 'new').length
 
     // --- 6. Publish --------------------------------------------------------
     await publish(supabase, {
@@ -482,7 +497,9 @@ export async function runProfile(options: {
     })
 
     summary.dealsSelected = selected.length
-    summary.isThin = !isBackfill && selected.length < 5
+    summary.dealsAdded = added
+    // Thin is about what arrived this week, not how long the list is.
+    summary.isThin = !isBackfill && added < 3
 
     // --- 7. Close out ------------------------------------------------------
     const profileUpdate: Record<string, unknown> = { last_run_at: observedAt.toISOString() }
@@ -551,6 +568,7 @@ export async function runProfile(options: {
     candidates_risk_excluded: summary.candidatesRiskExcluded,
     candidates_thin_data: summary.candidatesThinData,
     candidates_removed: summary.candidatesRemoved,
+    deals_added: summary.dealsAdded,
     deals_selected: summary.dealsSelected,
     credits_spent: summary.creditsSpent,
     cache_hits: summary.cacheHits,
@@ -1024,7 +1042,7 @@ type SelectedCandidate = {
   candidate: {
     listing: Listing
     propertyId: string
-    verdict: { event: StoredEvent | null; changedSinceSeen: boolean }
+    verdict: { event: StoredEvent | null; changedSinceSeen: boolean; reason: 'new' | 'standing' }
     epc: { rating: string; score: number | null } | null
     councilTaxBand: string | null
     risks: Array<{ label: string; detail: string; severity: string }>
@@ -1089,7 +1107,10 @@ async function publish(
   }
 
   const published = selected.length
-  const thin = kind !== 'backfill' && published < 5
+  const added = selected.filter((entry) => entry.candidate.verdict.reason === 'new').length
+  // Thin is about what arrived, not how long the list is. A subscriber working
+  // fourteen deals with nothing new this week has not had a thin week.
+  const thin = kind !== 'backfill' && added < 3
 
   // The single source of truth for what was published, and when. A future
   // notification channel reads this and nothing else.
@@ -1102,7 +1123,7 @@ async function publish(
       week_of: weekOf(observedAt),
       deal_count: published,
       is_thin: thin,
-      thin_reason: thinReason(published),
+      thin_reason: kind === 'backfill' ? null : thinReason(added, published),
     },
     { onConflict: 'owner_id,run_id' },
   )
