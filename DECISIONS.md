@@ -982,3 +982,31 @@ function all go together, and anyone who had picked it falls back to buy to let.
 
 The seam it left is clean. If a short-let feed is ever bought, the strategy comes back as
 one definition and one return function.
+
+### The rename in 0008 missed a second trigger, and it would have burned the trial
+
+`0008` renamed `search_profiles.strategies` to `sourcing_lists`. It updated
+`validate_search_profile()` and missed `reset_backfill_on_search_change()`, which fires
+BEFORE UPDATE on the same table and still read `new.strategies`. Since that migration was
+applied, every update to a search profile has failed with 42703.
+
+It surfaced when `0011` tried to update a profile row. The more expensive path was quieter.
+The end of a run sets `backfill_completed_at`, and that write was not error-checked, so it
+failed silently and the backfill was never marked done. The dashboard runs the backfill
+whenever that flag is null, so the first-run feature would have re-sourced the whole area
+on every visit and spent a full run of credits each time, against a trial that does not
+renew.
+
+Three things came out of it:
+
+- The function is fixed, and investment strategies are deliberately not in it. Changing
+  how a property is scored does not mean the area has to be sourced again.
+- That write is now error-checked and fails the run loudly. A silent failure there is a
+  loop, so it is not allowed to be silent.
+- `/api/runs/first` gained a second guard that does not depend on the flag at all: it
+  refuses when a backfill run has already finished for that owner, which is a row the run
+  itself wrote. One guard depending on a write that can fail is not a guard.
+
+The lesson worth keeping: a column rename is not done when the code compiles. Postgres
+function bodies are not checked until they run, so `grep` for the old name across every
+function body is part of the rename.

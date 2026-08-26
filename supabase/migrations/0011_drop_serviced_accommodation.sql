@@ -8,6 +8,43 @@
 -- The scoring function is gone, so the strategy has to go with it: a stored
 -- strategy that nothing can score would publish a list ranked on nothing.
 
+-- ---------------------------------------------------------------------------
+-- First, a bug that 0008 left behind.
+--
+-- Renaming search_profiles.strategies to sourcing_lists updated
+-- validate_search_profile() and missed reset_backfill_on_search_change(),
+-- which still referenced new.strategies. That function fires BEFORE UPDATE on
+-- every row of the table, so since 0008 was applied *any* update to a search
+-- profile has failed with 42703.
+--
+-- Two things were broken by it and neither says so out loud:
+--
+--   - a subscriber changing their area or lists gets an error
+--   - the end of a run sets backfill_completed_at, and that write is not
+--     error-checked, so it failed silently and the backfill was never marked
+--     done. The dashboard would then run it again on the next visit, and
+--     again, spending a full run's credits every time.
+--
+-- The code side of that second one is fixed in the same commit as this file.
+-- ---------------------------------------------------------------------------
+
+create or replace function public.reset_backfill_on_search_change()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- Investment strategies are deliberately not here. Changing how a property
+  -- is scored does not mean the area has to be sourced again.
+  if new.postcode is distinct from old.postcode
+     or new.radius_miles is distinct from old.radius_miles
+     or new.sourcing_lists is distinct from old.sourcing_lists then
+    new.backfill_completed_at := null;
+  end if;
+
+  return new;
+end;
+$$;
+
 create or replace function public.validate_search_profile()
 returns trigger
 language plpgsql

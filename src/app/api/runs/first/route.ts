@@ -22,11 +22,14 @@ export const maxDuration = 800
  *   - a session, and the profile is read as that user
  *   - an active subscription, checked with the service role rather than the
  *     caller's own claim
- *   - the backfill has not already been done
+ *   - the backfill has not already been done, on the profile flag
  *   - no run is already in flight for this profile
+ *   - and no backfill run has ever finished for this owner
  *
- * The last two are what make it safe to call twice. A double-click, a refresh
- * mid-run, or two tabs must not buy the same list twice.
+ * The last three are what make it safe to call twice. A double-click, a
+ * refresh mid-run, or two tabs must not buy the same list twice. The last one
+ * is deliberately independent of the flag, because the flag is set by a write
+ * at the end of a run and a write can fail.
  */
 export async function POST() {
   const supabase = await createClient()
@@ -76,6 +79,23 @@ export async function POST() {
 
   if (inFlight && inFlight.length > 0) {
     return NextResponse.json({ ok: true, status: 'already_running' })
+  }
+
+  // Belt and braces, and not paranoia: the backfill_completed_at check above
+  // relies on a write at the end of a run, and a missed column rename in 0008
+  // made that write fail silently. Without this, that bug turned the dashboard
+  // into a loop that spent a full run's credits on every visit. This guard
+  // reads a row the run itself wrote, so it holds even when the flag does not.
+  const { data: pastRuns } = await admin
+    .from('pipeline_runs')
+    .select('id')
+    .eq('owner_id', user.id)
+    .eq('kind', 'backfill')
+    .in('status', ['completed', 'aborted'])
+    .limit(1)
+
+  if (pastRuns && pastRuns.length > 0) {
+    return NextResponse.json({ ok: true, status: 'already_done' })
   }
 
   try {

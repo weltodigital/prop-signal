@@ -487,7 +487,22 @@ export async function runProfile(options: {
     // --- 7. Close out ------------------------------------------------------
     const profileUpdate: Record<string, unknown> = { last_run_at: observedAt.toISOString() }
     if (isBackfill) profileUpdate.backfill_completed_at = observedAt.toISOString()
-    await supabase.from('search_profiles').update(profileUpdate).eq('id', profile.id)
+
+    // Checked, and loudly. This write is what marks the backfill done, and the
+    // dashboard runs the backfill again whenever it is not. A silent failure
+    // here is a run that repeats on every visit, spending a full run's credits
+    // each time — which is exactly what a missed rename in 0008 caused.
+    const { error: profileError } = await supabase
+      .from('search_profiles')
+      .update(profileUpdate)
+      .eq('id', profile.id)
+
+    if (profileError) {
+      throw new Error(
+        `Run completed but the profile could not be marked: ${profileError.message}. ` +
+          'Left unmarked, the opening run would repeat and spend credits again.',
+      )
+    }
   } catch (error) {
     const refusal = error instanceof CreditRefusal
     summary.status = refusal || client.abortedReason() ? 'aborted' : 'failed'
