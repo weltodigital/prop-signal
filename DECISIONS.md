@@ -1035,3 +1035,22 @@ a floor says why.
 `thinReason` counted everything published, so a subscriber working fourteen deals with
 nothing new would have been told they had a thin week. It counts the intake now, and says
 plainly that everything already on the list is still there.
+
+### Watching and tracking were one decision asked twice
+
+Two buttons sat side by side on every card. "Watch" added a row to `watchlist` and told
+you when the property moved. "Track this" started it through the deal stages. The person
+who commissioned the product asked what the difference was, which settled it: if the
+answer is not obvious to them, a subscriber has no chance.
+
+There was not really a difference worth keeping. Somebody working a deal towards an offer
+wants to know when the price moves; somebody who has passed on one does not. So the watch
+follows the stage — live stages watch, terminal ones stop — and the star is gone.
+
+`/watchlist` redirects to `/deals`, and what has changed is shown there, above the deals
+it changed on. The table, the derivation and the per-row cut-off are all unchanged; only
+the second question is gone.
+
+What this costs: there is no longer a way to follow a property without putting it in the
+pipeline. The `interested` stage is that, and it was already the first thing the old
+"Watch" button meant.

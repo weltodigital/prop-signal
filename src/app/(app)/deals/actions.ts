@@ -29,7 +29,6 @@ async function requireUser() {
 function revalidateDealSurfaces(propertyId: string) {
   revalidatePath('/dashboard')
   revalidatePath('/deals')
-  revalidatePath('/watchlist')
   revalidatePath('/archive', 'layout')
   revalidatePath(`/property/${propertyId}`)
 }

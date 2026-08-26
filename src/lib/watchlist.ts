@@ -202,26 +202,37 @@ export async function isWatched(propertyId: string): Promise<boolean> {
  * insert policy checks it against `properties` under the caller's own read
  * policy, so a property id belonging to someone else fails at the database.
  */
-export async function toggleWatch(propertyId: string): Promise<{ watched: boolean }> {
+/**
+ * Puts a property on the watchlist, or takes it off.
+ *
+ * Not a decision the subscriber makes any more. `recordStage` calls this so the
+ * watch follows the deal: anything being worked is watched, anything passed or
+ * untracked is not. The toggle it replaces sat beside "Track this" on every
+ * card and nobody could say what the difference was.
+ *
+ * Idempotent in both directions, because the stage it follows can be recorded
+ * twice and moving backwards is allowed.
+ */
+export async function setWatched(propertyId: string, watched: boolean): Promise<void> {
   const supabase = await createClient()
-
-  const { data: existing } = await supabase.from('watchlist').select('id').eq('property_id', propertyId).maybeSingle()
-
-  if (existing) {
-    const { error } = await supabase.from('watchlist').delete().eq('property_id', propertyId)
-    if (error) throw new Error(`Could not remove that from your watchlist: ${error.message}`)
-    return { watched: false }
-  }
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) throw new Error('Not signed in.')
+  if (!user) throw new Error('Not signed in')
 
-  const { error } = await supabase.from('watchlist').insert({ owner_id: user.id, property_id: propertyId })
-  if (error) throw new Error(`Could not add that to your watchlist: ${error.message}`)
+  if (!watched) {
+    const { error } = await supabase.from('watchlist').delete().eq('property_id', propertyId)
+    if (error) throw new Error(`Could not stop watching: ${error.message}`)
+    return
+  }
 
-  return { watched: true }
+  // ignoreDuplicates, because a stage recorded twice must not raise here.
+  const { error } = await supabase
+    .from('watchlist')
+    .upsert({ owner_id: user.id, property_id: propertyId }, { onConflict: 'owner_id,property_id', ignoreDuplicates: true })
+
+  if (error) throw new Error(`Could not start watching: ${error.message}`)
 }
 
 /** Marks everything currently unread as read. */

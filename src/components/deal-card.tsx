@@ -8,7 +8,6 @@ import { StageControl } from '@/components/stage-control'
 import { setStageAction } from '@/app/(app)/deals/actions'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import type { DealStage } from '@/lib/deal-stages'
-import { WatchButton } from '@/components/watch-button'
 
 /**
  * A published deal, as one scannable row.
@@ -129,7 +128,6 @@ export function DealCard({
 
         <div className="flex shrink-0 items-center gap-3">
           <ScoreMeter score={deal.totalScore} />
-          <WatchButton propertyId={deal.propertyId} watched={deal.watched} />
         </div>
       </div>
 

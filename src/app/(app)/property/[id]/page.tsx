@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { getPropertyDetail } from '@/lib/deals'
 import { stageHistory } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
-import { markReadAction } from '@/app/(app)/watchlist/actions'
+import { markReadAction } from '@/app/(app)/deals/mark-read'
 import { formatBedrooms, formatDate, formatListName, formatMoney, formatShortDate } from '@/lib/format'
 import { Button, Card } from '@/components/ui'
 import { RiskFlags } from '@/components/risk-flags'
@@ -11,7 +11,6 @@ import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
 import { StackIt } from '@/components/stack-it'
 import { Timeline } from '@/components/timeline'
-import { WatchButton } from '@/components/watch-button'
 import { StageControl } from '@/components/stage-control'
 import { STAGE_DEFINITIONS } from '@/lib/deal-stages'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
@@ -59,8 +58,6 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           </p>
           {property.preciseAddress ? <p className="mt-1 text-sm text-muted">{property.preciseAddress}</p> : null}
         </div>
-
-        <WatchButton propertyId={property.propertyId} watched={property.watched} />
       </div>
 
       <p className="mt-3 text-sm text-muted">

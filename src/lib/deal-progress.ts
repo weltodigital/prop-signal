@@ -3,6 +3,7 @@ import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { toPropertySnapshot, type PropertySnapshot } from '@/lib/deals'
 import { isDealStage, isActive, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
+import { setWatched } from '@/lib/watchlist'
 
 /**
  * Reading and writing how far a subscriber got.
@@ -141,11 +142,17 @@ export async function listTrackedDeals(options: { includeFinished?: boolean } = 
 }
 
 /**
- * Records a step.
+ * Records a step, and keeps the watch in step with it.
  *
  * Always an insert. Recording the same stage twice is allowed and harmless —
  * it says the subscriber came back and confirmed it — and moving backwards is
  * a real thing that happens to real deals, so neither is refused.
+ *
+ * Watching used to be a second button beside this one, and nobody could say
+ * what the difference was. It is not a separate decision: somebody working a
+ * deal towards an offer obviously wants to know if the price moves, and
+ * somebody who has passed on one obviously does not. So the watch follows the
+ * stage rather than asking again.
  */
 export async function recordStage(propertyId: string, stage: DealStage): Promise<void> {
   const supabase = await createClient()
@@ -160,6 +167,9 @@ export async function recordStage(propertyId: string, stage: DealStage): Promise
     .insert({ owner_id: user.id, property_id: propertyId, stage })
 
   if (error) throw new Error(`Could not record the stage: ${error.message}`)
+
+  // A live deal is watched; a dead one is not.
+  await setWatched(propertyId, isActive(stage))
 }
 
 /**
@@ -173,6 +183,8 @@ export async function untrack(propertyId: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase.from('deal_progress').delete().eq('property_id', propertyId)
   if (error) throw new Error(`Could not untrack: ${error.message}`)
+
+  await setWatched(propertyId, false)
 }
 
 /** How many deals sit at each stage, for the subscriber's own summary. */

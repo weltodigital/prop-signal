@@ -49,20 +49,25 @@ wrote. Nothing a subscriber can click spends a credit.
 | `/dashboard` | This week's five. The qualifying event in the headline position, the numbers stacked, the score openable line by line. |
 | `/property/[id]` | One property in full: the complete event timeline, every week it has been shown to you, and the calculator. |
 | `/archive` and `/archive/[runId]` | Previous weeks, exactly as they were published. |
-| `/watchlist` | Starred properties, and the events on them you have not read. |
-| `/deals` | Every property you have tracked and how far it got, finished ones included. |
+| `/deals` | Every property you have tracked, how far it got, and what has changed since you looked. |
 | `/account` | Plan, area, strategies, billing portal. |
 
-### The watchlist costs nothing, by construction
+### Watching follows the deal, and is not a second decision
 
-Starring a property adds a row to `watchlist` and nothing else. There is no
-notifications table: a notification is a material event on a starred property
-observed since that row's `events_seen_at`, derived at read time from the diff
-the run already wrote. It cannot fall out of step with the events because it is
-the events, and it cannot start costing money because there is no call behind it.
+Anything being worked is watched; anything passed or untracked is not. There is no
+separate star, because there was never a separate decision: somebody progressing a deal
+towards an offer obviously wants to know if the price moves, and somebody who has passed
+on one obviously does not.
 
-Each starred row carries its own cut-off, so marking one property read does not
-silence the rest.
+It cost nothing before and costs nothing now. There is no notifications table: a change
+is a material event on a tracked property observed since that row's `events_seen_at`,
+derived at read time from the diff the run already wrote. It cannot fall out of step with
+the events because it *is* the events, and it cannot start costing money because there is
+no call behind it.
+
+Each row carries its own cut-off, so marking one property read does not silence the rest.
+What has changed is shown on `/deals`, above the deals it changed on, because a price cut
+on something you have an offer in on is the most time-sensitive thing on the page.
 
 ### Deals you're working
 

@@ -1,5 +1,9 @@
 import Link from 'next/link'
 import { listTrackedDeals, stageCounts } from '@/lib/deal-progress'
+import { listNotifications } from '@/lib/watchlist'
+import { markReadAction } from './mark-read'
+import { formatShortDate } from '@/lib/format'
+import { Button, Card } from '@/components/ui'
 import { DEAL_STAGES, isActive, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { StageSummary, TrackedRow } from '@/components/deal-tracker'
@@ -17,7 +21,13 @@ export const dynamic = 'force-dynamic'
 export default async function DealsPage() {
   const { email } = await requireSubscriber('/deals')
 
-  const [deals, counts] = await Promise.all([listTrackedDeals({ includeFinished: true }), stageCounts()])
+  const [deals, counts, changes] = await Promise.all([
+    listTrackedDeals({ includeFinished: true }),
+    stageCounts(),
+    // Anything material that has happened on a deal being worked since it was
+    // last read. Derived from events the run already wrote, so it costs nothing.
+    listNotifications(),
+  ])
 
   const live = deals.filter((deal) => isActive(deal.stage))
   const finished = deals.filter((deal) => !isActive(deal.stage))
@@ -30,11 +40,40 @@ export default async function DealsPage() {
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Your deals</h1>
       <p className="mt-2 max-w-prose text-muted">
-        Where each property got to, and when. Nothing here is sent anywhere or costs anything. It is your own record
-        of what you did next.
+        Where each property got to, and what has changed on it since you looked. Anything you are working is watched
+        automatically, so you do not have to ask twice.
       </p>
 
       <StageSummary counts={ordered} />
+
+      {/* What has changed, above the deals themselves. A price cut on a deal
+          you have an offer in on is the most time-sensitive thing on the page. */}
+      {changes.length ? (
+        <Card className="mt-8 border-accent/30 bg-accent-soft">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+            <h2 className="text-base font-medium">
+              {changes.length} {changes.length === 1 ? 'change' : 'changes'} since you last looked
+            </h2>
+            <form action={markReadAction}>
+              <Button type="submit" variant="quiet">
+                Mark all read
+              </Button>
+            </form>
+          </div>
+
+          <ul className="mt-3 space-y-1.5 text-sm">
+            {changes.map((change) => (
+              <li key={`${change.propertyId}-${change.observedAt}-${change.label}`} className="flex gap-3">
+                <span className="nums shrink-0 text-muted">{formatShortDate(change.observedAt)}</span>
+                <span className="min-w-0">
+                  <span className="font-medium">{change.label}</span>
+                  <span className="text-muted"> on {change.address ?? 'a property you are working'}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       {deals.length === 0 ? (
         <div className="mt-8">

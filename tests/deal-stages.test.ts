@@ -72,3 +72,21 @@ describe('the stages', () => {
     }
   })
 })
+
+describe('watching follows the stage', () => {
+  it('watches everything live and nothing finished', () => {
+    // Watching used to be a second button beside "Track this" and nobody could
+    // say what the difference was. It is not a separate decision: anybody
+    // working a deal wants to know when it moves, and anybody who has passed on
+    // one does not. isActive is what recordStage uses to decide.
+    for (const stage of FORWARD_STAGES) {
+      if (stage === 'completed') continue
+      expect(isActive(stage), stage).toBe(true)
+    }
+
+    expect(isActive('completed')).toBe(false)
+    for (const stage of EXIT_STAGES) {
+      expect(isActive(stage), stage).toBe(false)
+    }
+  })
+})

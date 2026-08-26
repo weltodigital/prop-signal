@@ -7,7 +7,6 @@ import { countUnread } from '@/lib/watchlist'
 
 const NAV = [
   { href: '/dashboard', label: 'Properties' },
-  { href: '/watchlist', label: 'Watchlist' },
   { href: '/deals', label: 'Your deals' },
   { href: '/archive', label: 'Archive' },
   { href: '/account', label: 'Account' },
@@ -42,7 +41,7 @@ export async function AppShell({ email, children }: { email: string; children: R
                     aria-label="A new list you have not looked at"
                   />
                 ) : null}
-                {item.href === '/watchlist' && unread > 0 ? (
+                {item.href === '/deals' && unread > 0 ? (
                   <span
                     className="nums ml-1.5 rounded-full bg-accent px-1.5 py-0.5 text-xs text-white"
                     aria-label={`${unread} unread ${unread === 1 ? 'event' : 'events'}`}
