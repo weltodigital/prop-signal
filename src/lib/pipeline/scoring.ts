@@ -376,7 +376,7 @@ export function qualityScores(
         label,
         points: round(share * w.strategyReturn),
         available: w.strategyReturn,
-        detail: `${m.strategyReturn.detail} — ${standing}`,
+        detail: `${m.strategyReturn.detail}, ${standing}`,
       })
     }
 

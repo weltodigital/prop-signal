@@ -6,7 +6,7 @@ import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 
 export const metadata: Metadata = {
-  title: 'Prop Signal — the deals, brought to you',
+  title: 'Prop Signal. The deals, brought to you',
   description:
     'Five investment opportunities in your area, in front of you every Monday. No portals to trawl, no saved searches to triage, no sourcing fee. Each one chosen because a seller moved, with the numbers already worked out. £29 a month.',
 }
@@ -30,7 +30,7 @@ const STEPS = [
   {
     step: '01',
     title: 'Tell us where you buy',
-    body: 'A postcode, how far you will travel, and how you make your money — buy to let, HMO, flip, serviced accommodation. It takes about a minute, and it is the last search you will ever set up.',
+    body: 'A postcode, how far you will travel, and how you make your money, whether that is buy to let, HMO, flip or serviced accommodation. It takes about a minute, and it is the last search you will ever set up.',
   },
   {
     step: '02',
@@ -52,7 +52,7 @@ const STEPS = [
 const FAQS = [
   {
     q: 'How is this different from a portal alert?',
-    a: 'A portal tells you what is new, because that is all it can tell you — it has no memory of what it said last week. Almost everything worth buying was already listed and has since moved. We keep a dated record of every property in your area and compare each run against the last, so a property listed eight months ago can lead this week because it dropped twelve per cent on Thursday.',
+    a: 'A portal tells you what is new, because that is all it can tell you. It has no memory of what it said last week. Almost everything worth buying was already listed and has since moved. We keep a dated record of every property in your area and compare each run against the last, so a property listed eight months ago can lead this week because it dropped twelve per cent on Thursday.',
   },
   {
     q: 'How is this different from a deal sourcer?',
@@ -109,8 +109,8 @@ export default async function HomePage() {
 
               <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">
                 Five investment opportunities in your area, waiting for you every Monday. Each one is there because a
-                seller moved — a price cut, a fall-through, a year on the market with no buyer — and each one arrives
-                with the numbers already worked out.
+                seller moved. A price cut, a fall-through, a year on the market with no buyer. Each one arrives with
+                the numbers already worked out.
               </p>
 
               <p className="mt-4 max-w-2xl text-muted">
@@ -278,7 +278,7 @@ export default async function HomePage() {
                 <ul className="mt-6 space-y-3 text-muted">
                   {[
                     'Your area, up to forty miles from your postcode',
-                    'Scored for how you invest — let, HMO, flip or short let',
+                    'Scored for how you invest, whether that is a let, an HMO, a flip or a short let',
                     'Five opportunities in front of you every Monday',
                     'The full price history, so you know what to offer',
                     'Yield and value gap worked out before you open it',

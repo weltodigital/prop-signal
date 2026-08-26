@@ -56,7 +56,7 @@ export function clientEnv(): z.infer<typeof clientSchema> {
 
 function assertServerSide(what: string): void {
   if (typeof window !== 'undefined') {
-    throw new Error(`${what} was reached from the browser. This is a bug — server secrets must never be imported into client code.`)
+    throw new Error(`${what} was reached from the browser. This is a bug. Server secrets must never be imported into client code.`)
   }
 }
 

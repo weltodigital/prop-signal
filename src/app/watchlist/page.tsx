@@ -92,7 +92,7 @@ export default async function WatchlistPage() {
                 <Link href="/dashboard" className="underline underline-offset-4 hover:text-ink">
                   this week&rsquo;s list
                 </Link>{' '}
-                and on its own page. Watching one has no effect on what you are shown each Monday — it only decides
+                and on its own page. Watching one has no effect on what you are shown each Monday. It only decides
                 what turns up here.
               </p>
             </EmptyState>

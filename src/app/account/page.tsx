@@ -179,7 +179,7 @@ export default async function AccountPage({
       <Card className="mt-6">
         <h2 className="text-base font-medium">Sign-in</h2>
         <p className="mt-3 text-sm text-muted">
-          You sign in as {user.email}. Changing the address is not something you can do here — email me and I will
+          You sign in as {user.email}. Changing the address is not something you can do here. Email me and I will
           move it, so that losing an inbox does not lose the subscription with it.
         </p>
         <ChangePasswordForm />

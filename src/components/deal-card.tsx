@@ -60,8 +60,8 @@ export function DealCard({
             <p className="mt-1.5 text-sm">
               <span className="font-medium">Best as a {winner.label.toLowerCase()}</span>
               <span className="text-muted">
-                {' '}
-                — {runnersUp.map((s) => `${s.label.toLowerCase()} ${s.total.toFixed(0)}`).join(', ')}
+                {', against '}
+                {runnersUp.map((s) => `${s.label.toLowerCase()} ${s.total.toFixed(0)}`).join(', ')}
               </span>
             </p>
           ) : null}
@@ -89,7 +89,7 @@ export function DealCard({
           {deal.epc ? `EPC ${deal.epc.rating}${deal.epc.score === null ? '' : ` (${deal.epc.score})`}` : null}
           {deal.epc && deal.councilTaxBand ? ' · ' : null}
           {deal.councilTaxBand ? `Council tax band ${deal.councilTaxBand}` : null}
-          <span> — matched to this address, not to the postcode.</span>
+          <span>. Matched to this address, not to the postcode.</span>
         </p>
       ) : null}
 

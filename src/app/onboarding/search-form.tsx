@@ -122,7 +122,7 @@ export function SearchForm({
         <h2 className="text-base font-medium">2. Your strategy</h2>
         <p className="mt-1 text-sm text-muted">
           How you intend to make money from a property, which is what decides whether it is a good one. The same
-          three-bed can be an ordinary buy-to-let and an excellent HMO. Pick as many as you actually run — each
+          three-bed can be an ordinary buy-to-let and an excellent HMO. Pick as many as you actually run. Each
           property is scored under all of them and ranked by whichever suits it best.
         </p>
 
@@ -231,7 +231,7 @@ export function SearchForm({
         <h2 className="text-base font-medium">3. What to look for</h2>
         <p className="mt-1 text-sm text-muted">
           Which situations you want pulled out of the market. Pick as many as apply. More lists means a wider net, not
-          a longer list — you still get five.
+          a longer list. You still get five.
         </p>
 
         <fieldset className="mt-6 space-y-3">

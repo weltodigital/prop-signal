@@ -84,7 +84,7 @@ export function ScoreBreakdown({
       </section>
 
       <p className="text-sm text-muted sm:col-span-2">
-        The two are added, not blended — {qualityScore.toFixed(1)} and {movementScore.toFixed(1)} out of 200 — so a
+        The two are added, not blended. {qualityScore.toFixed(1)} and {movementScore.toFixed(1)}, out of 200, so a
         mediocre property that has just dropped can outrank a good one that has not moved. Cashflow is scored against
         the other properties in your week rather than a fixed figure, because £300 a month clear means something
         different in Salford and in Surrey. Scoring {version}.

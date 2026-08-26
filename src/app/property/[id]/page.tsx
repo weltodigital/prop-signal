@@ -115,7 +115,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
                 : null}
               {property.latest.epc && property.latest.councilTaxBand ? ' · ' : null}
               {property.latest.councilTaxBand ? `Council tax band ${property.latest.councilTaxBand}` : null}
-              <span> — matched to this address when it was last published.</span>
+              <span>. Matched to this address when it was last published.</span>
             </p>
           ) : null}
 
@@ -176,7 +176,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
                   >
                     {appearance.weekOf ? `Week of ${formatShortDate(appearance.weekOf)}` : 'Opening list'}
                   </Link>
-                  <span className="text-muted"> — {appearance.headline}</span>
+                  <span className="text-muted">, {appearance.headline}</span>
                 </span>
                 <span className="nums text-muted">
                   Position {appearance.position}, score {appearance.totalScore.toFixed(0)}
@@ -208,7 +208,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       <section className="mt-10">
         <h2 className="text-lg font-medium">Stack it</h2>
         <p className="mt-1 text-sm text-muted">
-          Runs in your browser against the figures above. Change anything you like — it costs nothing and nothing is
+          Runs in your browser against the figures above. Change anything you like. It costs nothing and nothing is
           saved.
           {property.enrichment.estimatedRent === null || property.price === null
             ? ' Some figures are not held, so those boxes start empty rather than at a guess.'

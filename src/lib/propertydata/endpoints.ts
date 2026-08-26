@@ -130,7 +130,7 @@ export const ENDPOINTS: Record<EndpointName, EndpointSpec> = {
     ttlMs: 30 * DAY_MS,
     cost: 1,
     reason:
-      'Local room rates for a shared house. Asking rents, so they move with the market rather than the week — and only a profile with an HMO strategy ever pays for this.',
+      'Local room rates for a shared house. Asking rents, so they move with the market rather than the week, and only a profile with an HMO strategy ever pays for this.',
   },
   'national-hmo-register': {
     path: '/national-hmo-register',

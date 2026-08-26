@@ -62,7 +62,11 @@ export const EMPTY_STRATEGY_AREA: StrategyAreaContext = {
 }
 
 function missing(strategy: InvestmentStrategy, what: string): StrategyReturn {
-  return { value: null, detail: `${what} — cannot be scored as ${STRATEGY_DEFINITIONS[strategy].label}`, belowWater: false }
+  return {
+    value: null,
+    detail: `${what}, so this cannot be scored as ${STRATEGY_DEFINITIONS[strategy].label}`,
+    belowWater: false,
+  }
 }
 
 function money(value: number): string {

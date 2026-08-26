@@ -22,7 +22,7 @@ export default async function ArchivePage() {
       <h1 className="text-2xl font-semibold tracking-tight">Archive</h1>
       <p className="mt-2 text-sm text-muted">
         Every list published to you. The figures in an old week are what we observed then and have not been updated
-        since — that is what makes them worth keeping.
+        since. That is what makes them worth keeping.
       </p>
 
       <div className="mt-8 space-y-3">

@@ -92,7 +92,7 @@ export function ScorePreview() {
   const factors = [
     {
       label: 'Monthly cashflow',
-      detail: '£188 a month clear — better than 80% of this week\u2019s candidates',
+      detail: '£188 a month clear, better than 80% of this week\u2019s candidates',
       points: '32.0 / 40',
     },
     { label: 'Price against nearby sales', detail: '12.0% below what nearby homes sold for', points: '14.4 / 30' },

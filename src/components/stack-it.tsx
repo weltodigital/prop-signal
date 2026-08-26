@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { DEFAULT_INPUTS, stack, type StackInputs } from '@/lib/stack'
-import { formatMoney, formatPercent, formatSignedMoney } from '@/lib/format'
+import { formatMoney, formatPercent, formatSignedMoney, NOT_HELD } from '@/lib/format'
 
 /**
  * Stack it.
@@ -153,8 +153,8 @@ export function StackIt({
 
         <h4 className="mt-5 text-sm font-medium">The return</h4>
         <div className="mt-2">
-          <Row label="Gross yield" value={formatPercent(result.grossYieldPercent, 2, '—')} />
-          <Row label="Cash on cash" value={formatPercent(result.cashOnCashPercent, 2, '—')} strong />
+          <Row label="Gross yield" value={formatPercent(result.grossYieldPercent, 2, NOT_HELD)} />
+          <Row label="Cash on cash" value={formatPercent(result.cashOnCashPercent, 2, NOT_HELD)} strong />
         </div>
 
         {result.refinance ? (
@@ -176,7 +176,7 @@ export function StackIt({
                 value={
                   result.refinance.allOut
                     ? 'No money left in'
-                    : formatPercent(result.refinance.returnOnLeftInPercent, 2, '—')
+                    : formatPercent(result.refinance.returnOnLeftInPercent, 2, NOT_HELD)
                 }
               />
               <Row

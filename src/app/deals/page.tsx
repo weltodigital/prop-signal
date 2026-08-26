@@ -31,7 +31,7 @@ export default async function DealsPage() {
     <AppShell email={email}>
       <h1 className="text-2xl font-semibold tracking-tight">Your deals</h1>
       <p className="mt-2 max-w-prose text-muted">
-        Where each property got to, and when. Nothing here is sent anywhere or costs anything — it is your own record
+        Where each property got to, and when. Nothing here is sent anywhere or costs anything. It is your own record
         of what you did next.
       </p>
 
