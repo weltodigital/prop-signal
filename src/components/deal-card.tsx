@@ -40,27 +40,34 @@ function Figure({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * The score, weighted by how good it is.
+ * The score, as a number and a meter.
  *
- * Out of 150, so the thresholds are not the usual percentage ones. A number
- * alone makes every row look the same at a glance; the weight is what lets an
- * eye running down the list stop in the right place.
+ * A column of bare numbers reads flat: an eye running down the list has to
+ * compare five two-digit figures to find the one worth stopping at. The meter
+ * does that comparison for it.
+ *
+ * The track is a lighter step of the same ramp rather than grey, so the state
+ * reads across the whole bar rather than only across the filled part. Out of
+ * 150, which is the real ceiling: quality in full plus half of movement.
+ *
+ * Tabular figures here, because this is a column and the digits have to line up
+ * down the page.
  */
-function ScoreBadge({ score }: { score: number }) {
-  const tone =
-    score >= 100
-      ? 'border-accent bg-accent text-white'
-      : score >= 75
-        ? 'border-accent/30 bg-accent-soft text-accent'
-        : 'border-line bg-paper text-muted'
+function ScoreMeter({ score }: { score: number }) {
+  const share = Math.max(0, Math.min(1, score / 150))
 
   return (
-    <span
-      className={`nums inline-flex h-9 min-w-[2.75rem] items-center justify-center rounded-md border px-2 text-base font-semibold ${tone}`}
-      title={`${score.toFixed(1)} out of 150`}
-    >
-      {score.toFixed(0)}
-    </span>
+    <div className="w-14 shrink-0 text-right" title={`${score.toFixed(1)} out of 150`}>
+      <p className={`nums text-xl leading-none font-semibold ${score >= 90 ? 'text-accent' : 'text-ink'}`}>
+        {score.toFixed(0)}
+      </p>
+      <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-accent-soft">
+        <div
+          className="h-full rounded-full bg-accent transition-[width] duration-300"
+          style={{ width: `${Math.max(share * 100, 4)}%` }}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -120,8 +127,8 @@ export function DealCard({
           </h3>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <ScoreBadge score={deal.totalScore} />
+        <div className="flex shrink-0 items-center gap-3">
+          <ScoreMeter score={deal.totalScore} />
           <WatchButton propertyId={deal.propertyId} watched={deal.watched} />
         </div>
       </div>

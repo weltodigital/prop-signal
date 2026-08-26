@@ -5,6 +5,7 @@ import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
 import { DealCard } from '@/components/deal-card'
 import { DealTracker } from '@/components/deal-tracker'
+import { DashboardStats } from '@/components/dashboard-stats'
 import { FirstRun } from '@/components/first-run'
 import { MarkSeen } from '@/components/mark-seen'
 import { EmptyState, Notice } from '@/components/ui'
@@ -92,6 +93,14 @@ export default async function DashboardPage({
             <p>{week.thinReason}</p>
           </Notice>
         </div>
+      ) : null}
+
+      {week && week.deals.length > 0 ? (
+        <DashboardStats
+          deals={week.deals}
+          tracked={tracked}
+          newThisWeek={week.deals.filter((deal) => deal.changedSinceSeen).length}
+        />
       ) : null}
 
       {/* The opening backfill has not happened yet. Run it now rather than

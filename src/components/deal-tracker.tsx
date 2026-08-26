@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { TrackedDeal } from '@/lib/deal-progress'
-import { STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
+import { FORWARD_STAGES, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
 import { StageControl } from '@/components/stage-control'
 import { formatDate, formatMoney } from '@/lib/format'
 import { Card } from '@/components/ui'
@@ -37,21 +37,60 @@ export function DealTracker({ deals }: { deals: TrackedDeal[] }) {
   )
 }
 
+/**
+ * How far along a deal is, as a row of steps.
+ *
+ * Ordered markers are usually decoration. Here the content genuinely is a
+ * sequence — interested, contacted, viewing, offer, accepted, completed — and
+ * where a deal sits in it is the whole reason the row exists.
+ *
+ * A deal that ended shows the run greyed rather than hidden, because "this one
+ * died at viewing" is worth seeing at a glance.
+ */
+function StageProgress({ stage }: { stage: DealStage }) {
+  const definition = STAGE_DEFINITIONS[stage]
+  const reached = definition.terminal && definition.lost ? definition.step - 1 : definition.step
+
+  return (
+    <div
+      className="flex items-center gap-1"
+      title={`${definition.label}${definition.lost ? ' — ended here' : ''}`}
+      aria-label={`Stage: ${definition.label}`}
+    >
+      {FORWARD_STAGES.map((id, index) => {
+        const done = index + 1 <= reached
+        return (
+          <span
+            key={id}
+            aria-hidden="true"
+            className={`h-1 w-4 rounded-full transition-colors ${
+              done ? (definition.lost ? 'bg-muted/50' : 'bg-accent') : 'bg-line'
+            }`}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 export function TrackedRow({ deal }: { deal: TrackedDeal }) {
   return (
-    <Card className="p-4">
+    <Card className="p-4 transition-colors duration-150 hover:border-accent/40">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           <p className="text-sm font-medium">
-            <Link href={`/property/${deal.propertyId}`} className="hover:text-accent">
+            <Link href={`/property/${deal.propertyId}`} className="transition-colors hover:text-accent">
               {deal.address ?? 'Address not held'}
             </Link>
           </p>
-          <p className="mt-0.5 text-sm text-muted">
+          <p className="mt-0.5 truncate text-sm text-muted">
             {[deal.postcode, deal.price === null ? null : formatMoney(deal.price)].filter(Boolean).join(' · ')}
             {' · '}
             {STAGE_DEFINITIONS[deal.stage].happened} {formatDate(deal.enteredAt)}
           </p>
+          <div className="mt-2">
+            <StageProgress stage={deal.stage} />
+          </div>
         </div>
 
         <StageControl propertyId={deal.propertyId} stage={deal.stage} />
