@@ -13,7 +13,7 @@ const LINKS = [
 /** Sticky, translucent, thin. The bar is not the product. */
 export function MarketingNav({ signedIn }: { signedIn: boolean }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-line/70 bg-card/80 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-rule bg-ground/85 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-8 px-6 py-3.5">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <Image src={mark} alt="" aria-hidden="true" className="h-7 w-auto" priority />
@@ -30,13 +30,17 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
 
         <div className="ml-auto flex items-center gap-3 text-sm">
           {signedIn ? (
-            <ButtonLink href="/dashboard">Go to your dashboard</ButtonLink>
+            <ButtonLink href="/dashboard" variant="signal">
+              Go to your dashboard
+            </ButtonLink>
           ) : (
             <>
               <Link href="/login" className="hidden text-muted hover:text-ink sm:inline">
                 Sign in
               </Link>
-              <ButtonLink href="/signup">Start for £29 a month</ButtonLink>
+              <ButtonLink href="/signup" variant="signal">
+                Start for £29 a month
+              </ButtonLink>
             </>
           )}
         </div>

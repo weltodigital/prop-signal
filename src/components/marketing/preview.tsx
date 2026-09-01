@@ -5,47 +5,53 @@
  * they stay in step with it and cost nothing to load. The figures are an
  * example and are labelled as one — no real subscriber's list is reproduced
  * here, and there is never a listing photograph anywhere on this site.
+ *
+ * Nothing here is a card. A figure is the thing worth looking at, so the label
+ * above it is small and quiet and the number below it is large and set in mono,
+ * and the blocks are separated by hairline rules rather than by borders.
  */
 
-function Pill({ children }: { children: React.ReactNode }) {
+function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium tracking-wide text-white uppercase">
-      {children}
-    </span>
+    <span className="label border border-rule px-1.5 py-0.5 text-ink">{children}</span>
   )
 }
 
 /** The hero illustration: one entry as it appears on a Monday. */
 export function DealPreview() {
   return (
-    <div className="rounded-xl border border-line bg-card p-5 shadow-[0_1px_2px_rgba(13,27,47,0.04),0_12px_32px_-12px_rgba(13,27,47,0.18)] sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-accent">
-            <Pill>New</Pill>
-            Reduced 12%
+    <div className="border-t border-rule pt-6">
+      <div className="flex items-start justify-between gap-8">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2">
+            <Tag>New</Tag>
+            <span className="label text-ink">Reduced 12%</span>
           </p>
-          <h3 className="mt-1.5 text-lg font-medium">Little Lever Street, Northern Quarter</h3>
-          <p className="mt-0.5 text-sm text-muted">M1 1AR · Studio · Flat</p>
+          <h3 className="mt-3 text-h3 font-medium">Little Lever Street, Northern Quarter</h3>
+          <p className="mt-1 text-sm text-muted">M1 1AR · Studio · Flat</p>
         </div>
-        <span className="nums shrink-0 rounded-md border border-line px-2.5 py-1.5 text-sm text-muted">Score 71</span>
+
+        <div className="shrink-0 text-right">
+          <p className="label text-muted">Score</p>
+          <p className="figure mt-1 text-5xl leading-none text-highlight-deep">71</p>
+        </div>
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+      <dl className="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 border-t border-rule pt-6 sm:grid-cols-3">
         {[
           { label: 'Asking price', value: '£100,000', note: '12% below nearby sold prices per sq ft' },
           { label: 'Estimated rent', value: '£725 a month', note: '£188 a month clear as a let' },
           { label: 'Days on the market', value: '703', note: 'Price last moved 45 days ago' },
         ].map((figure) => (
           <div key={figure.label}>
-            <dt className="text-sm text-muted">{figure.label}</dt>
-            <dd className="nums text-base font-medium">{figure.value}</dd>
-            <p className="text-sm text-muted">{figure.note}</p>
+            <dt className="label text-muted">{figure.label}</dt>
+            <dd className="figure mt-1.5 text-2xl leading-tight">{figure.value}</dd>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{figure.note}</p>
           </div>
         ))}
       </dl>
 
-      <p className="mt-5 border-t border-line pt-4 text-sm text-muted">
+      <p className="mt-6 border-t border-rule pt-4 text-sm text-muted">
         Observed 24 Aug 2026. An example entry, not a live listing.
       </p>
     </div>
@@ -62,24 +68,24 @@ export function TimelinePreview() {
   ]
 
   return (
-    <div className="rounded-xl border border-line bg-card p-6">
-      <p className="text-sm font-medium">Timeline</p>
-      <p className="mt-1 text-sm text-muted">Every entry dated when it was observed.</p>
+    <div className="border-t border-rule pt-6">
+      <p className="label text-muted">Timeline</p>
+      <p className="mt-2 text-sm text-muted">Every entry dated when it was observed.</p>
 
-      <ol className="mt-4">
+      <ol className="mt-6">
         {entries.map((entry) => (
-          <li key={entry.label} className="relative border-l border-line py-3 pl-5">
+          <li key={entry.label} className="relative border-t border-rule py-5 pl-6">
             <span
               aria-hidden="true"
-              className={`absolute -left-[4.5px] top-[1.35rem] h-2 w-2 rounded-full ${
-                entry.material ? 'bg-highlight' : 'bg-line'
+              className={`absolute top-[1.55rem] left-0 h-1.5 w-1.5 ${
+                entry.material ? 'bg-ink' : 'bg-rule'
               }`}
             />
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-              <p className={`text-sm ${entry.material ? 'font-medium' : 'text-muted'}`}>{entry.label}</p>
-              <p className="text-sm text-muted">{entry.date}</p>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6">
+              <p className={`text-base ${entry.material ? 'font-medium' : 'text-muted'}`}>{entry.label}</p>
+              <p className="figure text-sm text-muted">{entry.date}</p>
             </div>
-            <p className="nums mt-0.5 text-sm text-muted">{entry.detail}</p>
+            <p className="figure mt-2 text-lg leading-none">{entry.detail}</p>
           </li>
         ))}
       </ol>
@@ -92,7 +98,7 @@ export function ScorePreview() {
   const factors = [
     {
       label: 'Monthly cashflow',
-      detail: '£188 a month clear, better than 80% of this week\u2019s candidates',
+      detail: '£188 a month clear, better than 80% of this week’s candidates',
       points: '32.0 / 40',
     },
     { label: 'Price against nearby sales', detail: '12.0% below what nearby homes sold for', points: '14.4 / 30' },
@@ -101,31 +107,35 @@ export function ScorePreview() {
   ]
 
   return (
-    <div className="rounded-xl border border-line bg-card p-6">
-      <div className="flex items-baseline justify-between">
-        <p className="text-sm font-medium">Quality</p>
-        <p className="nums text-sm text-muted">64.9</p>
-      </div>
+    <div className="border-t border-rule pt-6">
+      <p className="label text-muted">Quality</p>
+      <p className="figure mt-1 text-5xl leading-none text-highlight-deep">64.9</p>
 
-      <div className="mt-3">
+      <div className="mt-8">
         {factors.map((factor) => {
           const scored = factor.points !== 'Not held'
           return (
             <div
               key={factor.label}
-              className="flex items-baseline justify-between gap-4 border-t border-line py-2 first:border-t-0"
+              className="flex items-baseline justify-between gap-6 border-t border-rule py-5"
             >
               <div className="min-w-0">
-                <p className={`text-sm ${scored ? 'font-medium' : 'text-muted'}`}>{factor.label}</p>
-                <p className="text-sm text-muted">{factor.detail}</p>
+                <p className={`text-base ${scored ? 'font-medium' : 'text-muted'}`}>{factor.label}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted">{factor.detail}</p>
               </div>
-              <p className={`nums shrink-0 text-sm ${scored ? 'font-medium' : 'text-muted'}`}>{factor.points}</p>
+              <p
+                className={`shrink-0 ${
+                  scored ? 'figure text-xl leading-none' : 'label whitespace-nowrap text-muted'
+                }`}
+              >
+                {factor.points}
+              </p>
             </div>
           )
         })}
       </div>
 
-      <p className="mt-3 border-t border-line pt-3 text-sm text-muted">
+      <p className="mt-5 border-t border-rule pt-4 text-sm leading-relaxed text-muted">
         A factor with nothing behind it is left out rather than scored zero, and never stands in for an assumed
         average. The score is the share of what was actually held.
       </p>

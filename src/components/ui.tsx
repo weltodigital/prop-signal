@@ -6,7 +6,11 @@ const buttonBase =
 
 const variants = {
   primary: 'bg-accent text-white hover:bg-accent/90',
+  // The one place on the marketing page the teal is allowed to carry weight,
+  // alongside the score. Deep enough to hold white text at 4.5:1.
+  signal: 'bg-highlight-deep text-white hover:bg-highlight-deep/90',
   secondary: 'border border-line bg-card text-ink hover:bg-paper',
+  outline: 'border border-rule text-ink hover:bg-ink/5',
   quiet: 'text-muted underline underline-offset-4 hover:text-ink',
 } as const
 

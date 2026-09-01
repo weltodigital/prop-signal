@@ -51,6 +51,13 @@
 
   --color-warn: #8a5300;
   --color-warn-soft: #fdf3e3;
+
+  /* The marketing ground and its hairline. One warm off-white for the whole
+     page, and a rule low enough in contrast to separate without drawing a box
+     around anything. Kept apart from the app's paper and line so a change to
+     the front page cannot move the dashboard. */
+  --color-ground: #fafaf8;
+  --color-rule: #e6e2d9;
 }
 
 :root {
@@ -76,7 +83,6 @@ body {
   line-height: var(--text-label--line-height);
   letter-spacing: var(--text-label--letter-spacing);
   text-transform: uppercase;
-  color: var(--color-muted);
 }
 
 /* A figure. Mono and tabular so a column of prices lines up on the digit. */
@@ -128,6 +134,19 @@ body {
   .animate-in,
   .stagger > * {
     animation: none;
+  }
+}
+
+/* Somebody who has asked for less motion gets none of it, including the colour
+   and transform transitions the buttons and the FAQ marker carry. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

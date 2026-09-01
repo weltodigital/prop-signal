@@ -99,17 +99,15 @@ export default async function HomePage() {
   const primaryLabel = signedIn ? 'Go to your dashboard' : 'Start for £29 a month'
 
   return (
-    <>
+    <div className="min-h-screen bg-ground">
       <MarketingNav signedIn={signedIn} />
 
       <main>
         {/* Hero ---------------------------------------------------------- */}
-        <section className="border-b border-line bg-card">
-          <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-28">
-            <div className="max-w-3xl">
-              <p className="label">
-                For UK landlords and property investors
-              </p>
+        <section className="mx-auto max-w-6xl px-6 pt-14 pb-16 sm:pt-20">
+          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            <div>
+              <p className="label text-muted">For UK landlords and property investors</p>
 
               <h1 className="font-display mt-5 text-h1 font-normal md:text-h1-lg">
                 Stop hunting for deals. We put them in front of you.
@@ -126,11 +124,11 @@ export default async function HomePage() {
                 new this morning.
               </p>
 
-              <div className="mt-9 flex flex-wrap items-center gap-3">
-                <ButtonLink href={primaryHref} className="px-5 py-3 text-base">
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <ButtonLink href={primaryHref} variant="signal" className="px-5 py-3 text-base">
                   {primaryLabel}
                 </ButtonLink>
-                <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
+                <ButtonLink href="#how" variant="outline" className="px-5 py-3 text-base">
                   See how it works
                 </ButtonLink>
               </div>
@@ -141,14 +139,14 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="mt-14 max-w-2xl">
+            <div className="lg:pl-4">
               <DealPreview />
             </div>
           </div>
         </section>
 
         {/* Three claims -------------------------------------------------- */}
-        <section id="inside" className="mx-auto max-w-6xl px-6 py-20">
+        <section id="inside" className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
           <h2 className="font-display max-w-2xl text-h2 font-normal md:text-h2-lg">
             A portal can only tell you what is new.
           </h2>
@@ -161,23 +159,22 @@ export default async function HomePage() {
             way and put whichever is better in front of you.
           </p>
 
-          <div className="mt-12 grid gap-10 sm:grid-cols-3">
+          <div className="mt-12 grid gap-8 sm:grid-cols-3 sm:gap-10">
             {CLAIMS.map((claim) => (
-              <div key={claim.title}>
-                <div aria-hidden="true" className="h-1 w-10 rounded-full bg-highlight" />
-                <h3 className="mt-4 text-h3 font-medium">{claim.title}</h3>
-                <p className="mt-2 text-body text-muted">{claim.body}</p>
+              <div key={claim.title} className="border-t border-rule pt-5">
+                <h3 className="text-h3 font-medium">{claim.title}</h3>
+                <p className="mt-3 text-body text-muted">{claim.body}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* Alternating features ------------------------------------------ */}
-        <section className="border-y border-line bg-card">
-          <div className="mx-auto max-w-6xl space-y-24 px-6 py-20">
-            <div className="grid items-center gap-12 lg:grid-cols-2">
+        <section className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
+          <div className="space-y-16">
+            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
               <div>
-                <p className="label">Leverage</p>
+                <p className="label text-muted">Leverage</p>
                 <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
                   Walk in knowing exactly how much room there is.
                 </h2>
@@ -194,9 +191,9 @@ export default async function HomePage() {
               <TimelinePreview />
             </div>
 
-            <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
               <div className="lg:order-2">
-                <p className="label">Already worked out</p>
+                <p className="label text-muted">Already worked out</p>
                 <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
                   Nothing reaches you until it has been through the numbers.
                 </h2>
@@ -215,9 +212,9 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
               <div>
-                <p className="label">Worth opening</p>
+                <p className="label text-muted">Worth opening</p>
                 <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
                   Short when it should be short.
                 </h2>
@@ -231,93 +228,97 @@ export default async function HomePage() {
                 </p>
               </div>
 
-              <div className="rounded-xl border border-warn/30 bg-warn-soft p-6">
-                <p className="font-medium">A short list this week</p>
-                <p className="mt-2 text-body text-muted">
+              <div className="border-t border-rule pt-6">
+                <p className="text-h3 font-medium">A short list this week</p>
+                <p className="mt-3 text-body text-muted">
                   Only two properties in your area clear the bar at the moment. The rest do not stack against your
                   strategy, so they are not here.
                 </p>
-                <p className="mt-4 text-sm text-muted">An example of a thin week, stated rather than padded.</p>
+                <p className="mt-5 border-t border-rule pt-4 text-sm text-muted">
+                  An example of a thin week, stated rather than padded.
+                </p>
               </div>
             </div>
           </div>
         </section>
 
         {/* How it works --------------------------------------------------- */}
-        <section id="how" className="mx-auto max-w-6xl px-6 py-20">
+        <section id="how" className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
           <h2 className="font-display max-w-2xl text-h2 font-normal md:text-h2-lg">How it works</h2>
 
-          <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-4">
             {STEPS.map((step) => (
-              <div key={step.step} className="rounded-xl border border-line bg-card p-6">
-                <p className="nums text-sm font-medium text-highlight-deep">{step.step}</p>
+              <div key={step.step} className="border-t border-rule pt-5">
+                <p className="figure text-sm text-muted">{step.step}</p>
                 <h3 className="mt-3 text-h3 font-medium">{step.title}</h3>
-                <p className="mt-2 text-body text-muted">{step.body}</p>
+                <p className="mt-3 text-body text-muted">{step.body}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* Pricing --------------------------------------------------------- */}
-        <section id="pricing" className="border-y border-line bg-card">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-              <div>
-                <h2 className="font-display text-h2 font-normal md:text-h2-lg">
-                  A sourcer charges thousands. This is £29.
-                </h2>
-                <p className="mt-5 text-body text-muted">
-                  A deal sourcer finds you one property and takes a fee for it, and you buy what they happened to
-                  pick. We show you everything in your area that moved, every week, and you pick. Most investors lose
-                  a weekend a month to portals instead, and still miss the property that quietly dropped twelve per
-                  cent in March.
-                </p>
-                <p className="mt-4 text-body text-muted">
-                  Searching a whole area every week costs us money whether you open the list or not, which is why
-                  there is no free plan and no trial. The newsletter is the free tier.
-                </p>
-              </div>
+        <section id="pricing" className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
+            <div>
+              <h2 className="font-display text-h2 font-normal md:text-h2-lg">
+                A sourcer charges thousands. This is £29.
+              </h2>
+              <p className="mt-5 text-body text-muted">
+                A deal sourcer finds you one property and takes a fee for it, and you buy what they happened to
+                pick. We show you everything in your area that moved, every week, and you pick. Most investors lose
+                a weekend a month to portals instead, and still miss the property that quietly dropped twelve per
+                cent in March.
+              </p>
+              <p className="mt-4 text-body text-muted">
+                Searching a whole area every week costs us money whether you open the list or not, which is why
+                there is no free plan and no trial. The newsletter is the free tier.
+              </p>
+            </div>
 
-              <div className="rounded-xl border border-line bg-paper p-8">
-                <p className="flex items-baseline gap-2">
-                  <span className="nums text-5xl font-semibold tracking-tight">£29</span>
-                  <span className="text-muted">a month</span>
-                </p>
+            <div className="rounded-lg border border-rule p-8">
+              <p className="flex items-baseline gap-3">
+                <span className="figure text-6xl leading-none">£29</span>
+                <span className="label text-muted">a month</span>
+              </p>
 
-                <ul className="mt-6 space-y-3 text-muted">
-                  {[
-                    'Your area, up to forty miles from your postcode',
-                    'Scored for how you invest, whether that is a let, an HMO or a flip',
-                    'The best deals in your area, kept in front of you',
-                    'A deal stays on your list until you say it is not for you',
-                    'The full price history, so you know what to offer',
-                    'Yield and value gap worked out before you open it',
-                    'A calculator that runs your own numbers, not ours',
-                    'Track each one from interested through to completed',
-                    'Cancel any time from your account page',
-                  ].map((line) => (
-                    <li key={line} className="flex gap-3">
-                      <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-highlight" />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
+              <ul className="mt-8 space-y-3.5 border-t border-rule pt-6 text-body text-muted">
+                {[
+                  'Your area, up to forty miles from your postcode',
+                  'Scored for how you invest, whether that is a let, an HMO or a flip',
+                  'The best deals in your area, kept in front of you',
+                  'A deal stays on your list until you say it is not for you',
+                  'The full price history, so you know what to offer',
+                  'Yield and value gap worked out before you open it',
+                  'A calculator that runs your own numbers, not ours',
+                  'Track each one from interested through to completed',
+                  'Cancel any time from your account page',
+                ].map((line) => (
+                  <li key={line} className="flex gap-3">
+                    <span aria-hidden="true" className="mt-2.5 h-1 w-1 shrink-0 bg-muted" />
+                    {line}
+                  </li>
+                ))}
+              </ul>
 
-                <ButtonLink href={primaryHref} className="mt-8 w-full px-5 py-3 text-base">
-                  {primaryLabel}
-                </ButtonLink>
-              </div>
+              <ButtonLink
+                href={primaryHref}
+                variant="signal"
+                className="mt-8 w-full px-5 py-3 text-base"
+              >
+                {primaryLabel}
+              </ButtonLink>
             </div>
           </div>
         </section>
 
         {/* FAQ -------------------------------------------------------------- */}
-        <section id="faq" className="mx-auto max-w-3xl px-6 py-20">
+        <section id="faq" className="mx-auto max-w-3xl border-t border-rule px-6 py-14">
           <h2 className="font-display text-h2 font-normal md:text-h2-lg">Questions</h2>
 
           <div className="mt-10">
             {FAQS.map((faq) => (
-              <details key={faq.q} className="group border-b border-line py-5">
+              <details key={faq.q} className="group border-b border-rule py-5">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-h3 font-medium">
                   {faq.q}
                   <span
@@ -327,42 +328,33 @@ export default async function HomePage() {
                     +
                   </span>
                 </summary>
-                <p className="mt-3 max-w-prose text-body text-muted">{faq.a}</p>
+                <p className="mt-4 max-w-prose text-body text-muted">{faq.a}</p>
               </details>
             ))}
           </div>
         </section>
 
         {/* Final CTA -------------------------------------------------------- */}
-        <section className="bg-accent">
-          <div className="mx-auto max-w-6xl px-6 py-20 text-center">
-            <h2 className="font-display mx-auto max-w-2xl text-h2 font-normal text-white md:text-h2-lg">
-              Tell us how you invest. We will find the deals.
-            </h2>
-            <p className="mx-auto mt-5 max-w-xl text-body text-white/70">
-              £29 a month for your area. Cancel any time.
-            </p>
+        <section className="mx-auto max-w-6xl border-t border-rule px-6 py-16 text-center">
+          <h2 className="font-display mx-auto max-w-2xl text-h2 font-normal md:text-h2-lg">
+            Tell us how you invest. We will find the deals.
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-body text-muted">
+            £29 a month for your area. Cancel any time.
+          </p>
 
-            <div className="mt-9 flex flex-wrap justify-center gap-3">
-              <ButtonLink
-                href={primaryHref}
-                variant="secondary"
-                className="border-transparent px-5 py-3 text-base"
-              >
-                {primaryLabel}
-              </ButtonLink>
-              <a
-                href="#how"
-                className="inline-flex items-center justify-center rounded-md border border-white/25 px-5 py-3 text-base font-medium text-white transition-colors hover:bg-white/10"
-              >
-                See how it works
-              </a>
-            </div>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <ButtonLink href={primaryHref} variant="signal" className="px-5 py-3 text-base">
+              {primaryLabel}
+            </ButtonLink>
+            <ButtonLink href="#how" variant="outline" className="px-5 py-3 text-base">
+              See how it works
+            </ButtonLink>
           </div>
         </section>
       </main>
 
       <MarketingFooter />
-    </>
+    </div>
   )
 }
