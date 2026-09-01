@@ -1,5 +1,22 @@
 import type { Metadata } from 'next'
+import { Instrument_Serif } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import './globals.css'
+
+/**
+ * Three faces, self-hosted, no request leaves the page.
+ *
+ * Instrument Serif carries the headlines, Geist Sans everything you read, and
+ * Geist Mono every figure — a price wants tabular numerals and a shape that
+ * says "this is a measurement" rather than "this is a sentence".
+ */
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  display: 'swap',
+  variable: '--font-instrument-serif',
+})
 
 export const metadata: Metadata = {
   title: 'Prop Signal',
@@ -9,7 +26,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB">
+    <html
+      lang="en-GB"
+      className={`${instrumentSerif.variable} ${GeistSans.variable} ${GeistMono.variable}`}
+    >
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   )

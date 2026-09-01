@@ -1,8 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Set on <html> by next/font in the root layout, so nothing is fetched at
+     runtime. The stack after each variable is what shows while the face loads. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+
+  /* The type scale. Two sizes for each headline because the desktop step is far
+     too big for a phone, and one step for everything else. */
+  --text-h1: 40px;
+  --text-h1--line-height: 1;
+  --text-h1--letter-spacing: -0.02em;
+
+  --text-h1-lg: 72px;
+  --text-h1-lg--line-height: 1;
+  --text-h1-lg--letter-spacing: -0.02em;
+
+  --text-h2: 30px;
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.015em;
+
+  --text-h2-lg: 44px;
+  --text-h2-lg--line-height: 1.1;
+  --text-h2-lg--letter-spacing: -0.015em;
+
+  --text-h3: 20px;
+  --text-h3--line-height: 1.35;
+
+  --text-body: 17px;
+  --text-body--line-height: 1.6;
+
+  --text-label: 12px;
+  --text-label--line-height: 1.2;
+  --text-label--letter-spacing: 0.08em;
 
   /* Taken from the logo. Navy carries the weight and does the work on
      buttons and headings; cyan is bright enough to mark a thing and too
@@ -38,11 +69,21 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Marketing headlines. Tight tracking at large sizes, which is what stops a
-   big sentence-case heading reading as loose. */
-.display {
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+/* An eyebrow or a column label: small, quiet, and set above the thing it names
+   so the figure below it is what the eye lands on. */
+.label {
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* A figure. Mono and tabular so a column of prices lines up on the digit. */
+.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* ---------------------------------------------------------------------------

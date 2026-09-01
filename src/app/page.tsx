@@ -107,21 +107,21 @@ export default async function HomePage() {
         <section className="border-b border-line bg-card">
           <div className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-28">
             <div className="max-w-3xl">
-              <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">
+              <p className="label">
                 For UK landlords and property investors
               </p>
 
-              <h1 className="display mt-5 text-4xl font-semibold sm:text-6xl">
+              <h1 className="font-display mt-5 text-h1 font-normal md:text-h1-lg">
                 Stop hunting for deals. We put them in front of you.
               </h1>
 
-              <p className="mt-6 max-w-2xl text-lg text-muted sm:text-xl">
+              <p className="mt-6 max-w-xl text-body text-muted">
                 Tell us where you buy and how you make your money. BRRR in Portsmouth, HMOs in Leeds, buy to let
                 within ten miles of home. We source the whole area against those criteria and keep the best of it in
                 front of you, with the numbers already worked out.
               </p>
 
-              <p className="mt-4 max-w-2xl text-muted">
+              <p className="mt-4 max-w-xl text-body text-muted">
                 A deal earns its place by being a good deal. Not by having been cut last Tuesday, and not by being
                 new this morning.
               </p>
@@ -135,7 +135,7 @@ export default async function HomePage() {
                 </ButtonLink>
               </div>
 
-              <p className="mt-5 text-sm text-muted">
+              <p className="mt-5 max-w-xl text-sm text-muted">
                 £29 a month for your area. Cancel any time. No free tier, and no card details taken for a trial that
                 does not exist.
               </p>
@@ -149,14 +149,14 @@ export default async function HomePage() {
 
         {/* Three claims -------------------------------------------------- */}
         <section id="inside" className="mx-auto max-w-6xl px-6 py-20">
-          <h2 className="display max-w-2xl text-3xl font-semibold sm:text-4xl">
+          <h2 className="font-display max-w-2xl text-h2 font-normal md:text-h2-lg">
             A portal can only tell you what is new.
           </h2>
-          <p className="mt-5 max-w-2xl text-lg text-muted">
+          <p className="mt-5 max-w-2xl text-body text-muted">
             That is the one question it can answer, so it is the one you get asked. Whether a property is a good buy
             for the way you invest is a different question, and nothing on a portal is set up to ask it.
           </p>
-          <p className="mt-4 max-w-2xl text-lg text-muted">
+          <p className="mt-4 max-w-2xl text-body text-muted">
             The best deal in your area might have been listed this morning or eight months ago. We score both the same
             way and put whichever is better in front of you.
           </p>
@@ -165,8 +165,8 @@ export default async function HomePage() {
             {CLAIMS.map((claim) => (
               <div key={claim.title}>
                 <div aria-hidden="true" className="h-1 w-10 rounded-full bg-highlight" />
-                <h3 className="mt-4 text-lg font-medium">{claim.title}</h3>
-                <p className="mt-2 text-muted">{claim.body}</p>
+                <h3 className="mt-4 text-h3 font-medium">{claim.title}</h3>
+                <p className="mt-2 text-body text-muted">{claim.body}</p>
               </div>
             ))}
           </div>
@@ -177,16 +177,16 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl space-y-24 px-6 py-20">
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div>
-                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Leverage</p>
-                <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
+                <p className="label">Leverage</p>
+                <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
                   Walk in knowing exactly how much room there is.
                 </h2>
-                <p className="mt-5 text-lg text-muted">
+                <p className="mt-5 text-body text-muted">
                   An agent will tell you there is interest. The history tells you the price has come down twice, the
                   sale already fell through once, and nobody has bought it in seven hundred days. You make your offer
                   against that rather than against the asking price.
                 </p>
-                <p className="mt-4 text-muted">
+                <p className="mt-4 text-body text-muted">
                   None of that decides whether a property reaches you. A good deal reaches you because it is a good
                   deal. What the seller has done since is how you price the offer once it has.
                 </p>
@@ -196,16 +196,16 @@ export default async function HomePage() {
 
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div className="lg:order-2">
-                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Already worked out</p>
-                <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
+                <p className="label">Already worked out</p>
+                <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
                   Nothing reaches you until it has been through the numbers.
                 </h2>
-                <p className="mt-5 text-lg text-muted">
+                <p className="mt-5 text-body text-muted">
                   Monthly cashflow, price against what nearby homes actually sold for, and local demand are worked out
                   before you open it, and shown with the figures behind them. You can see why something scored what it
                   did and disagree with it, which is more use than a number you have to take on trust.
                 </p>
-                <p className="mt-4 text-muted">
+                <p className="mt-4 text-body text-muted">
                   Where we hold nothing, it says so and scores nothing. No assumed averages, and no language model
                   anywhere near this.
                 </p>
@@ -217,15 +217,15 @@ export default async function HomePage() {
 
             <div className="grid items-center gap-12 lg:grid-cols-2">
               <div>
-                <p className="text-sm font-medium tracking-wide text-highlight-deep uppercase">Worth opening</p>
-                <h2 className="display mt-4 text-3xl font-semibold sm:text-4xl">
+                <p className="label">Worth opening</p>
+                <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
                   Short when it should be short.
                 </h2>
-                <p className="mt-5 text-lg text-muted">
+                <p className="mt-5 text-body text-muted">
                   A quiet area gets a shorter list and one sentence explaining why. You are never handed five when
                   two stack, so you never have to work out which three are filler.
                 </p>
-                <p className="mt-4 text-muted">
+                <p className="mt-4 text-body text-muted">
                   Anything you mark as not for you is gone for good, however well it scores later. The list stays
                   worth the two minutes it takes to read because you decide what is on it.
                 </p>
@@ -233,7 +233,7 @@ export default async function HomePage() {
 
               <div className="rounded-xl border border-warn/30 bg-warn-soft p-6">
                 <p className="font-medium">A short list this week</p>
-                <p className="mt-2 text-muted">
+                <p className="mt-2 text-body text-muted">
                   Only two properties in your area clear the bar at the moment. The rest do not stack against your
                   strategy, so they are not here.
                 </p>
@@ -245,14 +245,14 @@ export default async function HomePage() {
 
         {/* How it works --------------------------------------------------- */}
         <section id="how" className="mx-auto max-w-6xl px-6 py-20">
-          <h2 className="display max-w-2xl text-3xl font-semibold sm:text-4xl">How it works</h2>
+          <h2 className="font-display max-w-2xl text-h2 font-normal md:text-h2-lg">How it works</h2>
 
           <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((step) => (
               <div key={step.step} className="rounded-xl border border-line bg-card p-6">
                 <p className="nums text-sm font-medium text-highlight-deep">{step.step}</p>
-                <h3 className="mt-3 text-lg font-medium">{step.title}</h3>
-                <p className="mt-2 text-muted">{step.body}</p>
+                <h3 className="mt-3 text-h3 font-medium">{step.title}</h3>
+                <p className="mt-2 text-body text-muted">{step.body}</p>
               </div>
             ))}
           </div>
@@ -263,16 +263,16 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl px-6 py-20">
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <div>
-                <h2 className="display text-3xl font-semibold sm:text-4xl">
+                <h2 className="font-display text-h2 font-normal md:text-h2-lg">
                   A sourcer charges thousands. This is £29.
                 </h2>
-                <p className="mt-5 text-lg text-muted">
+                <p className="mt-5 text-body text-muted">
                   A deal sourcer finds you one property and takes a fee for it, and you buy what they happened to
                   pick. We show you everything in your area that moved, every week, and you pick. Most investors lose
                   a weekend a month to portals instead, and still miss the property that quietly dropped twelve per
                   cent in March.
                 </p>
-                <p className="mt-4 text-muted">
+                <p className="mt-4 text-body text-muted">
                   Searching a whole area every week costs us money whether you open the list or not, which is why
                   there is no free plan and no trial. The newsletter is the free tier.
                 </p>
@@ -313,12 +313,12 @@ export default async function HomePage() {
 
         {/* FAQ -------------------------------------------------------------- */}
         <section id="faq" className="mx-auto max-w-3xl px-6 py-20">
-          <h2 className="display text-3xl font-semibold sm:text-4xl">Questions</h2>
+          <h2 className="font-display text-h2 font-normal md:text-h2-lg">Questions</h2>
 
           <div className="mt-10">
             {FAQS.map((faq) => (
               <details key={faq.q} className="group border-b border-line py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-lg font-medium">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-h3 font-medium">
                   {faq.q}
                   <span
                     aria-hidden="true"
@@ -327,7 +327,7 @@ export default async function HomePage() {
                     +
                   </span>
                 </summary>
-                <p className="mt-3 max-w-prose text-muted">{faq.a}</p>
+                <p className="mt-3 max-w-prose text-body text-muted">{faq.a}</p>
               </details>
             ))}
           </div>
@@ -336,10 +336,10 @@ export default async function HomePage() {
         {/* Final CTA -------------------------------------------------------- */}
         <section className="bg-accent">
           <div className="mx-auto max-w-6xl px-6 py-20 text-center">
-            <h2 className="display mx-auto max-w-2xl text-3xl font-semibold text-white sm:text-4xl">
+            <h2 className="font-display mx-auto max-w-2xl text-h2 font-normal text-white md:text-h2-lg">
               Tell us how you invest. We will find the deals.
             </h2>
-            <p className="mx-auto mt-5 max-w-xl text-lg text-white/70">
+            <p className="mx-auto mt-5 max-w-xl text-body text-white/70">
               £29 a month for your area. Cancel any time.
             </p>
 
