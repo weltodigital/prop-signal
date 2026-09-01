@@ -75,10 +75,6 @@ const FAQS = [
     a: 'Yes, while it is still one of the best deals in your area, because hiding it would not make it a worse deal. What changes is the marking: something that has moved since you last looked is flagged as changed. When you are done with it, mark it as not for you and it is gone for good.',
   },
   {
-    q: 'Why is there no free tier?',
-    a: 'Searching a whole area properly costs us money every week, whether you open the list or not. The newsletter is the free tier. The subscription is for people who want their own area searched on their own criteria.',
-  },
-  {
     q: 'Can I change my area?',
     a: 'Yes, three times per billing period. Each change means searching a new area from scratch, so the counter is on your account page. Price, bedroom and type filters can be changed as often as you like, because those only narrow what we already have.',
   },
@@ -148,8 +144,7 @@ export default async function HomePage() {
               </div>
 
               <p className="mt-5 text-sm text-muted">
-                £29 a month for your area. Cancel any time. No free tier, and no card details taken for a trial that
-                does not exist.
+                £29 a month for your area. Cancel any time.
               </p>
             </div>
 
@@ -301,8 +296,8 @@ export default async function HomePage() {
                 cent in March.
               </p>
               <p className="mt-4 text-body text-muted">
-                Searching a whole area every week costs us money whether you open the list or not, which is why
-                there is no free plan and no trial. The newsletter is the free tier.
+                Searching a whole area every week costs us money whether you open the list or not, and the £29 is
+                what pays for it: your own area, searched on your own criteria, every week.
               </p>
             </div>
 
