@@ -48,8 +48,8 @@ export default async function OnboardingPage() {
           <Notice title="Your first list is the widest search">
             <p>
               It looks at everything standing in your area rather than only what appeared this week, so it will
-              include properties that have been listed for months. You get the best five of them, and up to five more
-              join your list each week after that.
+              include properties that have been listed for months. How many reach you is decided by what you set
+              below: a wider radius and looser filters mean more, and a tight search in a quiet market may mean two.
             </p>
           </Notice>
         </div>

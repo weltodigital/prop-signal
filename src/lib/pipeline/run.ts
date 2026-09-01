@@ -239,10 +239,10 @@ export async function runProfile(options: {
 
   try {
     // --- 1. Pull the area --------------------------------------------------
-    // Some lists reject a radius over 30 or 20 miles with error 1103, so the
-    // call is clamped to the smallest maximum across the lists being asked for.
-    // Saved profiles are constrained the same way by a database trigger; this
-    // is the second lock, for a list whose limit changed after someone saved.
+    // Some lists reject a radius over 30 or 20 miles with error 1103, and one
+    // call carries every list, so it is clamped to the smallest maximum across
+    // them. Nothing stops a profile being saved wider than that — the form says
+    // what the search will run at, and this is where it happens.
     const radius = await allowedRadius(supabase, profile)
     if (radius < profile.radius_miles) {
       log('radius_clamped', {

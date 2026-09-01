@@ -32,8 +32,8 @@ export function MarketingFooter() {
               <span className="text-base font-semibold tracking-tight text-accent">Prop Signal</span>
             </div>
             <p className="mt-3 text-sm text-muted">
-              UK investment property, brought to you. Five a week, chosen because a seller moved, with the numbers
-              already worked out.
+              UK investment property, brought to you. Everything in your area that stacks against the way you
+              invest, with the numbers already worked out.
             </p>
           </div>
 

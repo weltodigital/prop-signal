@@ -59,13 +59,17 @@ describe('the radius', () => {
   })
 
   it('refuses a radius that was not offered, including one wide enough to be expensive', () => {
-    for (const miles of ['0', '41', '200', '-5']) {
+    for (const miles of ['0', '41', '101', '200', '-5']) {
       expect(searchProfileSchema.safeParse(form({ radiusMiles: miles })).success).toBe(false)
     }
   })
 
-  it('stops well short of the 200 miles the API would allow', () => {
-    expect(Math.max(...RADIUS_OPTIONS)).toBeLessThanOrEqual(40)
+  it('stops short of the 200 miles the API would allow', () => {
+    expect(Math.max(...RADIUS_OPTIONS)).toBeLessThanOrEqual(100)
+  })
+
+  it('offers the radii in order, so the widest is the last one', () => {
+    expect([...RADIUS_OPTIONS]).toEqual([...RADIUS_OPTIONS].sort((a, b) => a - b))
   })
 })
 

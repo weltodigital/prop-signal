@@ -67,7 +67,7 @@ export default async function SubscribePage({
         </div>
 
         <ul className="mt-6 space-y-2 text-sm text-muted">
-          <li>Up to five new properties join your list every Monday, chosen because they stack.</li>
+          <li>Every property in your area that clears the bar, with new ones joining each Monday.</li>
           <li>No searching, no saved alerts, and nothing to check in between.</li>
           <li>The qualifying event stated on every one, with the date it was observed.</li>
           <li>Cashflow, price against comparables and a score breakdown you can argue with.</li>

@@ -37,13 +37,15 @@ export function SearchForm({
   searchChangeLimit: number
 }) {
   const [state, formAction] = useActionState<OnboardingState, FormData>(saveSearch, { status: 'idle' })
-  // PropertyData cap the radius per list and reject the whole call above it, so
-  // the options narrow as strategies are ticked rather than failing on Sunday.
+  // Some lists will not search as wide as others, and one call carries all of
+  // them, so the narrowest holds the whole search. That is worth saying plainly
+  // rather than refusing to save, which is what it used to do.
   const [chosen, setChosen] = useState<string[]>(profile?.sourcingLists ?? [])
-  const maxRadius = Math.min(
-    ...sourcingLists.filter((list) => chosen.includes(list.id)).map((list) => list.maxRadiusMiles),
-    Math.max(...RADIUS_OPTIONS),
-  )
+  const [radius, setRadius] = useState<number>(profile?.radiusMiles ?? 10)
+  const capping =
+    sourcingLists
+      .filter((list) => chosen.includes(list.id) && list.maxRadiusMiles < radius)
+      .sort((a, b) => a.maxRadiusMiles - b.maxRadiusMiles)[0] ?? null
 
   // Which strategies are ticked decides which figures we have to ask for. A
   // BRRR needs a refurb cost and a short let needs a nightly rate, because
@@ -98,19 +100,25 @@ export function SearchForm({
             <select
               id="radiusMiles"
               name="radiusMiles"
-              defaultValue={profile?.radiusMiles ?? 10}
+              value={radius}
+              onChange={(event) => setRadius(Number(event.target.value))}
               className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             >
-              {RADIUS_OPTIONS.filter((miles) => miles <= maxRadius).map((miles) => (
+              {RADIUS_OPTIONS.map((miles) => (
                 <option key={miles} value={miles}>
                   {miles} {miles === 1 ? 'mile' : 'miles'}
                 </option>
               ))}
             </select>
             <FieldError message={errors.radiusMiles} />
-            {maxRadius < Math.max(...RADIUS_OPTIONS) ? (
-              <p className="mt-1.5 text-sm text-muted">
-                Capped at {maxRadius} miles by one of the strategies you have chosen.
+            <p className="mt-1.5 text-sm text-muted">
+              This is the biggest thing you control. Ten miles of a quiet market may hold two properties worth your
+              time; forty miles of the same market holds far more. Widen it if your list is short.
+            </p>
+            {capping ? (
+              <p className="mt-1.5 text-sm">
+                Your search will run at {capping.maxRadiusMiles} miles, not {radius}, because {capping.label} will
+                not go wider and one search covers every list you tick. Untick it to search the full {radius}.
               </p>
             ) : null}
           </div>
@@ -194,8 +202,8 @@ export function SearchForm({
       <Card>
         <h2 className="text-base font-medium">3. What to look for</h2>
         <p className="mt-1 text-sm text-muted">
-          Which situations you want pulled out of the market. Pick as many as apply. More lists means a wider net, not
-          a longer list. You still get five.
+          Which situations you want pulled out of the market. Pick as many as apply. More lists means more of the
+          market searched, and more that can qualify.
         </p>
 
         <fieldset className="mt-6 space-y-3">

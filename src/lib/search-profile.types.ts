@@ -8,7 +8,18 @@ import type { InvestmentStrategy, StrategyAssumptions } from '@/lib/strategies'
  * writes the database lives there.
  */
 
-export const RADIUS_OPTIONS = [1, 3, 5, 10, 15, 20, 30, 40] as const
+/**
+ * The radii on offer, in miles.
+ *
+ * The API accepts 1 to 200. A hundred is the ceiling here because past that a
+ * "local area" is a region, and the steps widen as they go because the
+ * difference between 60 and 80 miles matters less than the difference between
+ * 3 and 5.
+ *
+ * How wide somebody searches is the single biggest thing they control about how
+ * many properties reach them, which is why the form says so.
+ */
+export const RADIUS_OPTIONS = [1, 3, 5, 10, 15, 20, 30, 40, 60, 80, 100] as const
 
 /** PropertyData's standardised types, which is what the payload is filtered against. */
 export const PROPERTY_TYPES = [

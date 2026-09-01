@@ -49,6 +49,47 @@ const STEPS = [
   },
 ] as const
 
+/**
+ * The three ways somebody gets an investment property in front of them.
+ *
+ * Nobody is named. What separates them is the model rather than the brand: who
+ * does the filtering, who picks, and what the money buys — and those are facts
+ * about how each one works rather than claims about how well they work.
+ */
+const COMPARISON = {
+  columns: ['Prop Signal', 'A deal sourcer', 'A deal-sourcing site'],
+  rows: [
+    {
+      label: 'What you get',
+      cells: [
+        'Every property in your area that stacks against the way you invest',
+        'One property, the one they picked',
+        'A search tool, and whatever you find with it',
+      ],
+    },
+    {
+      label: 'Who does the filtering',
+      cells: ['We do, every week, across the whole area', 'They do, once, for one deal', 'You do'],
+    },
+    {
+      label: 'Scored for your strategy',
+      cells: [
+        'Buy to let, HMO or BRRR, with every factor shown',
+        'Their judgment, and you take it on trust',
+        'A yield, if the listing carries the figures',
+      ],
+    },
+    {
+      label: 'What it costs',
+      cells: ['£29 a month', 'A fee in the thousands, on each deal', 'A subscription, and your weekends'],
+    },
+    {
+      label: 'What they earn if you walk away',
+      cells: ['The same £29', 'Nothing, which is the problem', 'The same subscription'],
+    },
+  ],
+} as const
+
 const FAQS = [
   {
     q: 'How is this different from a portal alert?',
@@ -57,6 +98,10 @@ const FAQS = [
   {
     q: 'How is this different from a deal sourcer?',
     a: 'A sourcer finds one property, charges a fee in the thousands, and you buy what they picked. We show you everything in your area that moved this week, with the numbers and the reasoning in the open, and you pick. Nobody here has an interest in you buying any particular property, because we are paid the same £29 whether you buy or not.',
+  },
+  {
+    q: 'How many properties will I get?',
+    a: 'As many as clear the bar, which is decided by what you ask for. Your radius is the biggest lever: ten miles of a quiet market might hold two properties worth your time, and forty miles of the same market holds far more. Price, bedroom and type filters narrow it further, and the number of sourcing lists you tick widens it. A property stays on your list until you buy it, it sells, or you say it is not for you, so the list grows as new ones qualify rather than being replaced each week. We would rather hand you two that stack than five where three are filler.',
   },
   {
     q: 'So I never have to search for anything?',
@@ -131,7 +176,7 @@ export default async function HomePage() {
 
               <p className="mt-4 text-body text-muted">
                 A deal earns its place by being a good deal. Not by having been cut last Tuesday, and not by being
-                new this morning.
+                new this morning. How many earn it is decided by how wide you search and how tight your criteria are.
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -237,8 +282,9 @@ export default async function HomePage() {
                   Short when it should be short.
                 </h2>
                 <p className="mt-5 text-body text-muted">
-                  A quiet area gets a shorter list and one sentence explaining why. You are never handed five when
-                  two stack, so you never have to work out which three are filler.
+                  How many properties reach you is decided by what you asked for. A wide radius and loose filters
+                  give you more; ten miles of a quiet market may give you two. You are never handed a number we made
+                  up to look busy, so you never have to work out which of them are filler.
                 </p>
                 <p className="mt-4 text-body text-muted">
                   Anything you mark as not for you is gone for good, however well it scores later. The list stays
@@ -285,23 +331,15 @@ export default async function HomePage() {
         {/* Pricing --------------------------------------------------------- */}
         <section id="pricing" className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 border-t border-rule pt-14 pb-24 md:gap-x-8">
-            <div className="col-span-12 lg:col-span-6">
+            <div className="col-span-12 lg:col-span-7">
               <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
                 A sourcer charges thousands. This is £29.
               </h2>
-              <p className="mt-5 text-body text-muted">
-                A deal sourcer finds you one property and takes a fee for it, and you buy what they happened to
-                pick. We show you everything in your area that moved, every week, and you pick. Most investors lose
-                a weekend a month to portals instead, and still miss the property that quietly dropped twelve per
-                cent in March.
-              </p>
-              <p className="mt-4 text-body text-muted">
-                Searching a whole area every week costs us money whether you open the list or not, and the £29 is
-                what pays for it: your own area, searched on your own criteria, every week.
-              </p>
             </div>
 
-            <div className="col-span-12 rounded-lg border border-rule p-8 lg:col-span-6">
+            {/* The card holds the right five columns for both rows, so the
+                comparison sits under the headline rather than under a void. */}
+            <div className="col-span-12 rounded-lg border border-rule p-8 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1">
               <p className="flex items-baseline gap-3">
                 <span className="figure text-6xl leading-none">£29</span>
                 <span className="label text-muted">a month</span>
@@ -309,9 +347,9 @@ export default async function HomePage() {
 
               <ul className="mt-8 space-y-3.5 border-t border-rule pt-6 text-body text-muted">
                 {[
-                  'Your area, up to forty miles from your postcode',
+                  'Your area, anything from one mile to a hundred from your postcode',
                   'Scored for how you invest, whether that is a let, an HMO or a flip',
-                  'The best deals in your area, kept in front of you',
+                  'Every property in your area that stacks, kept in front of you',
                   'A deal stays on your list until you say it is not for you',
                   'The full price history, so you know what to offer',
                   'Yield and value gap worked out before you open it',
@@ -326,12 +364,77 @@ export default async function HomePage() {
                 ))}
               </ul>
 
-              <ButtonLink
-                href={primaryHref}
-                className="mt-8 w-full px-5 py-3 text-base"
-              >
+              <ButtonLink href={primaryHref} className="mt-8 w-full px-5 py-3 text-base">
                 {primaryLabel}
               </ButtonLink>
+            </div>
+
+            {/* Four columns of prose need the full twelve, and wide content
+                scrolls inside its own box rather than pushing the page sideways
+                on a phone. */}
+            {/* On a phone the same five rows are stacked rather than scrolled
+                sideways: three columns of prose in 390px is a column of single
+                words, and a table nobody can see the end of is worse than a
+                list. Both come from the same rows. */}
+            <div className="col-span-12 sm:hidden">
+              {COMPARISON.rows.map((row) => (
+                <div key={row.label} className="border-t border-rule py-5">
+                  <p className="label text-muted">{row.label}</p>
+                  <dl className="mt-3 space-y-2.5">
+                    {row.cells.map((cell, index) => (
+                      <div key={cell}>
+                        <dt className={`text-sm ${index === 0 ? 'font-medium' : 'text-muted'}`}>
+                          {COMPARISON.columns[index]}
+                        </dt>
+                        <dd className={`text-sm leading-relaxed ${index === 0 ? '' : 'text-muted'}`}>{cell}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+            </div>
+
+            <div className="col-span-12 hidden overflow-x-auto sm:block lg:col-span-7">
+              <table className="w-full min-w-[34rem] border-collapse text-left">
+                <caption className="sr-only">
+                  How Prop Signal compares with a deal sourcer and a deal-sourcing site
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col" className="w-[8.5rem] py-3 pr-5 align-bottom">
+                      <span className="sr-only">What is being compared</span>
+                    </th>
+                    {COMPARISON.columns.map((column, index) => (
+                      <th
+                        key={column}
+                        scope="col"
+                        className={`label py-3 pr-5 align-bottom ${index === 0 ? 'text-ink' : 'text-muted'}`}
+                      >
+                        {column}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON.rows.map((row) => (
+                    <tr key={row.label} className="border-t border-rule align-top">
+                      <th scope="row" className="py-4 pr-5 text-sm font-medium">
+                        {row.label}
+                      </th>
+                      {row.cells.map((cell, index) => (
+                        <td
+                          key={cell}
+                          className={`py-4 pr-5 text-sm leading-relaxed ${
+                            index === 0 ? 'font-medium' : 'text-muted'
+                          }`}
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </section>

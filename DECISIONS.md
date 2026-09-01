@@ -1054,3 +1054,52 @@ the second question is gone.
 What this costs: there is no longer a way to follow a property without putting it in the
 pipeline. The `interested` stage is that, and it was already the first thing the old
 "Watch" button meant.
+
+## A wider search, and saying what decides the size of a list — 1 September 2026
+
+### The radius ceiling was PropertyData's default, not their limit
+
+Forty miles was where the profile `CHECK` stopped, and forty was the default on
+`/sourced-properties` rather than its maximum, which is two hundred. Forty miles of
+Greater Manchester is a market; forty miles of Cumbria is a field. Somebody in a thin area
+was being handed a short list by a number nobody had chosen on purpose.
+
+It is a hundred now. Two hundred was available and refused: past a hundred miles a "local
+area" is a region, and a subscriber who would buy three hours from home is not sourcing an
+area, they are sourcing a country.
+
+### The per-list cap clamps the search rather than refusing to save it
+
+`unmodernised` and `slow-to-sell` reject a radius over thirty miles, `large-plot` over
+twenty. `0005` refused to save a profile wider than the narrowest list it asked for,
+because at the time a run that asked for more failed outright.
+
+The run has clamped since. One call carries every list, so it asks for the smallest
+maximum among them and logs `radius_clamped`. The trigger was a second no to a question
+already answered, and it was the wrong no: it stopped somebody searching eighty miles for
+reduced properties because they had also ticked large plots.
+
+So the trigger stops checking and the form explains instead — which list is holding the
+search, and what it will actually run at. A clamp somebody can see and undo beats a
+validation error that tells them to want less.
+
+What this costs: a mixed selection still searches at the narrowest cap, so ticking large
+plots quietly narrows everything else. Splitting the run into one call per cap group would
+fix it and would cost a credit per group per run, which is not worth it until somebody
+actually hits it.
+
+### The list is what qualifies, not a number we promised
+
+The site said five, in the footer, on the sign-up page, in the metadata and twice on the
+front page. The product has never guaranteed five: the intake is capped at five new a
+week, the list keeps everything that still stacks, and a thin week publishes fewer and says
+why.
+
+Promising a number invites the only complaint the product cannot answer — "where are my
+other three?" — and the honest answer is better marketing anyway: you get what clears the
+bar, and how much that is, you control. A wide radius and loose filters fill the list; ten
+miles of a quiet market may hold two.
+
+So the number is gone from the copy and replaced with what decides it. The onboarding form
+says the radius is the biggest lever, on the screen where somebody sets it. A new question
+on the front page answers "how many will I get" with the levers rather than a figure.

@@ -14,7 +14,7 @@ export default async function SignUpPage({
   return (
     <AuthShell
       title="Create an account"
-      intro="£29 a month. Five investment opportunities in your area, in front of you every Monday. Cancel any time."
+      intro="£29 a month. The investment properties in your area that stack against the way you invest, in front of you every Monday. Cancel any time."
       footer={
         <>
           Already have one?{' '}

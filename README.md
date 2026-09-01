@@ -46,7 +46,7 @@ wrote. Nothing a subscriber can click spends a credit.
 
 | Route | What it is |
 | --- | --- |
-| `/dashboard` | This week's five. The qualifying event in the headline position, the numbers stacked, the score openable line by line. |
+| `/dashboard` | Everything on the list that still stacks, newest first. The qualifying event in the headline position, the numbers stacked, the score openable line by line. |
 | `/property/[id]` | One property in full: the complete event timeline, every week it has been shown to you, and the calculator. |
 | `/archive` and `/archive/[runId]` | Previous weeks, exactly as they were published. |
 | `/deals` | Every property you have tracked, how far it got, and what has changed since you looked. |
@@ -370,9 +370,12 @@ scored on a guess.
 
 ### The limits are constraints, not form validation
 
-One area per user is a unique index on `owner_id`. The radius is capped at 40 miles by a
-`CHECK`, well short of the 200 the API would allow, and clamped again per sourcing list
-because PropertyData reject a wider call outright. Sourcing lists are checked against the
+One area per user is a unique index on `owner_id`. The radius is capped at 100 miles by a
+`CHECK`, short of the 200 the API would allow, and clamped again at run time because
+PropertyData reject a wider call outright for some lists. The clamp is not a refusal: one
+call carries every list, so the narrowest cap among the chosen lists governs the whole
+search, and the onboarding form says which list is holding it and what the search will
+actually run at. Sourcing lists are checked against the
 `sourcing_lists` table by a trigger and investment strategies against a fixed set in the
 same trigger, so neither an unknown list nor an unscorable strategy can be stored even by
 a direct database write.
@@ -433,8 +436,10 @@ The panel on the dashboard says what is happening rather than showing a spinner.
 a whole area is a few minutes of rate-limited calls, and it is the one place in the
 product where somebody waits.
 
-**The opening list is five.** It is the moment somebody decides whether they wasted their
-money, and five deals they can act on beats twenty-five they have to triage.
+**The opening list is at most five.** It is the moment somebody decides whether they
+wasted their money, and five deals they can act on beats twenty-five they have to triage.
+How many of the five arrive is decided by the search: a wide radius and loose filters fill
+it, a tight search in a quiet market may return two.
 
 **The list itself is not capped.** What is capped is the intake: each weekly run adds at
 most five new properties, and everything already on the list stays. A property does not
@@ -675,7 +680,8 @@ price down — which let one reduction earn points in quality and again in movem
 
 ### Thin weeks
 
-Some weeks a quiet area will not produce five that qualify. The run publishes fewer and
+Some weeks a search will not produce five that qualify — which is a fact about the radius
+and the filters as much as about the market. The run publishes fewer and
 `weekly_selections.thin_reason` says so in one sentence. The list is never padded — the
 entire product is that we filtered.
 
