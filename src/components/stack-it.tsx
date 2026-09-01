@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { DEFAULT_INPUTS, stack, type StackInputs } from '@/lib/stack'
+import { bandTotal, REFURB_BANDS } from '@/lib/refurb'
 import { formatMoney, formatPercent, formatSignedMoney, NOT_HELD } from '@/lib/format'
 
 /**
@@ -55,10 +56,13 @@ export function StackIt({
   askingPrice,
   estimatedRent,
   estimatedValue,
+  internalAreaSqFt,
 }: {
   askingPrice: number | null
   estimatedRent: number | null
   estimatedValue: number | null
+  /** Drives the refurbishment ranges. Null where no floor area is held. */
+  internalAreaSqFt: number | null
 }) {
   const [inputs, setInputs] = useState<StackInputs>({
     ...DEFAULT_INPUTS,
@@ -106,6 +110,44 @@ export function StackIt({
     <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">{renderFields(PURCHASE_FIELDS)}</div>
+
+        {/* What a refurbishment costs, as ranges to land inside rather than an
+            empty box to guess into. Clicking one fills the field; the number
+            stays yours to change. */}
+        <div className="border-t border-line pt-5">
+          <p className="label text-muted">What works might cost</p>
+          <p className="mt-2 text-sm text-muted">
+            {internalAreaSqFt
+              ? `Rough trade ranges across ${Math.round(internalAreaSqFt).toLocaleString('en-GB')} sq ft. Not a quote, and not local to this postcode.`
+              : 'Rough trade ranges per square foot. No floor area is held for this property, so there is no total to give you.'}
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {REFURB_BANDS.map((band) => {
+              const total = bandTotal(band, internalAreaSqFt)
+              return (
+                <button
+                  key={band.id}
+                  type="button"
+                  onClick={() => setInputs((current) => ({ ...current, refurbCost: total ? Math.round((total.low + total.high) / 2) : current.refurbCost }))}
+                  disabled={total === null}
+                  className="rounded-md border border-line p-3 text-left transition-colors hover:border-highlight-deep/40 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="block text-sm font-medium">{band.label}</span>
+                  <span className="figure mt-1.5 block text-base">
+                    {total ? `${formatMoney(total.low)} to ${formatMoney(total.high)}` : `£${band.perSqFtLow} to £${band.perSqFtHigh} per sq ft`}
+                  </span>
+                  <span className="mt-1.5 block text-sm leading-relaxed text-muted">{band.detail}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="mt-3 text-sm text-muted">
+            Your builder&rsquo;s quote is the only real figure. These are what the trade charges, stated as ranges so
+            you can put your own job somewhere in one.
+          </p>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">{renderFields(FINANCE_FIELDS)}</div>
 

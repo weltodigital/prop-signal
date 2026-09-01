@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { saveSearch, type OnboardingState } from './actions'
 import { Button, Card } from '@/components/ui'
 import { PROPERTY_TYPES, RADIUS_OPTIONS, type SearchProfile, type SourcingList } from '@/lib/search-profile.types'
+import { bandMidpoint, REFURB_BANDS } from '@/lib/refurb'
 import { STRATEGY_LIST, type InvestmentStrategy } from '@/lib/strategies'
 
 function FieldError({ message }: { message?: string }) {
@@ -42,6 +43,11 @@ export function SearchForm({
   // rather than refusing to save, which is what it used to do.
   const [chosen, setChosen] = useState<string[]>(profile?.sourcingLists ?? [])
   const [radius, setRadius] = useState<number>(profile?.radiusMiles ?? 10)
+  const [refurb, setRefurb] = useState<string>(
+    profile?.assumptions.refurbCostPerSqFt === null || profile?.assumptions.refurbCostPerSqFt === undefined
+      ? ''
+      : String(profile.assumptions.refurbCostPerSqFt),
+  )
   const capping =
     sourcingLists
       .filter((list) => chosen.includes(list.id) && list.maxRadiusMiles < radius)
@@ -165,36 +171,54 @@ export function SearchForm({
         <FieldError message={errors.investmentStrategies} />
 
         {needsRefurb ? (
-          <div className="mt-6 space-y-5 rounded-md border border-line bg-paper p-4">
+          <div className="mt-6 space-y-5 border-t border-line pt-5">
             <div>
-              <p className="text-sm font-medium">Your own figure</p>
+              <p className="text-sm font-medium">What a refurbishment costs you</p>
               <p className="mt-1 text-sm text-muted">
-                We do not hold this and will not guess it. Any figure we could put here would be an assumed
-                average buried inside a score, which is the thing this product refuses everywhere else. You know your
-                own build costs better than we ever could.
+                We do not hold this for any property and cannot derive it, so a flip or a BRRR is scored against your
+                figure rather than ours. The bands below are what the trade charges, as ranges. Pick the one that
+                sounds like your jobs, then move the number to whatever you actually pay.
               </p>
             </div>
 
-            {needsRefurb ? (
-              <div>
-                <label htmlFor="refurbCostPerSqFt" className="block text-sm font-medium">
-                  Refurb cost per square foot
-                </label>
-                <input
-                  id="refurbCostPerSqFt"
-                  name="refurbCostPerSqFt"
-                  type="number"
-                  min="1"
-                  inputMode="numeric"
-                  defaultValue={profile?.assumptions.refurbCostPerSqFt ?? ''}
-                  className="mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  placeholder="65"
-                />
-                <p className="mt-1 text-sm text-muted">What your builder charges, in pounds. Used with the floor area.</p>
-                <FieldError message={errors.assumptions} />
-              </div>
-            ) : null}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {REFURB_BANDS.map((band) => (
+                <button
+                  key={band.id}
+                  type="button"
+                  onClick={() => setRefurb(String(bandMidpoint(band)))}
+                  className="rounded-md border border-line p-3 text-left transition-colors hover:border-highlight-deep/40"
+                >
+                  <span className="block text-sm font-medium">{band.label}</span>
+                  <span className="figure mt-1.5 block text-base">
+                    £{band.perSqFtLow} to £{band.perSqFtHigh}
+                  </span>
+                  <span className="mt-1.5 block text-sm leading-relaxed text-muted">{band.detail}</span>
+                </button>
+              ))}
+            </div>
 
+            <div>
+              <label htmlFor="refurbCostPerSqFt" className="block text-sm font-medium">
+                Refurb cost per square foot
+              </label>
+              <input
+                id="refurbCostPerSqFt"
+                name="refurbCostPerSqFt"
+                type="number"
+                min="1"
+                inputMode="numeric"
+                value={refurb}
+                onChange={(event) => setRefurb(event.target.value)}
+                className="figure mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                placeholder="65"
+              />
+              <p className="mt-1 text-sm text-muted">
+                In pounds, applied to each property&rsquo;s floor area. A quote from your builder beats any of the
+                ranges above.
+              </p>
+              <FieldError message={errors.assumptions} />
+            </div>
           </div>
         ) : null}
       </Card>

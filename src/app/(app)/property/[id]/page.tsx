@@ -222,6 +222,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             askingPrice={property.price}
             estimatedRent={property.enrichment.estimatedRent}
             estimatedValue={property.enrichment.estimatedValue}
+            internalAreaSqFt={property.internalAreaSqFt}
           />
         </Card>
       </section>

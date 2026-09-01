@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { PublishedDeal } from '@/lib/deals'
-import { formatBedrooms, formatMoney, NOT_HELD } from '@/lib/format'
+import { formatBedrooms, formatListName, formatMoney, NOT_HELD } from '@/lib/format'
+import { isInvestmentStrategy, STRATEGY_DEFINITIONS } from '@/lib/strategies'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
 import { RiskFlags } from '@/components/risk-flags'
@@ -141,10 +142,36 @@ export function DealCard({
           label="Listed"
           value={deal.daysOnMarket === null ? NOT_HELD : `${deal.daysOnMarket}d`}
         />
-        {winner && deal.strategyScores.length > 1 ? (
-          <span className="text-xs text-muted">best as a {winner.label.toLowerCase()}</span>
-        ) : null}
       </div>
+
+      {/* Which of the subscriber's strategies this suits, and what it scored as
+          each of them. Only where they run more than one: with a single
+          strategy the badge would be on every row and say nothing. */}
+      {deal.strategyScores.length > 1 ? (
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          {[winner, ...runnersUp].filter((entry) => entry !== null).map((entry) => {
+            const definition = isInvestmentStrategy(entry.strategy) ? STRATEGY_DEFINITIONS[entry.strategy] : null
+            const best = entry.strategy === deal.winningStrategy
+            return (
+              <span
+                key={entry.strategy}
+                title={definition ? `${entry.label}: ${definition.measures}` : entry.label}
+                className={`label inline-flex items-baseline gap-1.5 border px-1.5 py-0.5 ${
+                  best ? 'border-highlight-deep/40 text-highlight-deep' : 'border-line text-muted'
+                }`}
+              >
+                {entry.label}
+                <span className="figure">{entry.total.toFixed(0)}</span>
+              </span>
+            )
+          })}
+          {deal.lists.length > 1 ? (
+            <span className="text-xs text-muted">
+              found in {deal.lists.map((list) => formatListName(list).toLowerCase()).join(' and ')}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
 
       {deal.state === 'sstc' ? (
         <p className="mt-3 border-l-2 border-warn/50 py-1 pl-3 text-sm">
@@ -181,8 +208,18 @@ export function DealCard({
 
           {winner ? (
             <p className="text-sm text-muted">
-              Scored as a <span className="font-medium text-ink">{winner.label.toLowerCase()}</span>, which is the
-              strategy this property suits best of the ones you run.
+              Scored as a <span className="font-medium text-ink">{winner.label.toLowerCase()}</span> at{' '}
+              <span className="figure text-ink">{winner.total.toFixed(0)}</span>, which is the strategy this property
+              suits best of the ones you run
+              {isInvestmentStrategy(winner.strategy)
+                ? `, measured on ${STRATEGY_DEFINITIONS[winner.strategy].measures.toLowerCase().replace(/\.$/, '')}`
+                : ''}
+              .
+              {runnersUp.length
+                ? ` As ${runnersUp
+                    .map((entry) => `${entry.label.toLowerCase()} it comes to ${entry.total.toFixed(0)}`)
+                    .join(', and as ')}.`
+                : ''}
             </p>
           ) : null}
 
