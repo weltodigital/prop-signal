@@ -4,6 +4,7 @@ import { ButtonLink } from '@/components/ui'
 import { MarketingNav } from '@/components/marketing/nav'
 import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
+import { Arrive, Press, Reveal } from '@/components/marketing/motion'
 
 export const metadata: Metadata = {
   title: 'Prop Signal. Sourced deals for how you invest',
@@ -14,15 +15,15 @@ export const metadata: Metadata = {
 const CLAIMS = [
   {
     title: 'Sourced against your criteria',
-    body: 'Your area, your radius, your strategy. We look at everything in it every week and keep the ones that stack against the way you actually make money. A property that is a poor buy to let and a strong HMO is scored as both and ranked as whichever it is.',
+    body: 'Your area, your radius, your strategy. A property that is a poor buy to let and a strong HMO is scored as both, and ranked as whichever it is.',
   },
   {
     title: 'The maths is done',
-    body: 'Cashflow, price against nearby sales and local demand are worked out before you open it, under the strategy you actually run. A property that does not stack is obvious without a spreadsheet or a phone call.',
+    body: 'Cashflow, price against nearby sales and local demand, worked out before you open it. What does not stack is obvious without a spreadsheet.',
   },
   {
     title: 'It stays until you say otherwise',
-    body: 'A good deal does not stop being one because you saw it last week. It stays on your list until you buy it, it sells, or you say it is not for you. When something changes on it, that is flagged rather than being the reason it appears.',
+    body: 'A good deal does not stop being one because you saw it last week. It stays until you buy it, it sells, or you say it is not for you.',
   },
 ] as const
 
@@ -30,22 +31,22 @@ const STEPS = [
   {
     step: '01',
     title: 'Tell us where you buy',
-    body: 'A postcode, how far you will travel, and how you make your money, whether that is buy to let, an HMO or a flip. It takes about a minute, and it is the last search you will ever set up.',
+    body: 'A postcode, how far you will travel, and how you make your money. About a minute, and it is the last search you will ever set up.',
   },
   {
     step: '02',
     title: 'Your list is built from everything',
-    body: 'We look at every property standing in your area, not only what appeared this week, and keep the ones that clear the bar against your strategy. There is something to act on from the first Monday.',
+    body: 'Everything standing in your area, not only what appeared this week. There is something to act on from the first Monday.',
   },
   {
     step: '03',
     title: 'It stays and it stays current',
-    body: 'Deals stay on your list while they stack. Each Monday the scores are refreshed, anything new that qualifies is added, and anything that has moved since you last looked is flagged.',
+    body: 'Each Monday the scores are refreshed, anything new that qualifies is added, and anything that has moved since you looked is flagged.',
   },
   {
     step: '04',
     title: 'Make the call',
-    body: 'Check the history, put your own purchase price and rent through the calculator, and ring the agent knowing more than they expect. Track it from interested through to completed as you go.',
+    body: 'Check the history, run your own numbers through the calculator, and ring the agent knowing more than they expect.',
   },
 ] as const
 
@@ -145,86 +146,69 @@ export default async function HomePage() {
 
       <main>
         {/* Hero ---------------------------------------------------------- */}
-        {/* Every section is the same container and the same twelve columns.
-            Text takes the first six, the illustration the last six, and the
-            two start on the same line rather than one floating against the
-            middle of the other. */}
-        <section className="mx-auto max-w-6xl px-6">
-          {/* The hero is the one pair that centres rather than sharing a top
-              line: the card is half the height of the text beside it, and top
-              aligning it leaves a hole where the fold is. Seven columns for the
-              text, because the headline needs 550px to hold its first sentence
-              on one line at 72px, and six columns is 528. */}
-          <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 pt-12 pb-24 md:gap-x-8 lg:items-center">
-            <div className="col-span-12 lg:col-span-7">
-              <p className="label text-muted">For UK landlords and property investors</p>
+        {/* The one place the accent covers a whole band, so the page opens on
+            something other than a sheet of off-white. */}
+        <section className="bg-gradient-to-b from-tint to-ground">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-14 pt-16 pb-24 md:gap-x-8">
+              <Arrive className="col-span-12 lg:col-span-7">
+                <p className="label text-highlight-deep">For UK landlords and property investors</p>
 
-              {/* The break is explicit because the first sentence is the claim:
-                  it holds one line at every width, and the second sentence gets
-                  the rest. */}
-              <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
-                Stop hunting for deals.
-                <br />
-                We put them in front of you.
-              </h1>
+                <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
+                  Stop hunting for deals.
+                  <br />
+                  We put them in front of you.
+                </h1>
 
-              <p className="mt-6 text-body text-muted">
-                Tell us where you buy and how you make your money. BRRR in Portsmouth, HMOs in Leeds, buy to let
-                within ten miles of home. We source the whole area against those criteria and keep the best of it in
-                front of you, with the numbers already worked out.
-              </p>
+                <p className="mt-7 max-w-xl text-body text-muted">
+                  Tell us where you buy and how you make your money. We source the whole area against those criteria
+                  and keep the best of it in front of you, with the numbers already worked out.
+                </p>
 
-              <p className="mt-4 text-body text-muted">
-                A deal earns its place by being a good deal. Not by having been cut last Tuesday, and not by being
-                new this morning. How many earn it is decided by how wide you search and how tight your criteria are.
-              </p>
+                <div className="mt-9 flex flex-wrap items-center gap-3">
+                  <Press>
+                    <ButtonLink href={primaryHref} className="px-5 py-3 text-base">
+                      {primaryLabel}
+                    </ButtonLink>
+                  </Press>
+                  <Press>
+                    <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
+                      See how it works
+                    </ButtonLink>
+                  </Press>
+                </div>
 
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <ButtonLink href={primaryHref} className="px-5 py-3 text-base">
-                  {primaryLabel}
-                </ButtonLink>
-                <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
-                  See how it works
-                </ButtonLink>
-              </div>
+                <p className="mt-6 text-sm text-muted">£29 a month for your area. Cancel any time.</p>
+              </Arrive>
 
-              <p className="mt-5 text-sm text-muted">
-                £29 a month for your area. Cancel any time.
-              </p>
-            </div>
-
-            <div className="col-span-12 lg:col-span-5">
-              <DealPreview />
+              <Arrive className="col-span-12 lg:col-span-5" delay={0.12}>
+                <DealPreview />
+              </Arrive>
             </div>
           </div>
         </section>
 
         {/* Three claims -------------------------------------------------- */}
         <section id="inside" className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-12 gap-x-6 gap-y-14 border-t border-rule pt-14 pb-24 md:gap-x-8">
-            <div className="col-span-12 lg:col-span-7">
+          <div className="grid grid-cols-12 gap-x-6 gap-y-16 border-t border-rule pt-16 pb-28 md:gap-x-8">
+            <Reveal className="col-span-12 lg:col-span-7">
               <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
                 A portal can only tell you what is new.
               </h2>
-              <p className="mt-5 text-body text-muted">
-                That is the one question it can answer, so it is the one you get asked. Whether a property is a good buy
-                for the way you invest is a different question, and nothing on a portal is set up to ask it.
+              <p className="mt-6 text-body text-muted">
+                Whether a property is a good buy for the way you invest is a different question, and nothing on a
+                portal is set up to ask it. The best deal in your area might have been listed this morning or eight
+                months ago; we score both the same way.
               </p>
-              <p className="mt-4 text-body text-muted">
-                The best deal in your area might have been listed this morning or eight months ago. We score both the same
-                way and put whichever is better in front of you.
-              </p>
-            </div>
+            </Reveal>
 
-            {/* The three claims are their own row of the same twelve columns:
-                four each, starting at column one, whatever the heading above
-                them takes. */}
-            <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-10 md:gap-x-8">
-              {CLAIMS.map((claim) => (
-                <div key={claim.title} className="col-span-12 border-t border-rule pt-5 sm:col-span-4">
-                  <h3 className="text-h3 font-medium">{claim.title}</h3>
+            <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-12 md:gap-x-8">
+              {CLAIMS.map((claim, index) => (
+                <Reveal key={claim.title} className="col-span-12 sm:col-span-4" delay={index * 0.08}>
+                  <div aria-hidden="true" className="h-0.5 w-10 bg-highlight-deep" />
+                  <h3 className="mt-5 text-h3 font-medium">{claim.title}</h3>
                   <p className="mt-3 text-body text-muted">{claim.body}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -232,97 +216,84 @@ export default async function HomePage() {
 
         {/* Alternating features ------------------------------------------ */}
         <section className="mx-auto max-w-6xl px-6">
-          <div className="space-y-24 border-t border-rule pt-14 pb-24">
-            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-10 md:gap-x-8">
-              <div className="col-span-12 lg:col-span-6">
-                <p className="label text-muted">Leverage</p>
+          <div className="space-y-28 border-t border-rule pt-16 pb-28">
+            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-6">
+                <p className="label text-highlight-deep">Leverage</p>
                 <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Walk in knowing exactly how much room there is.
                 </h2>
-                <p className="mt-5 text-body text-muted">
-                  An agent will tell you there is interest. The history tells you the price has come down twice, the
-                  sale already fell through once, and nobody has bought it in seven hundred days. You make your offer
-                  against that rather than against the asking price.
+                <p className="mt-6 text-body text-muted">
+                  An agent will tell you there is interest. The history tells you the price has come down twice and
+                  nobody has bought it in seven hundred days. You make your offer against that.
                 </p>
-                <p className="mt-4 text-body text-muted">
-                  None of that decides whether a property reaches you. A good deal reaches you because it is a good
-                  deal. What the seller has done since is how you price the offer once it has.
-                </p>
-              </div>
-              <div className="col-span-12 lg:col-span-6">
+              </Reveal>
+              <Reveal className="col-span-12 lg:col-span-6" delay={0.1}>
                 <TimelinePreview />
-              </div>
+              </Reveal>
             </div>
 
-            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-10 md:gap-x-8">
-              <div className="col-span-12 lg:col-span-6 lg:col-start-7">
-                <p className="label text-muted">Already worked out</p>
+            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-6 lg:col-start-7">
+                <p className="label text-highlight-deep">Already worked out</p>
                 <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Nothing reaches you until it has been through the numbers.
                 </h2>
-                <p className="mt-5 text-body text-muted">
-                  Monthly cashflow, price against what nearby homes actually sold for, and local demand are worked out
-                  before you open it, and shown with the figures behind them. You can see why something scored what it
-                  did and disagree with it, which is more use than a number you have to take on trust.
+                <p className="mt-6 text-body text-muted">
+                  Cashflow, price against nearby sales and local demand, shown with the figures behind them. You can
+                  see why something scored what it did and disagree with it. Where we hold nothing, it says so and
+                  scores nothing.
                 </p>
-                <p className="mt-4 text-body text-muted">
-                  Where we hold nothing, it says so and scores nothing. No assumed averages, and no language model
-                  anywhere near this.
-                </p>
-              </div>
-              <div className="col-span-12 lg:col-span-6 lg:col-start-1 lg:row-start-1">
+              </Reveal>
+              <Reveal className="col-span-12 lg:col-span-6 lg:col-start-1 lg:row-start-1" delay={0.1}>
                 <ScorePreview />
-              </div>
+              </Reveal>
             </div>
 
-            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-10 md:gap-x-8">
-              <div className="col-span-12 lg:col-span-6">
-                <p className="label text-muted">Worth opening</p>
+            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-6">
+                <p className="label text-highlight-deep">Worth opening</p>
                 <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Short when it should be short.
                 </h2>
-                <p className="mt-5 text-body text-muted">
-                  How many properties reach you is decided by what you asked for. A wide radius and loose filters
-                  give you more; ten miles of a quiet market may give you two. You are never handed a number we made
-                  up to look busy, so you never have to work out which of them are filler.
+                <p className="mt-6 text-body text-muted">
+                  How many properties reach you is decided by what you asked for. A wide radius and loose filters give
+                  you more; ten miles of a quiet market may give you two. The list is never padded.
                 </p>
-                <p className="mt-4 text-body text-muted">
-                  Anything you mark as not for you is gone for good, however well it scores later. The list stays
-                  worth the two minutes it takes to read because you decide what is on it.
-                </p>
-              </div>
+              </Reveal>
 
-              <div className="col-span-12 lg:col-span-6">
-                <p className="label text-muted">A short list this week</p>
-                <p className="mt-4 text-h3 font-medium">
-                  Only two properties in your area clear the bar at the moment. The rest do not stack against your
-                  strategy, so they are not here.
-                </p>
-                <p className="mt-5 border-t border-rule pt-4 text-sm text-muted">
-                  An example of a thin week, stated rather than padded.
-                </p>
-              </div>
+              <Reveal className="col-span-12 lg:col-span-6" delay={0.1}>
+                <div className="border-l-2 border-highlight-deep/40 py-1 pl-6">
+                  <p className="label text-muted">A short list this week</p>
+                  <p className="mt-4 text-h3 font-medium">
+                    Only two properties in your area clear the bar at the moment. The rest do not stack against your
+                    strategy, so they are not here.
+                  </p>
+                  <p className="mt-5 text-sm text-muted">An example of a thin week, stated rather than padded.</p>
+                </div>
+              </Reveal>
             </div>
           </div>
         </section>
 
         {/* How it works --------------------------------------------------- */}
         <section id="how" className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-12 gap-x-6 gap-y-14 border-t border-rule pt-14 pb-24 md:gap-x-8">
-            <h2 className="font-display col-span-12 text-h2 font-normal text-balance md:text-h2-lg lg:col-span-7">
-              How it works
-            </h2>
+          <div className="grid grid-cols-12 gap-x-6 gap-y-16 border-t border-rule pt-16 pb-28 md:gap-x-8">
+            <Reveal className="col-span-12 lg:col-span-7">
+              <h2 className="font-display text-h2 font-normal md:text-h2-lg">How it works</h2>
+            </Reveal>
 
-            <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-10 md:gap-x-8">
-              {STEPS.map((step) => (
-                <div
+            <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-12 md:gap-x-8">
+              {STEPS.map((step, index) => (
+                <Reveal
                   key={step.step}
-                  className="col-span-12 border-t border-rule pt-5 sm:col-span-6 lg:col-span-3"
+                  className="col-span-12 sm:col-span-6 lg:col-span-3"
+                  delay={index * 0.07}
                 >
-                  <p className="figure text-sm text-muted">{step.step}</p>
-                  <h3 className="mt-3 text-h3 font-medium">{step.title}</h3>
+                  <p className="figure text-sm text-highlight-deep">{step.step}</p>
+                  <h3 className="mt-4 text-h3 font-medium">{step.title}</h3>
                   <p className="mt-3 text-body text-muted">{step.body}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -330,60 +301,74 @@ export default async function HomePage() {
 
         {/* Pricing --------------------------------------------------------- */}
         <section id="pricing" className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 border-t border-rule pt-14 pb-24 md:gap-x-8">
-            <div className="col-span-12 lg:col-span-7">
+          <div className="grid grid-cols-12 items-center gap-x-6 gap-y-12 border-t border-rule pt-16 pb-28 md:gap-x-8">
+            <Reveal className="col-span-12 lg:col-span-6">
               <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
-                A sourcer charges thousands. This is £29.
+                A sourcer charges thousands. We cost less than £1 a day.
               </h2>
-            </div>
-
-            {/* The card holds the right five columns for both rows, so the
-                comparison sits under the headline rather than under a void. */}
-            <div className="col-span-12 rounded-lg border border-rule p-8 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1">
-              <p className="flex items-baseline gap-3">
-                <span className="figure text-6xl leading-none">£29</span>
-                <span className="label text-muted">a month</span>
+              <p className="mt-6 text-body text-muted">
+                Your own area, searched every week against the way you invest. Cancel any time from your account
+                page.
               </p>
+            </Reveal>
 
-              <ul className="mt-8 space-y-3.5 border-t border-rule pt-6 text-body text-muted">
-                {[
-                  'Your area, anything from one mile to a hundred from your postcode',
-                  'Scored for how you invest, whether that is a let, an HMO or a flip',
-                  'Every property in your area that stacks, kept in front of you',
-                  'A deal stays on your list until you say it is not for you',
-                  'The full price history, so you know what to offer',
-                  'Yield and value gap worked out before you open it',
-                  'A calculator that runs your own numbers, not ours',
-                  'Track each one from interested through to completed',
-                  'Cancel any time from your account page',
-                ].map((line) => (
-                  <li key={line} className="flex gap-3">
-                    <span aria-hidden="true" className="mt-2.5 h-1 w-1 shrink-0 bg-muted" />
-                    {line}
-                  </li>
-                ))}
-              </ul>
+            <Reveal
+              className="col-span-12 lg:col-span-5 lg:col-start-8"
+              delay={0.1}
+            >
+              <div className="rounded-lg border border-highlight-deep/25 bg-tint p-8">
+                <p className="flex items-baseline gap-3">
+                  <span className="figure text-6xl leading-none text-highlight-deep">£29</span>
+                  <span className="label text-muted">a month</span>
+                </p>
 
-              <ButtonLink href={primaryHref} className="mt-8 w-full px-5 py-3 text-base">
-                {primaryLabel}
-              </ButtonLink>
-            </div>
+                <ul className="mt-8 space-y-3.5 border-t border-highlight-deep/20 pt-6 text-body">
+                  {[
+                    'Your area, anything from one mile to a hundred from your postcode',
+                    'Scored for how you invest, whether that is a let, an HMO or a flip',
+                    'Every property in your area that stacks, kept in front of you',
+                    'The full price history, so you know what to offer',
+                    'A calculator that runs your own numbers, not ours',
+                    'Track each one from interested through to completed',
+                  ].map((line) => (
+                    <li key={line} className="flex gap-3">
+                      <span aria-hidden="true" className="mt-2.5 h-1 w-1 shrink-0 bg-highlight-deep" />
+                      {line}
+                    </li>
+                  ))}
+                </ul>
 
-            {/* Four columns of prose need the full twelve, and wide content
-                scrolls inside its own box rather than pushing the page sideways
-                on a phone. */}
-            {/* On a phone the same five rows are stacked rather than scrolled
+                <Press className="mt-8">
+                  <ButtonLink href={primaryHref} className="w-full px-5 py-3 text-base">
+                    {primaryLabel}
+                  </ButtonLink>
+                </Press>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* How we compare --------------------------------------------------- */}
+        <section id="compare" className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-12 gap-x-6 gap-y-14 border-t border-rule pt-16 pb-28 md:gap-x-8">
+            <Reveal className="col-span-12 lg:col-span-7">
+              <p className="label text-highlight-deep">The alternatives</p>
+              <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
+                What the money actually buys.
+              </h2>
+            </Reveal>
+
+            {/* On a phone the same rows are stacked rather than scrolled
                 sideways: three columns of prose in 390px is a column of single
-                words, and a table nobody can see the end of is worse than a
-                list. Both come from the same rows. */}
-            <div className="col-span-12 sm:hidden">
+                words. Both come from the same rows. */}
+            <Reveal className="col-span-12 sm:hidden">
               {COMPARISON.rows.map((row) => (
-                <div key={row.label} className="border-t border-rule py-5">
+                <div key={row.label} className="border-t border-rule py-6">
                   <p className="label text-muted">{row.label}</p>
-                  <dl className="mt-3 space-y-2.5">
+                  <dl className="mt-4 space-y-3">
                     {row.cells.map((cell, index) => (
                       <div key={cell}>
-                        <dt className={`text-sm ${index === 0 ? 'font-medium' : 'text-muted'}`}>
+                        <dt className={`text-sm ${index === 0 ? 'font-medium text-highlight-deep' : 'text-muted'}`}>
                           {COMPARISON.columns[index]}
                         </dt>
                         <dd className={`text-sm leading-relaxed ${index === 0 ? '' : 'text-muted'}`}>{cell}</dd>
@@ -392,23 +377,25 @@ export default async function HomePage() {
                   </dl>
                 </div>
               ))}
-            </div>
+            </Reveal>
 
-            <div className="col-span-12 hidden overflow-x-auto sm:block lg:col-span-7">
-              <table className="w-full min-w-[34rem] border-collapse text-left">
+            <Reveal className="col-span-12 hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[44rem] border-collapse text-left">
                 <caption className="sr-only">
                   How Prop Signal compares with a deal sourcer and a deal-sourcing site
                 </caption>
                 <thead>
                   <tr>
-                    <th scope="col" className="w-[8.5rem] py-3 pr-5 align-bottom">
+                    <th scope="col" className="w-[11rem] py-4 pr-6 align-bottom">
                       <span className="sr-only">What is being compared</span>
                     </th>
                     {COMPARISON.columns.map((column, index) => (
                       <th
                         key={column}
                         scope="col"
-                        className={`label py-3 pr-5 align-bottom ${index === 0 ? 'text-ink' : 'text-muted'}`}
+                        className={`label py-4 align-bottom ${
+                          index === 0 ? 'bg-tint px-5 text-highlight-deep' : 'pr-6 text-muted'
+                        }`}
                       >
                         {column}
                       </th>
@@ -418,14 +405,14 @@ export default async function HomePage() {
                 <tbody>
                   {COMPARISON.rows.map((row) => (
                     <tr key={row.label} className="border-t border-rule align-top">
-                      <th scope="row" className="py-4 pr-5 text-sm font-medium">
+                      <th scope="row" className="py-5 pr-6 text-sm font-medium">
                         {row.label}
                       </th>
                       {row.cells.map((cell, index) => (
                         <td
                           key={cell}
-                          className={`py-4 pr-5 text-sm leading-relaxed ${
-                            index === 0 ? 'font-medium' : 'text-muted'
+                          className={`py-5 text-sm leading-relaxed ${
+                            index === 0 ? 'bg-tint px-5 font-medium' : 'pr-6 text-muted'
                           }`}
                         >
                           {cell}
@@ -435,24 +422,24 @@ export default async function HomePage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         {/* FAQ -------------------------------------------------------------- */}
         <section id="faq" className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-12 gap-x-6 border-t border-rule pt-14 pb-24 md:gap-x-8">
-            <div className="col-span-12 lg:col-span-7">
-              <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">Questions</h2>
+          <div className="grid grid-cols-12 gap-x-6 border-t border-rule pt-16 pb-28 md:gap-x-8">
+            <Reveal className="col-span-12 lg:col-span-7">
+              <h2 className="font-display text-h2 font-normal md:text-h2-lg">Questions</h2>
 
-              <div className="mt-14">
+              <div className="mt-12">
                 {FAQS.map((faq) => (
                   <details key={faq.q} className="group border-b border-rule py-5">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-h3 font-medium">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-h3 font-medium transition-colors hover:text-highlight-deep">
                       {faq.q}
                       <span
                         aria-hidden="true"
-                        className="shrink-0 text-2xl leading-none font-normal text-muted transition-transform group-open:rotate-45"
+                        className="shrink-0 text-2xl leading-none font-normal text-highlight-deep transition-transform group-open:rotate-45"
                       >
                         +
                       </span>
@@ -461,27 +448,33 @@ export default async function HomePage() {
                   </details>
                 ))}
               </div>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         {/* Final CTA -------------------------------------------------------- */}
-        <section className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-12 gap-x-6 border-t border-rule pt-14 pb-24 md:gap-x-8">
-            <div className="col-span-12 lg:col-span-8 lg:col-start-3 lg:text-center">
-              <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
-                Tell us how you invest. We will find the deals.
-              </h2>
-              <p className="mt-5 text-body text-muted">£29 a month for your area. Cancel any time.</p>
+        <section className="bg-gradient-to-b from-ground to-tint">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="grid grid-cols-12 gap-x-6 border-t border-rule pt-20 pb-28 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-8 lg:col-start-3 lg:text-center">
+                <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
+                  Tell us how you invest. We will find the deals.
+                </h2>
+                <p className="mt-6 text-body text-muted">£29 a month for your area. Cancel any time.</p>
 
-              <div className="mt-8 flex flex-wrap gap-3 lg:justify-center">
-                <ButtonLink href={primaryHref} className="px-5 py-3 text-base">
-                  {primaryLabel}
-                </ButtonLink>
-                <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
-                  See how it works
-                </ButtonLink>
-              </div>
+                <div className="mt-9 flex flex-wrap gap-3 lg:justify-center">
+                  <Press>
+                    <ButtonLink href={primaryHref} className="px-5 py-3 text-base">
+                      {primaryLabel}
+                    </ButtonLink>
+                  </Press>
+                  <Press>
+                    <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
+                      See how it works
+                    </ButtonLink>
+                  </Press>
+                </div>
+              </Reveal>
             </div>
           </div>
         </section>
