@@ -6,13 +6,19 @@ import type { ReactNode } from 'react'
 /**
  * Movement, kept to one idea.
  *
- * Things arrive: a short rise and fade as a block comes into view, once, and
- * never again. Nothing loops, nothing parallaxes, nothing moves while it is
- * being read — a page about numbers should not be busier than the numbers.
+ * Things arrive: a short rise as a block comes into view, once, and never
+ * again. Nothing loops, nothing parallaxes, nothing moves while it is being
+ * read — a page about numbers should not be busier than the numbers.
+ *
+ * The rise is a transform and never a fade, which is the important part. An
+ * entrance that animates opacity has to render the block invisible first, so a
+ * reader whose JavaScript is slow, blocked or broken gets a blank page rather
+ * than a page without animation. Offset by eighteen pixels, the worst case is a
+ * page that sits a few pixels low and nobody notices.
  *
  * Anybody who has asked their system for less motion gets none of it: the
- * content renders in its final position with no animation attached at all,
- * rather than a fast version of the same movement.
+ * content renders in place with no animation attached at all, rather than a
+ * fast version of the same movement.
  */
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -33,8 +39,8 @@ export function Reveal({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={{ y: 18 }}
+      whileInView={{ y: 0 }}
       viewport={{ once: true, margin: '-64px' }}
       transition={{ duration: 0.5, ease: EASE, delay }}
     >
@@ -59,8 +65,8 @@ export function Arrive({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ y: 20 }}
+      animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: EASE, delay }}
     >
       {children}

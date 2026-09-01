@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { ButtonLink } from '@/components/ui'
 import { MarketingNav } from '@/components/marketing/nav'
 import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 import { Arrive, Press, Reveal } from '@/components/marketing/motion'
+import sourcing from '@/assets/prop-signal-property-sourcing.jpg'
 
 export const metadata: Metadata = {
   title: 'Prop Signal. Sourced deals for how you invest',
@@ -148,10 +150,35 @@ export default async function HomePage() {
         {/* Hero ---------------------------------------------------------- */}
         {/* The one place the accent covers a whole band, so the page opens on
             something other than a sheet of off-white. */}
-        <section className="bg-gradient-to-b from-tint to-ground">
-          <div className="mx-auto max-w-6xl px-6">
+        <section className="relative overflow-hidden bg-gradient-to-b from-tint via-tint/50 to-ground">
+          {/* A glow rather than a band: the colour is strongest behind the
+              example deal and gone by the time the page starts reading. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-40 right-[-10%] h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle,var(--color-tint-deep)_0%,transparent_65%)] opacity-70"
+          />
+
+          <div className="relative mx-auto max-w-6xl px-6">
             <div className="grid grid-cols-12 items-center gap-x-6 gap-y-14 pt-16 pb-24 md:gap-x-8">
-              <Arrive className="col-span-12 lg:col-span-7">
+              <Arrive className="relative col-span-12 lg:col-span-7">
+                {/* The bubble. The one photograph on the site, and it is ours
+                    rather than an agent's — no listing image is ever
+                    reproduced, which is the promise the footer makes. It fills
+                    the corner the headline leaves empty. */}
+                <div className="mb-8 lg:absolute lg:right-0 lg:bottom-0 lg:mb-0">
+                  <div className="relative h-28 w-28 overflow-hidden rounded-full ring-8 ring-tint/60 sm:h-36 sm:w-36 lg:h-36 lg:w-36">
+                    <Image
+                      src={sourcing}
+                      alt=""
+                      aria-hidden="true"
+                      fill
+                      sizes="(min-width: 1024px) 10rem, 9rem"
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
+                </div>
+
                 <p className="label text-highlight-deep">For UK landlords and property investors</p>
 
                 <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
@@ -160,7 +187,7 @@ export default async function HomePage() {
                   We put them in front of you.
                 </h1>
 
-                <p className="mt-7 max-w-xl text-body text-muted">
+                <p className="mt-7 max-w-lg text-body text-muted">
                   Tell us where you buy and how you make your money. We source the whole area against those criteria
                   and keep the best of it in front of you, with the numbers already worked out.
                 </p>
@@ -181,7 +208,7 @@ export default async function HomePage() {
                 <p className="mt-6 text-sm text-muted">£29 a month for your area. Cancel any time.</p>
               </Arrive>
 
-              <Arrive className="col-span-12 lg:col-span-5" delay={0.12}>
+              <Arrive className="relative col-span-12 lg:col-span-5" delay={0.12}>
                 <DealPreview />
               </Arrive>
             </div>
@@ -215,8 +242,9 @@ export default async function HomePage() {
         </section>
 
         {/* Alternating features ------------------------------------------ */}
-        <section className="mx-auto max-w-6xl px-6">
-          <div className="space-y-28 border-t border-rule pt-16 pb-28">
+        <section className="bg-gradient-to-b from-ground via-tint/40 to-ground">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="space-y-28 border-t border-rule pt-16 pb-28">
             <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 md:gap-x-8">
               <Reveal className="col-span-12 lg:col-span-6">
                 <p className="label text-highlight-deep">Leverage</p>
@@ -272,12 +300,13 @@ export default async function HomePage() {
                   <p className="mt-5 text-sm text-muted">An example of a thin week, stated rather than padded.</p>
                 </div>
               </Reveal>
+              </div>
             </div>
           </div>
         </section>
 
         {/* How it works --------------------------------------------------- */}
-        <section id="how" className="mx-auto max-w-6xl px-6">
+        <section id="how" className="mx-auto max-w-6xl bg-gradient-to-b from-ground to-tint/30 px-6">
           <div className="grid grid-cols-12 gap-x-6 gap-y-16 border-t border-rule pt-16 pb-28 md:gap-x-8">
             <Reveal className="col-span-12 lg:col-span-7">
               <h2 className="font-display text-h2 font-normal md:text-h2-lg">How it works</h2>
@@ -300,7 +329,8 @@ export default async function HomePage() {
         </section>
 
         {/* Pricing --------------------------------------------------------- */}
-        <section id="pricing" className="mx-auto max-w-6xl px-6">
+        <section id="pricing" className="bg-gradient-to-b from-tint/30 to-ground">
+          <div className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-12 items-center gap-x-6 gap-y-12 border-t border-rule pt-16 pb-28 md:gap-x-8">
             <Reveal className="col-span-12 lg:col-span-6">
               <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
@@ -316,7 +346,7 @@ export default async function HomePage() {
               className="col-span-12 lg:col-span-5 lg:col-start-8"
               delay={0.1}
             >
-              <div className="rounded-lg border border-highlight-deep/25 bg-tint p-8">
+              <div className="rounded-lg border border-highlight-deep/25 bg-gradient-to-br from-tint to-tint-deep p-8">
                 <p className="flex items-baseline gap-3">
                   <span className="figure text-6xl leading-none text-highlight-deep">£29</span>
                   <span className="label text-muted">a month</span>
@@ -345,6 +375,7 @@ export default async function HomePage() {
                 </Press>
               </div>
             </Reveal>
+            </div>
           </div>
         </section>
 
