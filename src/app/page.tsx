@@ -394,7 +394,7 @@ export default async function HomePage() {
                         key={column}
                         scope="col"
                         className={`label py-4 align-bottom ${
-                          index === 0 ? 'bg-tint px-5 text-highlight-deep' : 'pr-6 text-muted'
+                          index === 0 ? 'bg-tint px-6 text-highlight-deep' : 'px-6 text-muted'
                         }`}
                       >
                         {column}
@@ -412,7 +412,7 @@ export default async function HomePage() {
                         <td
                           key={cell}
                           className={`py-5 text-sm leading-relaxed ${
-                            index === 0 ? 'bg-tint px-5 font-medium' : 'pr-6 text-muted'
+                            index === 0 ? 'bg-tint px-6 font-medium' : 'px-6 text-muted'
                           }`}
                         >
                           {cell}
