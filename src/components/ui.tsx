@@ -4,13 +4,16 @@ import type { ComponentProps, ReactNode } from 'react'
 const buttonBase =
   'inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
+/**
+ * Two colours and a piece of text.
+ *
+ * Teal is the product's one accent and it means "this is the action" — the same
+ * button on the front page, in the app, and on a form. It is deep enough to
+ * hold white text at 4.5:1. Everything else is a hairline on the ground.
+ */
 const variants = {
-  primary: 'bg-accent text-white hover:bg-accent/90',
-  // The one place on the marketing page the teal is allowed to carry weight,
-  // alongside the score. Deep enough to hold white text at 4.5:1.
-  signal: 'bg-highlight-deep text-white hover:bg-highlight-deep/90',
-  secondary: 'border border-line bg-card text-ink hover:bg-paper',
-  outline: 'border border-rule text-ink hover:bg-ink/5',
+  primary: 'bg-highlight-deep text-white hover:bg-highlight-deep/90',
+  secondary: 'border border-line text-ink hover:bg-ink/5',
   quiet: 'text-muted underline underline-offset-4 hover:text-ink',
 } as const
 
@@ -33,7 +36,7 @@ export function ButtonLink({
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-lg border border-line bg-card p-6 ${className}`}>{children}</div>
+  return <div className={`rounded-lg border border-line p-6 ${className}`}>{children}</div>
 }
 
 export function Notice({
@@ -46,7 +49,7 @@ export function Notice({
   children?: ReactNode
 }) {
   const tones = {
-    info: 'border-line bg-accent-soft text-ink',
+    info: 'border-line text-ink',
     warn: 'border-warn/30 bg-warn-soft text-ink',
   } as const
   return (
@@ -63,7 +66,7 @@ export function Notice({
  */
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-line bg-card px-6 py-12 text-center">
+    <div className="rounded-lg border border-dashed border-line px-6 py-12 text-center">
       <p className="text-base font-medium">{title}</p>
       {children ? <div className="mx-auto mt-2 max-w-prose text-sm text-muted">{children}</div> : null}
     </div>
@@ -115,8 +118,8 @@ const actionBase =
 
 const actionTones = {
   /** The outbound link. The one thing on a card somebody leaves to do. */
-  lead: 'border-accent/30 bg-accent-soft text-accent hover:border-accent/50 hover:bg-accent hover:text-white',
-  plain: 'border-line bg-card text-muted hover:border-accent/30 hover:text-accent',
+  lead: 'border-highlight-deep/40 text-highlight-deep hover:bg-highlight-deep hover:text-white',
+  plain: 'border-line text-muted hover:border-highlight-deep/40 hover:text-highlight-deep',
   /** Taking it off the list. Present, never inviting. */
   quiet: 'border-transparent text-muted hover:border-line hover:text-ink',
 } as const

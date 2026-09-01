@@ -8,7 +8,7 @@
  */
 function Row() {
   return (
-    <div className="rounded-lg border border-line bg-card px-4 py-3">
+    <div className="border-t border-line py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="shimmer h-3 w-28" />
@@ -40,7 +40,7 @@ export default function Loading() {
       <div className="shimmer h-8 w-52" />
       <div className="shimmer mt-3 h-3.5 w-80 max-w-full" />
 
-      <div className="mt-8 space-y-3">
+      <div className="mt-8">
         {[0, 1, 2, 3].map((row) => (
           <Row key={row} />
         ))}

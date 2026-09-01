@@ -24,7 +24,7 @@ export function RiskFlags({ risks, compact = false }: { risks: Risk[]; compact?:
           <span
             key={risk.label}
             title={risk.detail}
-            className="cursor-help rounded border border-warn/30 bg-warn-soft px-1.5 py-0.5 text-xs text-warn"
+            className="label cursor-help border border-warn/40 px-1.5 py-0.5 text-warn"
           >
             {risk.label}
           </span>
@@ -34,14 +34,14 @@ export function RiskFlags({ risks, compact = false }: { risks: Risk[]; compact?:
   }
 
   return (
-    <div className="mt-4 rounded-md border border-warn/30 bg-warn-soft px-4 py-3">
+    <div className="mt-4 border-l-2 border-warn/50 py-1 pl-4">
       <p className="text-sm font-medium">Worth knowing before you call</p>
       <ul className="mt-2 space-y-1.5">
         {risks.map((risk) => (
           <li key={risk.label} className="text-sm">
             <span className="font-medium">{risk.label}.</span> <span className="text-muted">{risk.detail}</span>
             {risk.severity === 'cap' ? (
-              <span className="ml-1.5 rounded-full border border-warn/40 px-1.5 py-0.5 text-xs tracking-wide text-muted uppercase">
+              <span className="label ml-1.5 border border-warn/40 px-1.5 py-0.5 text-muted">
                 Held back
               </span>
             ) : null}

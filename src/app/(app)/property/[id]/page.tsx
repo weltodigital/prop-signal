@@ -52,7 +52,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
       <div className="mt-2 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{property.address ?? 'Address not held'}</h1>
+          <h1 className="font-display text-h2 font-normal">{property.address ?? 'Address not held'}</h1>
           <p className="mt-1 text-sm text-muted">
             {[property.postcode, formatBedrooms(property.bedrooms), property.propertyType].filter(Boolean).join(' · ')}
           </p>
@@ -93,7 +93,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               {progress.map((entry) => (
                 <li key={`${entry.stage}-${entry.enteredAt}`} className="flex justify-between gap-4 text-sm">
                   <span>{STAGE_DEFINITIONS[entry.stage].happened}</span>
-                  <span className="nums shrink-0 text-muted">{formatShortDate(entry.enteredAt)}</span>
+                  <span className="figure shrink-0 text-muted">{formatShortDate(entry.enteredAt)}</span>
                 </li>
               ))}
             </ol>
@@ -142,7 +142,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
       <section className="mt-10">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-          <h2 className="text-lg font-medium">Timeline</h2>
+          <h2 className="text-h3 font-medium">Timeline</h2>
           {property.watched ? (
             <form action={markReadAction}>
               <input type="hidden" name="propertyId" value={property.propertyId} />
@@ -163,7 +163,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
       {property.appearances.length ? (
         <section className="mt-10">
-          <h2 className="text-lg font-medium">When you were shown this</h2>
+          <h2 className="text-h3 font-medium">When you were shown this</h2>
           <p className="mt-1 text-sm text-muted">
             A property returns only on the strength of a move it has not already been shown for.
           </p>
@@ -174,13 +174,13 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
                 <span>
                   <Link
                     href={`/archive/${appearance.runId}`}
-                    className="underline underline-offset-4 hover:text-accent"
+                    className="underline underline-offset-4 hover:text-highlight-deep"
                   >
                     {appearance.weekOf ? `Week of ${formatShortDate(appearance.weekOf)}` : 'Opening list'}
                   </Link>
                   <span className="text-muted">, {appearance.headline}</span>
                 </span>
-                <span className="nums text-muted">
+                <span className="figure text-muted">
                   Position {appearance.position}, score {appearance.totalScore.toFixed(0)}
                 </span>
               </li>
@@ -191,7 +191,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
       {property.latest ? (
         <section className="mt-10">
-          <h2 className="text-lg font-medium">How it scored</h2>
+          <h2 className="text-h3 font-medium">How it scored</h2>
           <p className="mt-1 text-sm text-muted">
             From the last time it was published to you, on the figures held then and under the weights in force then.
           </p>
@@ -208,7 +208,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       ) : null}
 
       <section className="mt-10">
-        <h2 className="text-lg font-medium">Stack it</h2>
+        <h2 className="text-h3 font-medium">Stack it</h2>
         <p className="mt-1 text-sm text-muted">
           Runs in your browser against the figures above. Change anything you like. It costs nothing and nothing is
           saved.

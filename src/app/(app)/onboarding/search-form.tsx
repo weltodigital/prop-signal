@@ -255,7 +255,7 @@ export function SearchForm({
                   inputMode="numeric"
                   defaultValue={profile?.minPrice ?? ''}
                   placeholder="80000"
-                  className="nums mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  className="figure mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
                 <FieldError message={errors.minPrice} />
               </div>
@@ -270,7 +270,7 @@ export function SearchForm({
                   inputMode="numeric"
                   defaultValue={profile?.maxPrice ?? ''}
                   placeholder="250000"
-                  className="nums mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  className="figure mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
                 <FieldError message={errors.maxPrice} />
               </div>
@@ -286,7 +286,7 @@ export function SearchForm({
                 inputMode="numeric"
                 defaultValue={profile?.minBedrooms ?? ''}
                 placeholder="2"
-                className="nums mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="figure mt-1.5 w-full rounded-md border border-line bg-card px-3 py-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
               <FieldError message={errors.minBedrooms} />
             </div>

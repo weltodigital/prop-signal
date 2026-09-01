@@ -38,14 +38,19 @@
   /* Taken from the logo. Navy carries the weight and does the work on
      buttons and headings; cyan is bright enough to mark a thing and too
      bright to read, so it is never asked to hold text. */
-  --color-paper: #f7f9fb;
+  /* One ground for the whole product, warm rather than blue-grey. `paper` and
+     `ground` are the same colour, as are `line` and `rule` — the app was
+     written against the first pair and the marketing page against the second,
+     and they name one decision. White is left for fields, which should look
+     like something you can type in. */
+  --color-paper: #fafaf8;
   --color-card: #ffffff;
   --color-ink: #0d1b2f;
   /* Raised from #5a6a80. Most of the page is muted body copy, so this is the
      colour that decides whether the page is readable: 6.0:1 on the ground,
      where the old one was closer to the 4.5:1 floor than a paragraph should be. */
   --color-muted: #4e5c72;
-  --color-line: #e2e8f0;
+  --color-line: #e6e2d9;
 
   --color-accent: #112c54;
   --color-accent-soft: #eaf1f9;
@@ -75,11 +80,6 @@ body {
   font-size: var(--text-body);
   line-height: var(--text-body--line-height);
   -webkit-font-smoothing: antialiased;
-}
-
-/* Tabular figures everywhere a price or percentage appears. */
-.nums {
-  font-variant-numeric: tabular-nums;
 }
 
 /* An eyebrow or a column label: small, quiet, and set above the thing it names

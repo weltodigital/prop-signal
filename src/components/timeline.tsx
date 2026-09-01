@@ -15,21 +15,21 @@ function Entry({ entry }: { entry: TimelineEntry }) {
   const moved = entry.previousPrice !== null && entry.currentPrice !== null
 
   return (
-    <li className="relative border-l border-line py-3 pl-6">
+    <li className="relative border-t border-line py-4 pl-6">
       <span
         aria-hidden="true"
-        className={`absolute -left-[4.5px] top-[1.35rem] h-2 w-2 rounded-full ${
-          entry.isMaterial ? 'bg-accent' : 'bg-line'
+        className={`absolute top-[1.55rem] left-0 h-1.5 w-1.5 ${
+          entry.isMaterial ? 'bg-ink' : 'bg-line'
         }`}
       />
 
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-        <p className={`text-sm ${entry.isMaterial ? 'font-medium' : ''}`}>{entry.label}</p>
-        <p className="text-sm text-muted">{formatDate(entry.observedAt)}</p>
+        <p className={`text-base ${entry.isMaterial ? 'font-medium' : 'text-muted'}`}>{entry.label}</p>
+        <p className="figure text-sm text-muted">{formatDate(entry.observedAt)}</p>
       </div>
 
       {moved ? (
-        <p className="nums mt-1 text-sm text-muted">
+        <p className="figure mt-2 text-lg leading-none">
           {formatMoney(entry.previousPrice)} to {formatMoney(entry.currentPrice)}
           {entry.magnitude === null ? '' : `, ${formatPercent(Math.abs(entry.magnitude))}`}
         </p>

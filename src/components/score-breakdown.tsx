@@ -19,12 +19,12 @@ function FactorRow({ factor }: { factor: ScoreFactor }) {
   const scored = held && factor.points > 0
 
   return (
-    <div className="flex items-baseline justify-between gap-4 border-t border-line py-2 first:border-t-0">
+    <div className="flex items-baseline justify-between gap-4 border-t border-line py-3 first:border-t-0">
       <div className="min-w-0">
         <p className={`text-sm ${scored ? 'font-medium' : 'text-muted'}`}>{factor.label}</p>
-        <p className="text-sm text-muted">{factor.detail}</p>
+        <p className="mt-1 text-sm leading-relaxed text-muted">{factor.detail}</p>
       </div>
-      <p className={`nums shrink-0 text-sm ${scored ? 'font-medium' : 'text-muted'}`}>
+      <p className={`shrink-0 ${scored ? 'figure text-base' : 'label whitespace-nowrap text-muted'}`}>
         {!held ? 'Not held' : available === null ? (scored ? `+${factor.points.toFixed(1)}` : '0') : `${factor.points.toFixed(1)} / ${available}`}
       </p>
     </div>
@@ -51,10 +51,8 @@ export function ScoreBreakdown({
   return (
     <div className="grid gap-6 sm:grid-cols-2">
       <section>
-        <h4 className="flex items-baseline justify-between gap-2 text-sm font-medium">
-          Quality
-          <span className="nums text-muted">{qualityScore.toFixed(1)}</span>
-        </h4>
+        <h4 className="label text-muted">Quality</h4>
+        <p className="figure mt-1 text-3xl leading-none text-highlight-deep">{qualityScore.toFixed(1)}</p>
         <p className="mt-1 text-sm text-muted">
           Whether the property is any good, ignoring whether it has moved. Out of 100, over the factors we hold a
           figure for.
@@ -67,10 +65,8 @@ export function ScoreBreakdown({
       </section>
 
       <section>
-        <h4 className="flex items-baseline justify-between gap-2 text-sm font-medium">
-          Movement
-          <span className="nums text-muted">{movementScore.toFixed(1)}</span>
-        </h4>
+        <h4 className="label text-muted">Movement</h4>
+        <p className="figure mt-1 text-3xl leading-none text-highlight-deep">{movementScore.toFixed(1)}</p>
         <p className="mt-1 text-sm text-muted">
           How hard and how recently it moved. Out of 100, and this is what puts it on the list.
         </p>

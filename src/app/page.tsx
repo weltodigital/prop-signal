@@ -139,10 +139,10 @@ export default async function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <ButtonLink href={primaryHref} variant="signal" className="px-5 py-3 text-base">
+                <ButtonLink href={primaryHref} className="px-5 py-3 text-base">
                   {primaryLabel}
                 </ButtonLink>
-                <ButtonLink href="#how" variant="outline" className="px-5 py-3 text-base">
+                <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
                   See how it works
                 </ButtonLink>
               </div>
@@ -333,7 +333,6 @@ export default async function HomePage() {
 
               <ButtonLink
                 href={primaryHref}
-                variant="signal"
                 className="mt-8 w-full px-5 py-3 text-base"
               >
                 {primaryLabel}
@@ -378,10 +377,10 @@ export default async function HomePage() {
               <p className="mt-5 text-body text-muted">£29 a month for your area. Cancel any time.</p>
 
               <div className="mt-8 flex flex-wrap gap-3 lg:justify-center">
-                <ButtonLink href={primaryHref} variant="signal" className="px-5 py-3 text-base">
+                <ButtonLink href={primaryHref} className="px-5 py-3 text-base">
                   {primaryLabel}
                 </ButtonLink>
-                <ButtonLink href="#how" variant="outline" className="px-5 py-3 text-base">
+                <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
                   See how it works
                 </ButtonLink>
               </div>

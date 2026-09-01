@@ -30,7 +30,7 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
 
         <div className="ml-auto flex items-center gap-3 text-sm">
           {signedIn ? (
-            <ButtonLink href="/dashboard" variant="signal">
+            <ButtonLink href="/dashboard">
               Go to your dashboard
             </ButtonLink>
           ) : (
@@ -38,7 +38,7 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
               <Link href="/login" className="hidden text-muted hover:text-ink md:inline">
                 Sign in
               </Link>
-              <ButtonLink href="/signup" variant="signal">
+              <ButtonLink href="/signup">
                 Start for £29 a month
               </ButtonLink>
             </>

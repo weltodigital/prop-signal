@@ -15,9 +15,11 @@ function Figure({ label, value, note }: { label: string; value: string; note?: s
 
   return (
     <div>
-      <dt className="text-sm text-muted">{label}</dt>
-      <dd className={`nums text-base ${held ? 'font-medium' : 'text-muted'}`}>{value}</dd>
-      {note ? <p className="text-sm text-muted">{note}</p> : null}
+      <dt className="label text-muted">{label}</dt>
+      <dd className={`mt-1.5 whitespace-nowrap ${held ? 'figure text-xl leading-tight' : 'text-base text-muted'}`}>
+        {value}
+      </dd>
+      {note ? <p className="mt-1.5 text-sm leading-relaxed text-muted">{note}</p> : null}
     </div>
   )
 }
@@ -37,7 +39,7 @@ export function StackedNumbers({ property }: { property: PropertySnapshot }) {
 
   return (
     <>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
+      <dl className="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3">
         <Figure label="Asking price" value={formatMoney(price)} />
 
         <Figure

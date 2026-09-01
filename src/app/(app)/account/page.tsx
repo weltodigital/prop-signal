@@ -51,7 +51,7 @@ export default async function AccountPage({
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
+      <h1 className="font-display text-h2 font-normal">Account</h1>
 
       {params.saved === '1' ? (
         <div className="mt-6">
@@ -72,13 +72,13 @@ export default async function AccountPage({
             </div>
             <div className="flex justify-between gap-4 border-b border-line pb-3">
               <dt className="text-muted">Price</dt>
-              <dd className="nums font-medium">£29 per month</dd>
+              <dd className="figure font-medium">£29 per month</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted">
                 {subscription.cancelAtPeriodEnd ? 'Access ends' : 'Next payment'}
               </dt>
-              <dd className="nums font-medium">{formatDate(subscription.currentPeriodEnd)}</dd>
+              <dd className="figure font-medium">{formatDate(subscription.currentPeriodEnd)}</dd>
             </div>
           </dl>
         ) : (
@@ -149,7 +149,7 @@ export default async function AccountPage({
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Changes used this month</dt>
-                <dd className="nums font-medium">
+                <dd className="figure font-medium">
                   {changesUsed} of {SEARCH_CHANGE_LIMIT}
                 </dd>
               </div>

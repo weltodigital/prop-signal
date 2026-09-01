@@ -36,7 +36,7 @@ export default async function SubscribePage({
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Subscribe</h1>
+      <h1 className="font-display text-h2 font-normal">Subscribe</h1>
       <p className="mt-2 max-w-prose text-muted">
         £29 a month. One area, searched every week, with the best of it kept on your list. Cancel any time from your account page.
       </p>
@@ -62,7 +62,7 @@ export default async function SubscribePage({
 
       <Card className="mt-8">
         <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="nums text-3xl font-semibold">£29</span>
+          <span className="figure text-3xl font-semibold">£29</span>
           <span className="text-muted">per month</span>
         </div>
 

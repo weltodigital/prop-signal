@@ -46,7 +46,7 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
   return (
     <div className="flex items-baseline justify-between gap-4 border-t border-line py-2 first:border-t-0">
       <span className={`text-sm ${strong ? 'font-medium' : 'text-muted'}`}>{label}</span>
-      <span className={`nums text-sm ${strong ? 'font-medium' : ''}`}>{value}</span>
+      <span className={`figure text-sm ${strong ? 'font-medium' : ''}`}>{value}</span>
     </div>
   )
 }
@@ -95,7 +95,7 @@ export function StackIt({
             min={0}
             value={value}
             onChange={(event) => set(field.key, event.target.value)}
-            className="nums w-full rounded-md border border-line bg-card px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className="figure w-full rounded-md border border-line bg-card px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
           {field.note ? <p className="text-sm text-muted">{field.note}</p> : null}
         </div>
@@ -137,7 +137,7 @@ export function StackIt({
         </div>
       </div>
 
-      <div className="rounded-lg border border-line bg-paper p-5">
+      <div className="border-t border-line pt-5">
         <h4 className="text-sm font-medium">Going in</h4>
         <div className="mt-2">
           <Row label="Deposit" value={formatMoney(result.deposit)} />

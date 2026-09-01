@@ -18,7 +18,7 @@ export default async function ArchivePage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Archive</h1>
+      <h1 className="font-display text-h2 font-normal">Archive</h1>
       <p className="mt-2 text-sm text-muted">
         Every list published to you. The figures in an old week are what we observed then and have not been updated
         since. That is what makes them worth keeping.
@@ -35,7 +35,7 @@ export default async function ArchivePage() {
               <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
                 <div>
                   <h2 className="text-base font-medium">
-                    <Link href={`/archive/${week.runId}`} className="hover:text-accent">
+                    <Link href={`/archive/${week.runId}`} className="hover:text-highlight-deep">
                       {week.kind === 'backfill' ? 'Opening list' : `Week of ${formatDate(week.weekOf)}`}
                     </Link>
                   </h2>
@@ -45,7 +45,7 @@ export default async function ArchivePage() {
                   </p>
                 </div>
 
-                <p className="nums text-sm text-muted">
+                <p className="figure text-sm text-muted">
                   {week.dealCount} {week.dealCount === 1 ? 'property' : 'properties'}
                 </p>
               </div>

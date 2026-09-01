@@ -3,7 +3,6 @@ import type { TrackedDeal } from '@/lib/deal-progress'
 import { FORWARD_STAGES, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
 import { StageControl } from '@/components/stage-control'
 import { formatDate, formatMoney } from '@/lib/format'
-import { Card } from '@/components/ui'
 
 /**
  * The deals the subscriber is working.
@@ -19,7 +18,7 @@ export function DealTracker({ deals }: { deals: TrackedDeal[] }) {
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="text-lg font-medium">Deals you&rsquo;re working</h2>
+        <h2 className="text-h3 font-medium">Deals you&rsquo;re working</h2>
         <p className="text-sm text-muted">
           {deals.length} live ·{' '}
           <Link href="/deals" className="underline underline-offset-4 hover:text-ink">
@@ -28,7 +27,7 @@ export function DealTracker({ deals }: { deals: TrackedDeal[] }) {
         </p>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4">
         {deals.map((deal) => (
           <TrackedRow key={deal.propertyId} deal={deal} />
         ))}
@@ -64,7 +63,7 @@ function StageProgress({ stage }: { stage: DealStage }) {
             key={id}
             aria-hidden="true"
             className={`h-1 w-4 rounded-full transition-colors ${
-              done ? (definition.lost ? 'bg-muted/50' : 'bg-accent') : 'bg-line'
+              done ? (definition.lost ? 'bg-muted/50' : 'bg-highlight-deep') : 'bg-line'
             }`}
           />
         )
@@ -75,11 +74,11 @@ function StageProgress({ stage }: { stage: DealStage }) {
 
 export function TrackedRow({ deal }: { deal: TrackedDeal }) {
   return (
-    <Card className="p-4 transition-colors duration-150 hover:border-accent/40">
+    <div className="border-t border-line py-4 transition-colors duration-150 hover:bg-ink/[0.02]">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           <p className="text-sm font-medium">
-            <Link href={`/property/${deal.propertyId}`} className="transition-colors hover:text-accent">
+            <Link href={`/property/${deal.propertyId}`} className="transition-colors hover:text-highlight-deep">
               {deal.address ?? 'Address not held'}
             </Link>
           </p>
@@ -95,7 +94,7 @@ export function TrackedRow({ deal }: { deal: TrackedDeal }) {
 
         <StageControl propertyId={deal.propertyId} stage={deal.stage} />
       </div>
-    </Card>
+    </div>
   )
 }
 
@@ -107,8 +106,8 @@ export function StageSummary({ counts }: { counts: Array<[DealStage, number]> })
     <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
       {counts.map(([stage, count]) => (
         <div key={stage}>
-          <dt className="text-sm text-muted">{STAGE_DEFINITIONS[stage].label}</dt>
-          <dd className="nums text-lg font-medium">{count}</dd>
+          <dt className="label text-muted">{STAGE_DEFINITIONS[stage].label}</dt>
+          <dd className="figure mt-1.5 text-2xl leading-none">{count}</dd>
         </div>
       ))}
     </dl>

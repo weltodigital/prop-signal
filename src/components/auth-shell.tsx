@@ -27,7 +27,7 @@ export function AuthShell({
         <Image src={logo} alt="Prop Signal" className="h-14 w-auto" priority />
       </Link>
 
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="font-display mt-5 text-h2 font-normal">{title}</h1>
       {intro ? <p className="mt-2 text-sm text-muted">{intro}</p> : null}
 
       {notice ? <div className="mt-6">{notice}</div> : null}

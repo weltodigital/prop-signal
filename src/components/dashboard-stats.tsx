@@ -22,10 +22,12 @@ function Tile({
   tone?: 'plain' | 'accent'
 }) {
   return (
-    <div className="min-w-0 px-4 py-3">
-      <p className="truncate text-xs tracking-wide text-muted uppercase">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${tone === 'accent' ? 'text-accent' : 'text-ink'}`}>{value}</p>
-      {note ? <p className="mt-0.5 truncate text-xs text-muted">{note}</p> : null}
+    <div className="min-w-0 border-t border-line pt-4">
+      <p className="label truncate text-muted">{label}</p>
+      <p className={`figure mt-1.5 text-3xl leading-none ${tone === 'accent' ? 'text-highlight-deep' : 'text-ink'}`}>
+        {value}
+      </p>
+      {note ? <p className="mt-2 truncate text-sm text-muted">{note}</p> : null}
     </div>
   )
 }
@@ -53,7 +55,7 @@ export function DashboardStats({
   const topScore = deals.length ? Math.max(...deals.map((deal) => deal.totalScore)) : null
 
   return (
-    <div className="mt-6 grid grid-cols-2 divide-line rounded-lg border border-line bg-card sm:grid-cols-4 sm:divide-x">
+    <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
       <Tile
         label="On your list"
         value={String(deals.length)}

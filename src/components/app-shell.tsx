@@ -18,13 +18,13 @@ export async function AppShell({ email, children }: { email: string; children: R
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-40 border-b border-line bg-card/85 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
           {/* The mark, with the name in text beside it. The full lockup is
               stacked, and at header height its wordmark would be unreadable. */}
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image src={mark} alt="" aria-hidden="true" className="h-7 w-auto" priority />
-            <span className="text-sm font-medium tracking-wide uppercase">Prop Signal</span>
+            <span className="label text-ink">Prop Signal</span>
           </Link>
 
           <nav className="flex gap-4 text-sm">
@@ -37,13 +37,13 @@ export async function AppShell({ email, children }: { email: string; children: R
                 {item.label}
                 {item.href === '/dashboard' && unseenWeek ? (
                   <span
-                    className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle"
+                    className="ml-1.5 inline-block h-1.5 w-1.5 bg-highlight-deep align-middle"
                     aria-label="A new list you have not looked at"
                   />
                 ) : null}
                 {item.href === '/deals' && unread > 0 ? (
                   <span
-                    className="nums ml-1.5 rounded-full bg-accent px-1.5 py-0.5 text-xs text-white"
+                    className="figure ml-1.5 bg-highlight-deep px-1.5 py-0.5 text-xs text-white"
                     aria-label={`${unread} unread ${unread === 1 ? 'event' : 'events'}`}
                   >
                     {unread}
@@ -64,7 +64,7 @@ export async function AppShell({ email, children }: { email: string; children: R
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-4xl px-6 py-12">{children}</main>
     </div>
   )
 }

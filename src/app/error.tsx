@@ -10,7 +10,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
 
   return (
     <main className="mx-auto max-w-lg px-6 py-24">
-      <h1 className="text-2xl font-semibold tracking-tight">Something broke</h1>
+      <h1 className="font-display text-h2 font-normal">Something broke</h1>
       <p className="mt-3 text-muted">
         That is on us, not on you. Nothing you did caused it and no billing action was taken.
       </p>

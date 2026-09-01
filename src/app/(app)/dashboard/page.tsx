@@ -44,7 +44,7 @@ export default async function DashboardPage({
   return (
     <>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Your properties</h1>
+        <h1 className="font-display text-h2 font-normal">Your properties</h1>
         <p className="text-sm text-muted">
           {describeArea(profile.postcode, profile.radiusMiles)} ·{' '}
           <Link href="/onboarding" className="underline underline-offset-4 hover:text-ink">
@@ -58,7 +58,7 @@ export default async function DashboardPage({
       {week ? (
         <p className="mt-2 text-sm text-muted">
           {unseen ? (
-            <span className="mr-2 rounded-full bg-accent px-2 py-0.5 text-xs tracking-wide text-white uppercase">
+            <span className="label mr-2 border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
               New
             </span>
           ) : null}
@@ -113,9 +113,9 @@ export default async function DashboardPage({
           there is nothing in it. */}
       <DealTracker deals={tracked} />
 
-      {tracked.length ? <h2 className="mt-10 text-lg font-medium">Your properties</h2> : null}
+      {tracked.length ? <h2 className="mt-12 text-h3 font-medium">Your properties</h2> : null}
 
-      <div className="stagger mt-8 space-y-3">
+      <div className="stagger mt-8">
         {week && week.deals.length > 0 ? (
           week.deals.map((deal) => (
             <DealCard

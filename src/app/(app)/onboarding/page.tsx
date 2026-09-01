@@ -33,7 +33,7 @@ export default async function OnboardingPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">
+      <h1 className="font-display text-h2 font-normal">
         {isNew ? 'Three questions' : 'Your area and strategy'}
       </h1>
 

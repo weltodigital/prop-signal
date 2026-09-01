@@ -55,7 +55,7 @@ export function StageControl({
       <button
         type="button"
         onClick={() => move('interested')}
-        className={`${chrome} border-line bg-card text-muted hover:border-accent/30 hover:text-accent`}
+        className={`${chrome} border-line text-muted hover:border-highlight-deep/40 hover:text-highlight-deep`}
       >
         Track this
       </button>
@@ -67,8 +67,8 @@ export function StageControl({
       <span
         className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
           current?.lost
-            ? 'border-line bg-paper text-muted'
-            : 'border-accent/30 bg-accent-soft font-medium text-accent'
+            ? 'border-line text-muted'
+            : 'border-highlight-deep/40 font-medium text-highlight-deep'
         }`}
       >
         {current?.label}
@@ -78,7 +78,7 @@ export function StageControl({
         <button
           type="button"
           onClick={() => move(onwards)}
-          className={`${chrome} border-line bg-card text-muted hover:border-accent/30 hover:text-accent`}
+          className={`${chrome} border-line text-muted hover:border-highlight-deep/40 hover:text-highlight-deep`}
         >
           → {STAGE_DEFINITIONS[onwards].label}
         </button>
@@ -94,7 +94,7 @@ export function StageControl({
             id={`stage-${propertyId}`}
             value={optimistic}
             onChange={(event) => move(event.target.value as DealStage)}
-            className="rounded-md border border-line bg-card px-2 py-1.5 text-sm text-muted outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className="rounded-md border border-line bg-card px-2 py-1.5 text-sm text-muted outline-none transition-colors focus:border-highlight-deep focus:ring-2 focus:ring-highlight-deep/20"
           >
             <optgroup label="Progress">
               {FORWARD_STAGES.map((id) => (

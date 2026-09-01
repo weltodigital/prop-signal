@@ -33,8 +33,8 @@ import type { DealStage } from '@/lib/deal-stages'
 function Figure({ label, value }: { label: string; value: string }) {
   return (
     <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
-      <span className="text-xs text-muted">{label}</span>
-      <span className="nums font-medium">{value}</span>
+      <span className="label text-muted">{label}</span>
+      <span className="figure font-medium">{value}</span>
     </span>
   )
 }
@@ -58,12 +58,10 @@ function ScoreMeter({ score }: { score: number }) {
 
   return (
     <div className="w-14 shrink-0 text-right" title={`${score.toFixed(1)} out of 150`}>
-      <p className={`nums text-xl leading-none font-semibold ${score >= 90 ? 'text-accent' : 'text-ink'}`}>
-        {score.toFixed(0)}
-      </p>
-      <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-accent-soft">
+      <p className="figure text-2xl leading-none text-highlight-deep">{score.toFixed(0)}</p>
+      <div className="mt-1.5 h-[3px] w-full overflow-hidden bg-line">
         <div
-          className="h-full rounded-full bg-accent transition-[width] duration-300"
+          className="h-full bg-highlight-deep transition-[width] duration-300"
           style={{ width: `${Math.max(share * 100, 4)}%` }}
         />
       </div>
@@ -95,20 +93,18 @@ export function DealCard({
       : null
 
   return (
-    <article className="group rounded-lg border border-line bg-card px-4 py-3 transition-colors duration-150 hover:border-accent/40">
+    <article className="group border-t border-line py-4 transition-colors duration-150 hover:bg-ink/[0.02]">
       {/* Line one: why it is here, what it is, and how good it is. */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-x-2 text-[13px] font-medium text-accent">
+          <p className="flex flex-wrap items-center gap-x-2 text-[13px] font-medium">
             {isNew ? (
-              <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] tracking-wider text-white uppercase">
-                New
-              </span>
+              <span className="label border border-line px-1.5 py-0.5 text-ink">New</span>
             ) : null}
             {/* The list stands, so this marks what is worth a second look
                 rather than what earned its place. */}
             {!isNew && deal.changedSinceSeen ? (
-              <span className="rounded bg-highlight px-1.5 py-0.5 text-[10px] tracking-wider text-ink uppercase">
+              <span className="label border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
                 Changed
               </span>
             ) : null}
@@ -118,7 +114,7 @@ export function DealCard({
           {/* Address and what it is, on one line. The meta was its own line
               and said four short things that fit beside the name. */}
           <h3 className="mt-0.5 truncate text-[15px] leading-snug font-medium">
-            <Link href={`/property/${deal.propertyId}`} className="transition-colors hover:text-accent">
+            <Link href={`/property/${deal.propertyId}`} className="transition-colors hover:text-highlight-deep">
               {deal.address ?? 'Address not held'}
             </Link>
             <span className="ml-2 text-[13px] font-normal text-muted">
@@ -151,7 +147,7 @@ export function DealCard({
       </div>
 
       {deal.state === 'sstc' ? (
-        <p className="mt-3 rounded-md border border-warn/30 bg-warn-soft px-3 py-1.5 text-sm">
+        <p className="mt-3 border-l-2 border-warn/50 py-1 pl-3 text-sm">
           Sold subject to contract when we last looked. It may still fall through, which is exactly when it would come
           back to you.
         </p>

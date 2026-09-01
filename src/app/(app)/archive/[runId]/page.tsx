@@ -30,7 +30,7 @@ export default async function ArchivedWeekPage({ params }: { params: Promise<{ r
         </Link>
       </p>
 
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+      <h1 className="font-display mt-2 text-h2 font-normal">
         {`Week of ${formatDate(week.weekOf)}`}
       </h1>
       <p className="mt-2 text-sm text-muted">

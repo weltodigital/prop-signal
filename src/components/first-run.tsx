@@ -106,7 +106,7 @@ export function FirstRun() {
             setPhase('working')
             router.refresh()
           }}
-          className="mt-3 rounded-md border border-line bg-card px-3 py-1.5 text-sm transition-colors hover:border-accent/30 hover:text-accent"
+          className="mt-3 rounded-md border border-line px-3 py-1.5 text-sm transition-colors hover:border-highlight-deep/40 hover:text-highlight-deep"
         >
           Try again
         </button>
@@ -128,7 +128,7 @@ export function FirstRun() {
         <p className="font-medium" role="status" aria-live="polite">
           Searching your area
         </p>
-        <p className="nums text-sm text-muted" aria-hidden="true">
+        <p className="figure text-sm text-muted" aria-hidden="true">
           {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}
         </p>
       </div>
