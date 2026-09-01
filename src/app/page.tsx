@@ -104,22 +104,36 @@ export default async function HomePage() {
 
       <main>
         {/* Hero ---------------------------------------------------------- */}
-        <section className="mx-auto max-w-6xl px-6 pt-14 pb-16 sm:pt-20">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div>
+        {/* Every section is the same container and the same twelve columns.
+            Text takes the first six, the illustration the last six, and the
+            two start on the same line rather than one floating against the
+            middle of the other. */}
+        <section className="mx-auto max-w-6xl px-6">
+          {/* The hero is the one pair that centres rather than sharing a top
+              line: the card is half the height of the text beside it, and top
+              aligning it leaves a hole where the fold is. Seven columns for the
+              text, because the headline needs 550px to hold its first sentence
+              on one line at 72px, and six columns is 528. */}
+          <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 pt-12 pb-24 md:gap-x-8 lg:items-center">
+            <div className="col-span-12 lg:col-span-7">
               <p className="label text-muted">For UK landlords and property investors</p>
 
-              <h1 className="font-display mt-5 text-h1 font-normal md:text-h1-lg">
-                Stop hunting for deals. We put them in front of you.
+              {/* The break is explicit because the first sentence is the claim:
+                  it holds one line at every width, and the second sentence gets
+                  the rest. */}
+              <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
+                Stop hunting for deals.
+                <br />
+                We put them in front of you.
               </h1>
 
-              <p className="mt-6 max-w-xl text-body text-muted">
+              <p className="mt-6 text-body text-muted">
                 Tell us where you buy and how you make your money. BRRR in Portsmouth, HMOs in Leeds, buy to let
                 within ten miles of home. We source the whole area against those criteria and keep the best of it in
                 front of you, with the numbers already worked out.
               </p>
 
-              <p className="mt-4 max-w-xl text-body text-muted">
+              <p className="mt-4 text-body text-muted">
                 A deal earns its place by being a good deal. Not by having been cut last Tuesday, and not by being
                 new this morning.
               </p>
@@ -133,49 +147,56 @@ export default async function HomePage() {
                 </ButtonLink>
               </div>
 
-              <p className="mt-5 max-w-xl text-sm text-muted">
+              <p className="mt-5 text-sm text-muted">
                 £29 a month for your area. Cancel any time. No free tier, and no card details taken for a trial that
                 does not exist.
               </p>
             </div>
 
-            <div className="lg:pl-4">
+            <div className="col-span-12 lg:col-span-5">
               <DealPreview />
             </div>
           </div>
         </section>
 
         {/* Three claims -------------------------------------------------- */}
-        <section id="inside" className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
-          <h2 className="font-display max-w-2xl text-h2 font-normal md:text-h2-lg">
-            A portal can only tell you what is new.
-          </h2>
-          <p className="mt-5 max-w-2xl text-body text-muted">
-            That is the one question it can answer, so it is the one you get asked. Whether a property is a good buy
-            for the way you invest is a different question, and nothing on a portal is set up to ask it.
-          </p>
-          <p className="mt-4 max-w-2xl text-body text-muted">
-            The best deal in your area might have been listed this morning or eight months ago. We score both the same
-            way and put whichever is better in front of you.
-          </p>
+        <section id="inside" className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-12 gap-x-6 gap-y-14 border-t border-rule pt-14 pb-24 md:gap-x-8">
+            <div className="col-span-12 lg:col-span-7">
+              <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
+                A portal can only tell you what is new.
+              </h2>
+              <p className="mt-5 text-body text-muted">
+                That is the one question it can answer, so it is the one you get asked. Whether a property is a good buy
+                for the way you invest is a different question, and nothing on a portal is set up to ask it.
+              </p>
+              <p className="mt-4 text-body text-muted">
+                The best deal in your area might have been listed this morning or eight months ago. We score both the same
+                way and put whichever is better in front of you.
+              </p>
+            </div>
 
-          <div className="mt-12 grid gap-8 sm:grid-cols-3 sm:gap-10">
-            {CLAIMS.map((claim) => (
-              <div key={claim.title} className="border-t border-rule pt-5">
-                <h3 className="text-h3 font-medium">{claim.title}</h3>
-                <p className="mt-3 text-body text-muted">{claim.body}</p>
-              </div>
-            ))}
+            {/* The three claims are their own row of the same twelve columns:
+                four each, starting at column one, whatever the heading above
+                them takes. */}
+            <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-10 md:gap-x-8">
+              {CLAIMS.map((claim) => (
+                <div key={claim.title} className="col-span-12 border-t border-rule pt-5 sm:col-span-4">
+                  <h3 className="text-h3 font-medium">{claim.title}</h3>
+                  <p className="mt-3 text-body text-muted">{claim.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* Alternating features ------------------------------------------ */}
-        <section className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
-          <div className="space-y-16">
-            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-              <div>
+        <section className="mx-auto max-w-6xl px-6">
+          <div className="space-y-24 border-t border-rule pt-14 pb-24">
+            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-10 md:gap-x-8">
+              <div className="col-span-12 lg:col-span-6">
                 <p className="label text-muted">Leverage</p>
-                <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
+                <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Walk in knowing exactly how much room there is.
                 </h2>
                 <p className="mt-5 text-body text-muted">
@@ -188,13 +209,15 @@ export default async function HomePage() {
                   deal. What the seller has done since is how you price the offer once it has.
                 </p>
               </div>
-              <TimelinePreview />
+              <div className="col-span-12 lg:col-span-6">
+                <TimelinePreview />
+              </div>
             </div>
 
-            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-              <div className="lg:order-2">
+            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-10 md:gap-x-8">
+              <div className="col-span-12 lg:col-span-6 lg:col-start-7">
                 <p className="label text-muted">Already worked out</p>
-                <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
+                <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Nothing reaches you until it has been through the numbers.
                 </h2>
                 <p className="mt-5 text-body text-muted">
@@ -207,15 +230,15 @@ export default async function HomePage() {
                   anywhere near this.
                 </p>
               </div>
-              <div className="lg:order-1">
+              <div className="col-span-12 lg:col-span-6 lg:col-start-1 lg:row-start-1">
                 <ScorePreview />
               </div>
             </div>
 
-            <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-              <div>
+            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-10 md:gap-x-8">
+              <div className="col-span-12 lg:col-span-6">
                 <p className="label text-muted">Worth opening</p>
-                <h2 className="font-display mt-4 text-h2 font-normal md:text-h2-lg">
+                <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Short when it should be short.
                 </h2>
                 <p className="mt-5 text-body text-muted">
@@ -228,9 +251,9 @@ export default async function HomePage() {
                 </p>
               </div>
 
-              <div className="border-t border-rule pt-6">
-                <p className="text-h3 font-medium">A short list this week</p>
-                <p className="mt-3 text-body text-muted">
+              <div className="col-span-12 lg:col-span-6">
+                <p className="label text-muted">A short list this week</p>
+                <p className="mt-4 text-h3 font-medium">
                   Only two properties in your area clear the bar at the moment. The rest do not stack against your
                   strategy, so they are not here.
                 </p>
@@ -243,25 +266,32 @@ export default async function HomePage() {
         </section>
 
         {/* How it works --------------------------------------------------- */}
-        <section id="how" className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
-          <h2 className="font-display max-w-2xl text-h2 font-normal md:text-h2-lg">How it works</h2>
+        <section id="how" className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-12 gap-x-6 gap-y-14 border-t border-rule pt-14 pb-24 md:gap-x-8">
+            <h2 className="font-display col-span-12 text-h2 font-normal text-balance md:text-h2-lg lg:col-span-7">
+              How it works
+            </h2>
 
-          <div className="mt-12 grid gap-8 sm:grid-cols-2 sm:gap-10 lg:grid-cols-4">
-            {STEPS.map((step) => (
-              <div key={step.step} className="border-t border-rule pt-5">
-                <p className="figure text-sm text-muted">{step.step}</p>
-                <h3 className="mt-3 text-h3 font-medium">{step.title}</h3>
-                <p className="mt-3 text-body text-muted">{step.body}</p>
-              </div>
-            ))}
+            <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-10 md:gap-x-8">
+              {STEPS.map((step) => (
+                <div
+                  key={step.step}
+                  className="col-span-12 border-t border-rule pt-5 sm:col-span-6 lg:col-span-3"
+                >
+                  <p className="figure text-sm text-muted">{step.step}</p>
+                  <h3 className="mt-3 text-h3 font-medium">{step.title}</h3>
+                  <p className="mt-3 text-body text-muted">{step.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* Pricing --------------------------------------------------------- */}
-        <section id="pricing" className="mx-auto max-w-6xl border-t border-rule px-6 py-14">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
-            <div>
-              <h2 className="font-display text-h2 font-normal md:text-h2-lg">
+        <section id="pricing" className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 border-t border-rule pt-14 pb-24 md:gap-x-8">
+            <div className="col-span-12 lg:col-span-6">
+              <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
                 A sourcer charges thousands. This is £29.
               </h2>
               <p className="mt-5 text-body text-muted">
@@ -276,7 +306,7 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="rounded-lg border border-rule p-8">
+            <div className="col-span-12 rounded-lg border border-rule p-8 lg:col-span-6">
               <p className="flex items-baseline gap-3">
                 <span className="figure text-6xl leading-none">£29</span>
                 <span className="label text-muted">a month</span>
@@ -313,43 +343,49 @@ export default async function HomePage() {
         </section>
 
         {/* FAQ -------------------------------------------------------------- */}
-        <section id="faq" className="mx-auto max-w-3xl border-t border-rule px-6 py-14">
-          <h2 className="font-display text-h2 font-normal md:text-h2-lg">Questions</h2>
+        <section id="faq" className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-12 gap-x-6 border-t border-rule pt-14 pb-24 md:gap-x-8">
+            <div className="col-span-12 lg:col-span-7">
+              <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">Questions</h2>
 
-          <div className="mt-10">
-            {FAQS.map((faq) => (
-              <details key={faq.q} className="group border-b border-rule py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-h3 font-medium">
-                  {faq.q}
-                  <span
-                    aria-hidden="true"
-                    className="shrink-0 text-2xl leading-none font-normal text-muted transition-transform group-open:rotate-45"
-                  >
-                    +
-                  </span>
-                </summary>
-                <p className="mt-4 max-w-prose text-body text-muted">{faq.a}</p>
-              </details>
-            ))}
+              <div className="mt-14">
+                {FAQS.map((faq) => (
+                  <details key={faq.q} className="group border-b border-rule py-5">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-h3 font-medium">
+                      {faq.q}
+                      <span
+                        aria-hidden="true"
+                        className="shrink-0 text-2xl leading-none font-normal text-muted transition-transform group-open:rotate-45"
+                      >
+                        +
+                      </span>
+                    </summary>
+                    <p className="mt-4 text-body text-muted">{faq.a}</p>
+                  </details>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
         {/* Final CTA -------------------------------------------------------- */}
-        <section className="mx-auto max-w-6xl border-t border-rule px-6 py-16 text-center">
-          <h2 className="font-display mx-auto max-w-2xl text-h2 font-normal md:text-h2-lg">
-            Tell us how you invest. We will find the deals.
-          </h2>
-          <p className="mx-auto mt-5 max-w-xl text-body text-muted">
-            £29 a month for your area. Cancel any time.
-          </p>
+        <section className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-12 gap-x-6 border-t border-rule pt-14 pb-24 md:gap-x-8">
+            <div className="col-span-12 lg:col-span-8 lg:col-start-3 lg:text-center">
+              <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
+                Tell us how you invest. We will find the deals.
+              </h2>
+              <p className="mt-5 text-body text-muted">£29 a month for your area. Cancel any time.</p>
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <ButtonLink href={primaryHref} variant="signal" className="px-5 py-3 text-base">
-              {primaryLabel}
-            </ButtonLink>
-            <ButtonLink href="#how" variant="outline" className="px-5 py-3 text-base">
-              See how it works
-            </ButtonLink>
+              <div className="mt-8 flex flex-wrap gap-3 lg:justify-center">
+                <ButtonLink href={primaryHref} variant="signal" className="px-5 py-3 text-base">
+                  {primaryLabel}
+                </ButtonLink>
+                <ButtonLink href="#how" variant="outline" className="px-5 py-3 text-base">
+                  See how it works
+                </ButtonLink>
+              </div>
+            </div>
           </div>
         </section>
       </main>

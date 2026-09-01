@@ -20,7 +20,7 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
           <span className="text-base font-semibold tracking-tight text-accent">Prop Signal</span>
         </Link>
 
-        <nav className="hidden gap-7 text-sm text-muted md:flex">
+        <nav className="hidden gap-7 text-sm text-muted lg:flex">
           {LINKS.map((link) => (
             <a key={link.href} href={link.href} className="hover:text-ink">
               {link.label}
@@ -35,7 +35,7 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
             </ButtonLink>
           ) : (
             <>
-              <Link href="/login" className="hidden text-muted hover:text-ink sm:inline">
+              <Link href="/login" className="hidden text-muted hover:text-ink md:inline">
                 Sign in
               </Link>
               <ButtonLink href="/signup" variant="signal">

@@ -20,7 +20,7 @@ function Tag({ children }: { children: React.ReactNode }) {
 /** The hero illustration: one entry as it appears on a Monday. */
 export function DealPreview() {
   return (
-    <div className="border-t border-rule pt-6">
+    <div>
       <div className="flex items-start justify-between gap-8">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2">
@@ -28,7 +28,9 @@ export function DealPreview() {
             <span className="label text-ink">Reduced 12%</span>
           </p>
           <h3 className="mt-3 text-h3 font-medium">Little Lever Street, Northern Quarter</h3>
-          <p className="mt-1 text-sm text-muted">M1 1AR · Studio · Flat</p>
+          <p className="mt-1 text-sm text-muted">
+            <span className="figure">M1 1AR</span> · Studio · Flat
+          </p>
         </div>
 
         <div className="shrink-0 text-right">
@@ -37,7 +39,7 @@ export function DealPreview() {
         </div>
       </div>
 
-      <dl className="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 border-t border-rule pt-6 sm:grid-cols-3">
+      <dl className="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 border-t border-rule pt-6 sm:grid-cols-3 lg:grid-cols-2">
         {[
           { label: 'Asking price', value: '£100,000', note: '12% below nearby sold prices per sq ft' },
           { label: 'Estimated rent', value: '£725 a month', note: '£188 a month clear as a let' },
@@ -45,7 +47,7 @@ export function DealPreview() {
         ].map((figure) => (
           <div key={figure.label}>
             <dt className="label text-muted">{figure.label}</dt>
-            <dd className="figure mt-1.5 text-2xl leading-tight">{figure.value}</dd>
+            <dd className="figure mt-1.5 text-2xl leading-tight whitespace-nowrap">{figure.value}</dd>
             <p className="mt-2 text-sm leading-relaxed text-muted">{figure.note}</p>
           </div>
         ))}
@@ -61,14 +63,14 @@ export function DealPreview() {
 /** The timeline, for the section about the diff. */
 export function TimelinePreview() {
   const entries = [
-    { label: 'Reduced 12%', detail: '£113,600 to £100,000', date: '10 Jul 2026', material: true },
-    { label: '365 days unsold', detail: 'Passed a year on the market', date: '12 Mar 2026', material: true },
-    { label: 'Back on the market', detail: 'Returned after coming off', date: '4 Jan 2026', material: true },
-    { label: 'Asking price raised', detail: '£146,500 to £150,000', date: '21 Sep 2025', material: false },
+    { label: 'Reduced 12%', detail: '£113,600 to £100,000', date: '10 Jul 2026', material: true, figure: true },
+    { label: '365 days unsold', detail: 'Passed a year on the market', date: '12 Mar 2026', material: true, figure: false },
+    { label: 'Back on the market', detail: 'Returned after coming off', date: '4 Jan 2026', material: true, figure: false },
+    { label: 'Asking price raised', detail: '£146,500 to £150,000', date: '21 Sep 2025', material: false, figure: true },
   ]
 
   return (
-    <div className="border-t border-rule pt-6">
+    <div>
       <p className="label text-muted">Timeline</p>
       <p className="mt-2 text-sm text-muted">Every entry dated when it was observed.</p>
 
@@ -85,7 +87,9 @@ export function TimelinePreview() {
               <p className={`text-base ${entry.material ? 'font-medium' : 'text-muted'}`}>{entry.label}</p>
               <p className="figure text-sm text-muted">{entry.date}</p>
             </div>
-            <p className="figure mt-2 text-lg leading-none">{entry.detail}</p>
+            <p className={`mt-2 leading-snug ${entry.figure ? 'figure text-lg' : 'text-base text-muted'}`}>
+              {entry.detail}
+            </p>
           </li>
         ))}
       </ol>
@@ -107,7 +111,7 @@ export function ScorePreview() {
   ]
 
   return (
-    <div className="border-t border-rule pt-6">
+    <div>
       <p className="label text-muted">Quality</p>
       <p className="figure mt-1 text-5xl leading-none text-highlight-deep">64.9</p>
 

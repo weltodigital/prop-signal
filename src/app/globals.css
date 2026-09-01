@@ -41,7 +41,10 @@
   --color-paper: #f7f9fb;
   --color-card: #ffffff;
   --color-ink: #0d1b2f;
-  --color-muted: #5a6a80;
+  /* Raised from #5a6a80. Most of the page is muted body copy, so this is the
+     colour that decides whether the page is readable: 6.0:1 on the ground,
+     where the old one was closer to the 4.5:1 floor than a paragraph should be. */
+  --color-muted: #4e5c72;
   --color-line: #e2e8f0;
 
   --color-accent: #112c54;
@@ -68,6 +71,9 @@ body {
   background-color: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* The reading size, set once here rather than on every paragraph. */
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
   -webkit-font-smoothing: antialiased;
 }
 
