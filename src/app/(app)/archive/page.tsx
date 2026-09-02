@@ -18,7 +18,13 @@ export default async function ArchivePage() {
 
   return (
     <>
-      <h1 className="font-display text-h2 font-normal">Archive</h1>
+      <p className="text-sm text-muted">
+        <Link href="/dashboard" className="underline underline-offset-4 hover:text-ink">
+          Opportunities
+        </Link>
+      </p>
+
+      <h1 className="mt-2 font-display text-h2 font-normal">Previous weeks</h1>
       <p className="mt-2 text-sm text-muted">
         Every list published to you. The figures in an old week are what we observed then and have not been updated
         since. That is what makes them worth keeping.

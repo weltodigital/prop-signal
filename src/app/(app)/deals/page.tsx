@@ -45,10 +45,10 @@ export default async function DealsPage() {
 
   return (
     <>
-      <h1 className="font-display text-h2 font-normal">Your deals</h1>
+      <h1 className="font-display text-h2 font-normal">Your pipeline</h1>
       <p className="mt-2 max-w-prose text-muted">
-        Where each property got to, and what has changed on it since you looked. Anything you are working is watched
-        automatically, so you do not have to ask twice.
+        The properties you are pursuing, where each one got to, and what has changed since you looked. Anything you
+        are working is watched automatically, so you do not have to ask twice.
       </p>
 
       <StageSummary counts={ordered} />
@@ -84,11 +84,11 @@ export default async function DealsPage() {
 
       {deals.length === 0 ? (
         <div className="mt-8">
-          <EmptyState title="Nothing tracked yet">
+          <EmptyState title="Nothing in your pipeline yet">
             <p>
-              Mark a property on{' '}
+              Mark a property in{' '}
               <Link href="/dashboard" className="underline underline-offset-4 hover:text-ink">
-                this week&rsquo;s list
+                your opportunities
               </Link>{' '}
               as one to look at, and it will appear here as you move it along.
             </p>

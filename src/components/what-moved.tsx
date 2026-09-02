@@ -42,15 +42,22 @@ export type Moved = {
   working: boolean
 }
 
-/** The lede's own sentence, which is the whole point of it. */
+/**
+ * The lede's own sentence.
+ *
+ * "Since you last looked" rather than "this week", because the subscriber's
+ * last visit is the thing they remember and the Sunday run is not. Somebody
+ * who read the list on Thursday and comes back on Saturday has not had a week
+ * happen to them.
+ */
 function headline(count: number, working: number): string {
   if (working > 0 && working === count) {
-    return `${count} ${count === 1 ? 'deal you are' : 'deals you are'} working moved this week`
+    return `${count} ${count === 1 ? 'property you are' : 'properties you are'} pursuing moved`
   }
   if (working > 0) {
-    return `${count} ${count === 1 ? 'property' : 'properties'} on your list moved this week, ${working} you are working`
+    return `${count} ${count === 1 ? 'property' : 'properties'} moved, ${working} in your pipeline`
   }
-  return `${count} ${count === 1 ? 'property' : 'properties'} on your list moved this week`
+  return `${count} ${count === 1 ? 'property' : 'properties'} moved`
 }
 
 export function WhatMoved({ moved }: { moved: Moved[] }) {
@@ -61,7 +68,10 @@ export function WhatMoved({ moved }: { moved: Moved[] }) {
   return (
     <section className="mt-8 rounded-xl border border-highlight-deep/30 bg-tint p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <h2 className="text-h3 font-medium">{headline(moved.length, working)}</h2>
+        <div>
+          <p className="label text-highlight-deep">Since you last looked</p>
+          <h2 className="mt-1 text-h3 font-medium">{headline(moved.length, working)}</h2>
+        </div>
         {working > 0 ? (
           <form action={markReadAction}>
             <Button type="submit" variant="quiet">
@@ -86,7 +96,7 @@ export function WhatMoved({ moved }: { moved: Moved[] }) {
               >
                 {entry.address ?? 'a property on your list'}
               </Link>
-              {entry.working ? <span className="text-muted"> — one you are working</span> : null}
+              {entry.working ? <span className="text-muted"> — in your pipeline</span> : null}
             </span>
           </li>
         ))}

@@ -5,10 +5,21 @@ import mark from '@/assets/prop-signal-mark.png'
 import { hasUnseenWeek } from '@/lib/deals'
 import { countUnread } from '@/lib/watchlist'
 
+/**
+ * Three destinations, and none of them named after the machinery.
+ *
+ * "Archive" was a list of runs — a backend concept promoted to a top-level
+ * nav item, sitting beside two things a subscriber actually wants. Previous
+ * weeks are still there and still worth keeping; they are reached from
+ * Opportunities, where somebody who wants last week is already standing,
+ * rather than from a permanent slot that says the product has four parts.
+ *
+ * Opportunities is what we found. Pipeline is what they are doing about it.
+ * Account is everything else.
+ */
 const NAV = [
-  { href: '/dashboard', label: 'Properties' },
-  { href: '/deals', label: 'Your deals' },
-  { href: '/archive', label: 'Archive' },
+  { href: '/dashboard', label: 'Opportunities' },
+  { href: '/deals', label: 'Pipeline' },
   { href: '/account', label: 'Account' },
 ] as const
 

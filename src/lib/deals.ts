@@ -213,6 +213,8 @@ type AppearanceRow = {
   total_score: number | string
   score_version: string
   score_breakdown: unknown
+  /** Null on anything published before strategies existed. */
+  winning_strategy: string | null
 }
 
 function asNumber(value: unknown): number | null {
@@ -557,6 +559,8 @@ export type PropertyDetail = PropertySnapshot & {
     risks: Risk[]
     epc: { rating: string; score: number | null } | null
     councilTaxBand: string | null
+    /** The strategy this property was ranked under when it was published. */
+    winningStrategy: string | null
   } | null
 }
 
@@ -651,6 +655,7 @@ export async function getPropertyDetail(propertyId: string): Promise<PropertyDet
           epc: asEpc(latestBreakdown.epc),
           councilTaxBand:
             typeof latestBreakdown.councilTaxBand === 'string' ? latestBreakdown.councilTaxBand : null,
+          winningStrategy: typeof latest.winning_strategy === 'string' ? latest.winning_strategy : null,
         }
       : null,
   }

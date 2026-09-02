@@ -16,6 +16,7 @@ import { StageControl } from '@/components/stage-control'
 import { STAGE_DEFINITIONS } from '@/lib/deal-stages'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import { scoreBand } from '@/lib/score-band'
+import { reasonsFor } from '@/lib/reasons'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,17 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   const progress = await stageHistory(id)
   const stage = progress[0]?.stage ?? null
 
+  // The same lines the card showed, from the same stored factors. `latest` is
+  // the impression as published; a property never published has no reasons to
+  // give, and says nothing rather than inventing something.
+  const reasons = property.latest
+    ? reasonsFor({
+        qualityFactors: property.latest.qualityFactors,
+        movementFactors: property.latest.movementFactors,
+        winningStrategy: property.latest.winningStrategy,
+      } as Parameters<typeof reasonsFor>[0])
+    : []
+
   const priceRange =
     property.lowestPriceSeen !== null &&
     property.highestPriceSeen !== null &&
@@ -49,7 +61,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
     <>
       <p className="text-sm text-muted">
         <Link href="/dashboard" className="underline underline-offset-4 hover:text-ink">
-          This week
+          Opportunities
         </Link>
       </p>
 
@@ -78,6 +90,32 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             </span>
           ))}
         </p>
+      ) : null}
+
+      {/* Why this is in front of you, before anything else on the page.
+          
+          Somebody arriving here has clicked from a list and is deciding
+          whether to spend real time on this property. The strongest signals
+          answer that; the workings further down answer "do I believe it",
+          which is the second question and not the first. */}
+      {reasons.length ? (
+        <section className="mt-8">
+          <Card>
+            <h2 className="text-base font-medium">Why it is interesting</h2>
+            <ul className="mt-3 space-y-1.5">
+              {reasons.map((reason) => (
+                <li key={reason} className="flex gap-2.5 text-body">
+                  <span aria-hidden="true" className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-highlight-deep" />
+                  <span>{reason}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-sm text-muted">
+              Rebuilt from the figures the score was made of, so this and the breakdown below are the same
+              arithmetic said two ways. Every one of them is dated where the data behind it is.
+            </p>
+          </Card>
+        </section>
       ) : null}
 
       <section className="mt-8">
@@ -197,7 +235,9 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         <section className="mt-10">
           <h2 className="text-h3 font-medium">How it scored</h2>
           <p className="mt-1 text-sm text-muted">
-            From the last time it was published to you, on the figures held then and under the weights in force then.
+            A ranking, not a verdict: it decides which properties deserve your attention first, and nothing about it
+            claims to know what this house is worth. From the last time it was published to you, on the figures held
+            then and under the weights in force then.
           </p>
           <Card className="mt-3">
             <ScoreBreakdown

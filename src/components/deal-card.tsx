@@ -10,6 +10,7 @@ import { setStageAction } from '@/app/(app)/deals/actions'
 import { ActionAnchor, ActionButton, ActionLink } from '@/components/ui'
 import { Meter } from '@/components/motion-ui'
 import { BAND_COUNT, scoreBand } from '@/lib/score-band'
+import { reasonsFor } from '@/lib/reasons'
 import { RefurbEstimate } from '@/components/refurb-estimate'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import type { DealStage } from '@/lib/deal-stages'
@@ -96,6 +97,8 @@ export function DealCard({
     .filter((s) => s.strategy !== deal.winningStrategy)
     .sort((a, b) => b.total - a.total)
 
+  const reasons = reasonsFor(deal)
+
   const perSqFt =
     deal.price && deal.internalAreaSqFt ? `£${Math.round(deal.price / deal.internalAreaSqFt)} per sq ft` : null
 
@@ -157,6 +160,26 @@ export function DealCard({
         />
       </div>
 
+      {/* Why this is in front of you.
+          
+          The most prominent thing on the card after the address, because it is
+          the question somebody scanning a list is actually asking. The score
+          says which to look at first; it cannot say why you are looking, and a
+          card that led with a number was answering the wrong question.
+          
+          Built from the factors the score was made of, so this and the
+          breakdown below are the same arithmetic said twice. */}
+      {reasons.length ? (
+        <ul className="mt-3 space-y-1">
+          {reasons.map((reason) => (
+            <li key={reason} className="flex gap-2.5 text-sm">
+              <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-highlight-deep" />
+              <span>{reason}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       {/* Which of the subscriber's strategies this suits, and what it scored as
           each of them. Only where they run more than one: with a single
           strategy the badge would be on every row and say nothing. */}
@@ -204,7 +227,7 @@ export function DealCard({
           >
             ›
           </span>
-          <span className="underline underline-offset-4">The figures and the workings</span>
+          <span className="underline underline-offset-4">The full figures and how it scored</span>
         </summary>
 
         <div className="mt-4 space-y-5 border-t border-line pt-4">
@@ -264,11 +287,18 @@ export function DealCard({
         <StageControl propertyId={deal.propertyId} stage={stage} compact />
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <ActionLink href={`/property/${deal.propertyId}`}>Timeline</ActionLink>
+          {/* The property page is where the decision gets made, so it is the
+              lead action. The advert is one click further on, from a page that
+              has already told them whether it is worth opening. */}
+          <ActionLink href={`/property/${deal.propertyId}`} tone="lead">
+            View property
+            <span aria-hidden="true" className="text-[11px] opacity-70">
+              →
+            </span>
+          </ActionLink>
 
           {deal.listingUrl ? (
             <ActionAnchor
-              tone="lead"
               href={directListingUrl(deal.listingUrl) ?? deal.listingUrl}
               target="_blank"
               rel="noreferrer noopener"

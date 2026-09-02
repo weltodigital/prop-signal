@@ -140,7 +140,7 @@ export function SearchForm({
       </Card>
 
       <Card>
-        <h2 className="text-base font-medium">2. Your strategy</h2>
+        <h2 className="text-base font-medium">2. What are you trying to buy?</h2>
         <p className="mt-1 text-sm text-muted">
           How you intend to make money from a property, which is what decides whether it is a good one. The same
           three-bed can be an ordinary buy-to-let and an excellent HMO. Pick as many as you actually run. Each
@@ -180,50 +180,10 @@ export function SearchForm({
 
       </Card>
 
-      <Card>
-        <h2 className="text-base font-medium">3. What to look for</h2>
-        <p className="mt-1 text-sm text-muted">
-          Which situations you want pulled out of the market. Pick as many as apply. More lists means more of the
-          market searched, and more that can qualify.
-        </p>
-
-        <fieldset className="mt-6 space-y-3">
-          <legend className="sr-only">Sourcing lists</legend>
-          {sourcingLists.map((list) => (
-            <label
-              key={list.id}
-              className="flex cursor-pointer gap-3 rounded-md border border-line p-3 hover:bg-paper"
-            >
-              <input
-                type="checkbox"
-                name="sourcingLists"
-                value={list.id}
-                defaultChecked={profile?.sourcingLists.includes(list.id) ?? false}
-                onChange={(event) =>
-                  setChosen((current) =>
-                    event.target.checked ? [...current, list.id] : current.filter((id) => id !== list.id),
-                  )
-                }
-                className="mt-0.5 size-4 accent-accent"
-              />
-              <span>
-                <span className="block text-sm font-medium">{list.label}</span>
-                <span className="block text-sm text-muted">{list.description}</span>
-                {list.maxRadiusMiles < Math.max(...RADIUS_OPTIONS) ? (
-                  <span className="mt-0.5 block text-sm text-muted">
-                    Searches up to {list.maxRadiusMiles} miles.
-                  </span>
-                ) : null}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        <FieldError message={errors.sourcingLists} />
-      </Card>
 
       <Card>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-medium">4. Narrow it down</h2>
+          <h2 className="text-base font-medium">3. What sort of properties?</h2>
           <span className="text-sm text-muted">Optional</span>
         </div>
         <p className="mt-1 text-sm text-muted">
@@ -310,6 +270,48 @@ export function SearchForm({
             Add a price range, bedrooms or property type
           </button>
         )}
+      </Card>
+
+      <Card>
+        <h2 className="text-base font-medium">4. What should we look for?</h2>
+        <p className="mt-1 text-sm text-muted">
+          Situations worth a closer look. These are how we find properties, not what makes them good — a property
+          still has to stack against your strategy before it reaches you. Pick as many as apply: the more you tick,
+          the more of the market we search.
+        </p>
+
+        <fieldset className="mt-6 space-y-3">
+          <legend className="sr-only">What to look for</legend>
+          {sourcingLists.map((list) => (
+            <label
+              key={list.id}
+              className="flex cursor-pointer gap-3 rounded-md border border-line p-3 hover:bg-paper"
+            >
+              <input
+                type="checkbox"
+                name="sourcingLists"
+                value={list.id}
+                defaultChecked={profile?.sourcingLists.includes(list.id) ?? false}
+                onChange={(event) =>
+                  setChosen((current) =>
+                    event.target.checked ? [...current, list.id] : current.filter((id) => id !== list.id),
+                  )
+                }
+                className="mt-0.5 size-4 accent-accent"
+              />
+              <span>
+                <span className="block text-sm font-medium">{list.label}</span>
+                <span className="block text-sm text-muted">{list.description}</span>
+                {list.maxRadiusMiles < Math.max(...RADIUS_OPTIONS) ? (
+                  <span className="mt-0.5 block text-sm text-muted">
+                    Searches up to {list.maxRadiusMiles} miles.
+                  </span>
+                ) : null}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <FieldError message={errors.sourcingLists} />
       </Card>
 
       <div className="flex flex-wrap items-center gap-4">

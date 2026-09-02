@@ -12,13 +12,13 @@ import sourcing from '@/assets/prop-signal-property-sourcing.jpg'
 export const metadata: Metadata = {
   title: 'Prop Signal. Sourced deals for how you invest',
   description:
-    'Tell us where you buy and how you make your money. We source the best deals in your area against those criteria, score them, and keep them in front of you. BRRR in Portsmouth, HMOs in Leeds, buy to let near home. From £29 a month.',
+    'We continuously filter the property market for properties that fit how you invest, and put the ones worth a closer look in front of you. BRRR in Portsmouth, HMOs in Leeds, buy to let near home. From £29 a month.',
 }
 
 const CLAIMS = [
   {
-    title: 'Sourced against your criteria',
-    body: 'Your area, your radius, your strategy. A property that is a poor buy to let and a strong HMO is scored as both, and ranked as whichever it is.',
+    title: 'The whole market, filtered',
+    body: 'Not just the ones that dropped in price. Every property in your area is measured against how you invest — a good buy on the day it is listed counts exactly as much as a seller who has been cutting for a year.',
   },
   {
     title: 'The maths is done',
@@ -97,7 +97,7 @@ const COMPARISON = {
 const FAQS = [
   {
     q: 'How is this different from a portal alert?',
-    a: 'A portal answers one question, which is what went up this morning. Whether something is a good buy for the way you invest is a different question and nothing on a portal asks it. We score every property in your area against your strategy, keep the ones that stack, and rank them. A property listed eight months ago and one listed this morning are judged the same way.',
+    a: 'A portal answers one question, which is what went up this morning. Whether something is worth your attention for the way you invest is a different question and nothing on a portal asks it. We filter every property in your area against your strategy, keep the ones that deserve a closer look, and rank them. A property listed eight months ago and one listed this morning are judged the same way.',
   },
   {
     q: 'How is this different from a deal sourcer?',
@@ -117,7 +117,7 @@ const FAQS = [
   },
   {
     q: 'Does a property have to have dropped in price to appear?',
-    a: 'No. A property is on your list because it is a good deal against your criteria, and it can be a good deal from the day it is listed. A price cut or a long stint unsold counts for something, because it tells you the seller is motivated, but it is worth half of what the deal itself is worth and it is never a way in. A property that does not stack is not shown however hard the seller has moved.',
+    a: 'No, and this is the thing most people assume. A property is on your list because it fits how you invest, and it can do that from the day it is listed. Reductions, repossessions, auctions and slow sellers are some of the ways we find properties worth examining — they are not what makes a property good. A price cut counts for something, because it tells you the seller is motivated, but it is worth half of what the property itself is worth and it is never a way in. Something that does not stack is not shown however hard the seller has moved.',
   },
   {
     q: 'Does the same property keep appearing?',
@@ -189,8 +189,9 @@ export default async function HomePage() {
                 </h1>
 
                 <p className="mt-7 max-w-lg text-body text-muted">
-                  Tell us where you buy and how you make your money. We source the whole area against those criteria
-                  and keep the best of it in front of you, with the numbers already worked out.
+                  Tell us where you buy and how you make your money. We filter the whole market in your area against
+                  those criteria, every week, and put what deserves a closer look in front of you with the numbers
+                  already worked out.
                 </p>
 
                 <div className="mt-9 flex flex-wrap items-center gap-3">

@@ -42,6 +42,7 @@ export default async function DashboardPage({
   // before the marker is cleared, like the marker itself.
   const moved = whatMoved(week?.deals ?? [], notifications)
 
+
   // Read before the marker is cleared, so this render still shows it. The
   // clearing happens in MarkSeen, on the visit rather than on publish.
   const unseen = week !== null && week.seenAt === null
@@ -53,6 +54,13 @@ export default async function DashboardPage({
   // trigger another, which is wrong whenever the first one needs redoing.
   const awaitingFirstRun = profile.backfillCompletedAt === null
 
+  // The three counts the heading is about. `changedSinceSeen` marks a property
+  // whose qualifying event landed since they last looked; on a week nobody has
+  // opened, everything on it is new to them rather than merely changed.
+  const changedCount = week?.deals.filter((deal) => deal.changedSinceSeen).length ?? 0
+  const newCount = unseen ? (week?.deals.length ?? 0) : 0
+  const workingChanged = moved.filter((entry) => entry.working).length
+
   return (
     <>
       {/* The head of the page sits on the same wash the front page opens on, so
@@ -61,7 +69,14 @@ export default async function DashboardPage({
       <div className="-mx-6 -mt-12 bg-gradient-to-b from-tint to-ground px-6 pt-12 pb-10">
         <Rise>
           <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-            <h1 className="font-display text-h2 font-normal">Your properties</h1>
+            {/* The count, as the heading. Somebody opening this wants to know
+                how many properties are worth their attention — not to be told
+                the name of the screen they are already looking at. */}
+            <h1 className="font-display text-h2 font-normal">
+              {week && week.deals.length > 0
+                ? `${week.deals.length} ${week.deals.length === 1 ? 'property' : 'properties'} worth looking at`
+                : 'Your opportunities'}
+            </h1>
             <p className="text-sm text-muted">
               {describeArea(profile.postcode, profile.radiusMiles)} ·{' '}
               <Link
@@ -77,17 +92,33 @@ export default async function DashboardPage({
               until the tiers ship. */}
           <AreaSwitcher profiles={profiles} current={profile} />
 
-          {/* The run date, so the user knows the list is fresh rather than the
-              one they saw last time. */}
+          {/* New, changed, being worked, and when we last looked — the four
+              things that decide whether this page is worth reading today. */}
           {week ? (
-            <p className="mt-3 text-sm text-muted">
-              {unseen ? (
-                <span className="label mr-2 border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
-                  New
+            <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+              {newCount > 0 ? (
+                <span className="label border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
+                  {newCount} new
                 </span>
               ) : null}
-              {week.dealCount} {week.dealCount === 1 ? 'property' : 'properties'} that stack in your area, last
-              checked {formatDate(week.publishedAt)}.
+              {changedCount > 0 ? (
+                <span className="label border border-line px-1.5 py-0.5 text-ink">{changedCount} changed</span>
+              ) : null}
+              {workingChanged > 0 ? (
+                <span className="label border border-line px-1.5 py-0.5 text-ink">
+                  {workingChanged} in your pipeline moved
+                </span>
+              ) : null}
+              <span>
+                Last checked {formatDate(week.publishedAt)}.{' '}
+                {/* Previous weeks kept a permanent slot in the navigation, which
+                    said the product had four parts when it has three. Reached
+                    from here instead, where somebody wanting last week already
+                    is. */}
+                <Link href="/archive" className="underline underline-offset-4 hover:text-ink">
+                  Previous weeks
+                </Link>
+              </span>
             </p>
           ) : null}
         </Rise>

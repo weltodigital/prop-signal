@@ -19,11 +19,11 @@ export function DealTracker({ deals }: { deals: TrackedDeal[] }) {
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="text-h3 font-medium">Deals you&rsquo;re working</h2>
+        <h2 className="text-h3 font-medium">In your pipeline</h2>
         <p className="text-sm text-muted">
           {deals.length} live ·{' '}
           <Link href="/deals" className="underline underline-offset-4 hover:text-ink">
-            everything you have tracked
+            see all of them
           </Link>
         </p>
       </div>
