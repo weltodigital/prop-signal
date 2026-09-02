@@ -33,8 +33,24 @@ export const PROPERTY_TYPES = [
  * Changes to the search itself in one allowance period. Not unlimited, because
  * each one triggers a fresh backfill over the whole standing inventory of a new
  * area, and that is the most expensive thing this product does.
+ *
+ * Widening the radius is counted separately — see `RADIUS_WIDEN_LIMIT`.
  */
 export const SEARCH_CHANGE_LIMIT = 3
+
+/**
+ * Widenings of the radius in one allowance period, out of their own allowance.
+ *
+ * This exists because the cap above was landing on exactly the subscriber it
+ * should have been helping. The form tells somebody the radius is the biggest
+ * thing they control and that a thin list is fixed by widening it; charging
+ * that to the same three changes that exist to stop somebody re-sourcing a new
+ * county every week meant we rationed our own advice.
+ *
+ * Still bounded, because a widening still costs a backfill. Bounded by
+ * something only widening can spend.
+ */
+export const RADIUS_WIDEN_LIMIT = 3
 
 export type SourcingList = {
   id: string

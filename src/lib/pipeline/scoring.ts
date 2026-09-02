@@ -373,29 +373,44 @@ const RETURN_LABELS: Record<InvestmentStrategy, string> = {
 /**
  * The cohort half of quality.
  *
- * Index-aligned with the measurements it is given. Cashflow is scored as a
- * percentile against the other properties in the same run, because the absolute
- * scale it used to use did not survive leaving one part of the country: £0 to
- * £350 a month scores nearly nothing across the South East and nearly
- * everything up north, and a 30-point factor that is constant either way is not
- * a factor at all.
+ * Index-aligned with the measurements it is given. The strategy's own figure is
+ * scored as a percentile, because the absolute scale it used to use did not
+ * survive leaving one part of the country: £0 to £350 a month scores nearly
+ * nothing across the South East and nearly everything up north, and a 40-point
+ * factor that is constant either way is not a factor at all.
  *
- * The price of that: a percentile ranks within a filtered, event-driven cohort
- * that is not a sample of the local market. The one place that matters is a run
- * where everything loses money, so a property that does not make money cannot
- * take the whole factor however well it ranks.
+ * What it is a percentile *against* is the argument. It used to be the other
+ * candidates in the same run, which made a score a fact about a Sunday rather
+ * than about a property: a property could fall under the floor because the
+ * others improved, and no two scores were comparable across weeks or across
+ * subscribers. `window` is the fix — the same measure taken in the same area
+ * over recent months — and the run's own values are folded in with it so that
+ * today's market is represented and the property being scored is present in its
+ * own cohort, which is what `percentile` assumes.
+ *
+ * An area with no history yet passes an empty window and is ranked against the
+ * run, exactly as before. That is also what every test of the mechanic does.
+ *
+ * The price of a percentile at all: it ranks within a filtered, list-driven
+ * cohort that is not a sample of the local market. The one place that matters
+ * is where everything loses money, so a property that does not make money
+ * cannot take the whole factor however well it ranks.
  */
 export function qualityScores(
   measurements: readonly QualityMeasurement[],
   weights: Weights = DEFAULT_WEIGHTS,
+  window: readonly number[] = [],
 ): Score[] {
   const w = weights.quality
 
-  // The cohort is whatever was handed in, which the caller has already split
-  // by strategy. A room rate is never ranked against a refinance.
-  const cohort = measurements
+  // Whatever was handed in, which the caller has already split by strategy. A
+  // room rate is never ranked against a refinance.
+  const fromRun = measurements
     .map((m) => m.strategyReturn.value)
     .filter((value): value is number => value !== null)
+
+  const cohort = window.length ? [...window, ...fromRun] : fromRun
+  const rankedAgainstHistory = window.length > 0
 
   return measurements.map((m) => {
     const factors: Factor[] = []
@@ -406,12 +421,14 @@ export function qualityScores(
       factors.push({ label, points: 0, available: 0, detail: m.strategyReturn.detail })
     } else {
       const place = percentile(m.strategyReturn.value, cohort)
-      // Losing money is losing money however the rest of the run is doing.
+      // Losing money is losing money however the rest of the cohort is doing.
       const share = m.strategyReturn.belowWater ? Math.min(place, 0.5) : place
       const standing =
         cohort.length < 2
-          ? 'the only one this week that could be scored this way'
-          : `better than ${Math.round(place * 100)}% of this week's candidates`
+          ? 'the only one that could be scored this way'
+          : rankedAgainstHistory
+            ? `better than ${Math.round(place * 100)}% of what your area has offered in the last three months`
+            : `better than ${Math.round(place * 100)}% of this week's candidates`
 
       factors.push({
         label,

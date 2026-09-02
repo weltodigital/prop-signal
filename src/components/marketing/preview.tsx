@@ -33,9 +33,12 @@ export function DealPreview() {
           </p>
         </div>
 
+        {/* A band rather than a number, the same as the real card. A score
+            printed as a fraction gets read as a percentage, and the best
+            property in an area should not arrive looking like a C. */}
         <div className="shrink-0 text-right">
-          <p className="label text-muted">Score</p>
-          <p className="figure mt-1 text-5xl leading-none text-highlight-deep">71</p>
+          <p className="label text-muted">How it stacks</p>
+          <p className="mt-1 text-3xl leading-none font-medium text-highlight-deep">Strong</p>
         </div>
       </div>
 

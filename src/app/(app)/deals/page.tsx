@@ -32,6 +32,13 @@ export default async function DealsPage() {
   const live = deals.filter((deal) => isActive(deal.stage))
   const finished = deals.filter((deal) => !isActive(deal.stage))
 
+  // A property withdrawn from the market is not a deal that failed, so it is
+  // held out of the denominator rather than quietly dragging the rate down.
+  // Counting it as a loss would say we surfaced something the subscriber
+  // rejected, when what happened is the seller left.
+  const delisted = deals.filter((deal) => deal.stage === 'delisted').length
+  const completed = finished.filter((deal) => !STAGE_DEFINITIONS[deal.stage].lost).length
+
   const ordered = DEAL_STAGES.filter((stage) => (counts.get(stage) ?? 0) > 0).map(
     (stage) => [stage, counts.get(stage) ?? 0] as [DealStage, number],
   )
@@ -117,7 +124,12 @@ export default async function DealsPage() {
 
       {finished.length ? (
         <p className="mt-8 text-sm text-muted">
-          {finished.filter((d) => STAGE_DEFINITIONS[d.stage].lost === false).length} of {deals.length} completed.
+          {completed} of {deals.length - delisted} completed.
+          {delisted
+            ? ` ${delisted} more came off the market while you were working ${
+                delisted === 1 ? 'it' : 'them'
+              }, which is not a decision you made, so ${delisted === 1 ? 'it is' : 'they are'} counted separately.`
+            : ''}
         </p>
       ) : null}
     </>

@@ -6,6 +6,8 @@ import { formatDate } from '@/lib/format'
 import { DealCard } from '@/components/deal-card'
 import { DealTracker } from '@/components/deal-tracker'
 import { DashboardStats } from '@/components/dashboard-stats'
+import { WhatMoved, whatMoved } from '@/components/what-moved'
+import { listNotifications } from '@/lib/watchlist'
 import { FirstRun } from '@/components/first-run'
 import { MarkSeen } from '@/components/mark-seen'
 import { EmptyState, Notice } from '@/components/ui'
@@ -24,13 +26,19 @@ export default async function DashboardPage({
   searchParams: Promise<{ checkout?: string; onboarded?: string }>
 }) {
   const { email, profile } = await requireSubscriber('/dashboard')
-  const [week, params, tracked, stages, gdvPerSqFt] = await Promise.all([
+  const [week, params, tracked, stages, gdvPerSqFt, notifications] = await Promise.all([
     getCurrentWeek(),
     searchParams,
     listTrackedDeals(),
     currentStages(),
     developmentGdvPerSqFt(),
+    // Derived from the diff the run already wrote, so this costs nothing.
+    listNotifications(),
   ])
+
+  // What is worth coming back for once the list has been worked through. Read
+  // before the marker is cleared, like the marker itself.
+  const moved = whatMoved(week?.deals ?? [], notifications)
 
   // Read before the marker is cleared, so this render still shows it. The
   // clearing happens in MarkSeen, on the visit rather than on publish.
@@ -83,6 +91,11 @@ export default async function DashboardPage({
           />
         ) : null}
       </div>
+
+      {/* Above everything, because by week twenty this is the reason to open
+          the page at all. The list is mostly the list they already worked
+          through; what changed on it is the news. */}
+      <WhatMoved moved={moved} />
 
       {params.checkout === 'complete' ? (
         <div className="mt-6">

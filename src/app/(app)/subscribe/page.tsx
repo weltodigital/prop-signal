@@ -1,6 +1,9 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
+import { getSearchProfile } from '@/lib/search-profile'
+import { latestProbeFor } from '@/lib/search-probe'
 import { Button, Card, Notice } from '@/components/ui'
 
 const MESSAGES: Record<string, { tone: 'info' | 'warn'; title: string; body: string }> = {
@@ -31,7 +34,12 @@ export default async function SubscribePage({
   const state = await getSubscriptionState()
   if (state.active) redirect('/dashboard')
 
-  const params = await searchParams
+  // The questions come first now, so anybody here has answered them — except
+  // somebody who has followed an old link, who is sent to answer them.
+  const profile = await getSearchProfile()
+  if (!profile) redirect('/onboarding')
+
+  const [probe, params] = await Promise.all([latestProbeFor(user.id, profile), searchParams])
   const message = MESSAGES[params.error ?? params.checkout ?? '']
 
   return (
@@ -40,6 +48,36 @@ export default async function SubscribePage({
       <p className="mt-2 max-w-prose text-muted">
         £29 a month. One area, searched every week, with the best of it kept on your list. Cancel any time from your account page.
       </p>
+
+      {/* What we already told them, repeated at the till so the decision is
+          made on the same figure it was made on a screen ago. Nothing is
+          re-fetched: this is the probe they already ran. */}
+      <p className="mt-4 max-w-prose text-sm text-muted">
+        Searching{' '}
+        <span className="font-medium text-ink">
+          {profile.postcode}, within {profile.radiusMiles} {profile.radiusMiles === 1 ? 'mile' : 'miles'}
+        </span>
+        {probe
+          ? `, which currently holds ${probe.capped ? `more than ${probe.matching}` : probe.matching} ${
+              probe.matching === 1 && !probe.capped ? 'property' : 'properties'
+            } on the lists you picked.`
+          : '.'}{' '}
+        <Link href="/onboarding" className="underline underline-offset-4 hover:text-ink">
+          Change it
+        </Link>
+        .
+      </p>
+
+      {probe?.thin ? (
+        <div className="mt-6">
+          <Notice tone="warn" title="That is a thin area at this radius">
+            <p>
+              We said so before asking for a card and we will say it again here. Widening the radius is the biggest
+              thing you control and costs you nothing to try. If you are happy with it, carry on.
+            </p>
+          </Notice>
+        </div>
+      ) : null}
 
       {message ? (
         <div className="mt-6">

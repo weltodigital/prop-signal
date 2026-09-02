@@ -11,7 +11,12 @@
  * product that sources deals.
  */
 import { describe, expect, it } from 'vitest'
-import { diffListing, type PreviousObservation, type PropertyEvent } from '@/lib/pipeline/events'
+import {
+  diffListing,
+  disappearanceEvent,
+  type PreviousObservation,
+  type PropertyEvent,
+} from '@/lib/pipeline/events'
 import { normaliseListing } from '@/lib/pipeline/listing'
 import {
   measureQuality,
@@ -89,7 +94,7 @@ function observationFrom(price: number, daysOnMarket: number, state: 'listed' | 
   return { price, state, daysOnMarket, lastObservedAt: at }
 }
 
-type Seen = { shown: boolean; changed: boolean; headline: string | null }
+type Seen = { shown: boolean; changed: boolean; reason: string; headline: string | null }
 
 function runWeek(
   ledger: Ledger,
@@ -107,16 +112,45 @@ function runWeek(
     impressions: ledger.impressions,
     qualityScore: q.score,
     removed: ledger.removed,
+    listingState: current.state,
   })
 
-  if (!verdict.qualifies) return { shown: false, changed: false, headline: null }
+  if (!verdict.qualifies) return { shown: false, changed: false, reason: verdict.reason, headline: null }
 
   ledger.show(verdict.event, at)
   return {
     shown: true,
     changed: verdict.changedSinceSeen,
+    reason: verdict.reason,
     headline: verdict.event?.type ?? 'first_seen',
   }
+}
+
+/**
+ * A week in which the property did not come back in the payload.
+ *
+ * There is no listing to pass, which is the whole point: the run learns a
+ * property has gone by its absence, writes the disappearance against what it
+ * last held, and marks it withdrawn. Quality is whatever it was last worth,
+ * because a good deal does not become a bad one by being taken off the market
+ * — it stops being available, which is a different thing and has to be the
+ * thing that decides.
+ */
+function runDelistedWeek(ledger: Ledger, previous: PreviousObservation, at: Date, quality = 100): Seen {
+  ledger.record([disappearanceEvent(previous, at)])
+
+  const verdict = qualifies({
+    events: ledger.events,
+    impressions: ledger.impressions,
+    qualityScore: quality,
+    removed: ledger.removed,
+    listingState: 'withdrawn',
+  })
+
+  if (!verdict.qualifies) return { shown: false, changed: false, reason: verdict.reason, headline: null }
+
+  ledger.show(verdict.event, at)
+  return { shown: true, changed: verdict.changedSinceSeen, reason: verdict.reason, headline: null }
 }
 
 /** £180,000 on 900 sq ft against £300 locally. A genuinely good buy. */
@@ -227,5 +261,79 @@ describe('a deal that stops being a deal', () => {
     // changed; it simply is not a good buy any more.
     const dear = runWeek(ledger, listing(400_000, 10), observationFrom(GOOD, 3, 'listed', week(1)), week(2))
     expect(dear.shown).toBe(false)
+  })
+})
+
+describe('a property that leaves the market', () => {
+  it('goes the week it is delisted, however good a buy it still is', () => {
+    const ledger = new Ledger()
+    expect(runWeek(ledger, listing(GOOD, 3), null, week(1)).shown).toBe(true)
+
+    // Nothing about the property got worse. It is the same house at the same
+    // price against the same comparables, and it scores a perfect hundred
+    // here. It is simply not for sale, and a list of things to buy that
+    // carries a house somebody else already bought is not worth reading.
+    const gone = runDelistedWeek(ledger, observationFrom(GOOD, 10, 'listed', week(1)), week(2), 100)
+    expect(gone.shown).toBe(false)
+    expect(gone.reason).toBe('delisted')
+  })
+
+  it('says gone rather than passed, because those are different facts', () => {
+    const ledger = new Ledger()
+    runWeek(ledger, listing(GOOD, 3), null, week(1))
+
+    const gone = runDelistedWeek(ledger, observationFrom(GOOD, 10, 'listed', week(1)), week(2))
+
+    // The distinction is the whole point of the stage. 'removed' is the
+    // subscriber's judgement about a property we surfaced; 'delisted' is the
+    // seller leaving. Reading one as the other puts a fault in exactly the
+    // numbers the deal tracking exists to produce.
+    expect(gone.reason).not.toBe('removed')
+    expect(gone.reason).toBe('delisted')
+  })
+
+  it('stays gone in later weeks', () => {
+    const ledger = new Ledger()
+    runWeek(ledger, listing(GOOD, 3), null, week(1))
+
+    for (const n of [2, 3, 4]) {
+      const gone = runDelistedWeek(ledger, observationFrom(GOOD, 10, 'listed', week(1)), week(n))
+      expect(gone.shown, `week ${n}`).toBe(false)
+    }
+  })
+
+  it('comes back on its own if the sale falls through', () => {
+    const ledger = new Ledger()
+    runWeek(ledger, listing(GOOD, 3), null, week(1))
+    expect(runDelistedWeek(ledger, observationFrom(GOOD, 10, 'listed', week(1)), week(2)).shown).toBe(false)
+
+    // Relisted. The diff sees a property that was withdrawn back on the
+    // market, which is a material event and one of the best headlines this
+    // product has — somebody's sale collapsed and the seller is now motivated.
+    const back = runWeek(
+      ledger,
+      listing(GOOD, 24),
+      observationFrom(GOOD, 17, 'withdrawn' as 'listed', week(2)),
+      week(3),
+    )
+
+    expect(back.shown).toBe(true)
+    expect(back.changed).toBe(true)
+    expect(back.headline).toBe('returned_to_market')
+  })
+
+  it('leaves the list the moment it goes under offer, and returns if that collapses', () => {
+    const ledger = new Ledger()
+    expect(runWeek(ledger, listing(GOOD, 3), null, week(1)).shown).toBe(true)
+
+    // Sold subject to contract still comes back in the payload, so nothing
+    // takes it off the list except this rule. Somebody else is buying it.
+    const sstc = runWeek(ledger, listing(GOOD, 10, 'sstc'), observationFrom(GOOD, 3, 'listed', week(1)), week(2))
+    expect(sstc.shown).toBe(false)
+    expect(sstc.reason).toBe('under_offer')
+
+    const back = runWeek(ledger, listing(GOOD, 17), observationFrom(GOOD, 10, 'sstc', week(2)), week(3))
+    expect(back.shown).toBe(true)
+    expect(back.headline).toBe('returned_to_market')
   })
 })

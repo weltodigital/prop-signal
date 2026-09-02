@@ -38,7 +38,7 @@ export type Qualification =
       /** True where that event landed since they last saw this property. */
       changedSinceSeen: boolean
     }
-  | { qualifies: false; reason: 'below_quality_floor' | 'removed' }
+  | { qualifies: false; reason: 'below_quality_floor' | 'removed' | 'delisted' | 'under_offer' }
 
 export type QualificationOptions = {
   /**
@@ -69,10 +69,33 @@ export function qualifies(
     qualityScore: number
     /** True where the subscriber has taken this property off their list. */
     removed: boolean
+    /**
+     * Where the property stands on the market, as of this run.
+     *
+     * `withdrawn` is set by the run when a property we held did not come back
+     * in the payload. Defaults to `listed` so a caller that does not care —
+     * every test of the scoring mechanic — reads as it always did.
+     */
+    listingState?: 'listed' | 'sstc' | 'withdrawn'
   },
   options: QualificationOptions = DEFAULT_QUALIFICATION,
 ): Qualification {
-  const { events, impressions, qualityScore, removed } = input
+  const { events, impressions, qualityScore, removed, listingState = 'listed' } = input
+
+  // Nothing you cannot buy belongs on a list of things to buy.
+  //
+  // This is checked before the subscriber's own removal and before the score,
+  // because it is a fact about the world rather than a preference or a
+  // measurement. A house that sold two months ago sitting on somebody's list
+  // is the fastest way to stop being believed about any of the rest of it.
+  //
+  // The two are kept apart. Withdrawn means gone, and the run closes the deal
+  // out. Sold subject to contract means somebody else got there first and it
+  // may yet fall through — which fires `returned_to_market` and puts the
+  // property straight back on the list, where it is one of the best headlines
+  // this product has.
+  if (listingState === 'withdrawn') return { qualifies: false, reason: 'delisted' }
+  if (listingState === 'sstc') return { qualifies: false, reason: 'under_offer' }
 
   // The subscriber's own decision outranks the score. Once it is off the list
   // it stays off, however well it scores later.

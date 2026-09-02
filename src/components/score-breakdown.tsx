@@ -1,4 +1,6 @@
 import type { ScoreFactor } from '@/lib/deals'
+import { MOVEMENT_SHARE } from '@/lib/pipeline/scoring'
+import { scoreBand } from '@/lib/score-band'
 
 /**
  * How the score was arrived at, line by line.
@@ -48,6 +50,11 @@ export function ScoreBreakdown({
     return <p className="text-sm text-muted">No breakdown was stored for this one.</p>
   }
 
+  // Recomputed rather than passed in, so the sentence below can never disagree
+  // with the two figures printed above it.
+  const total = qualityScore + movementScore * MOVEMENT_SHARE
+  const band = scoreBand(total)
+
   return (
     <div className="grid gap-6 sm:grid-cols-2">
       <section>
@@ -68,7 +75,7 @@ export function ScoreBreakdown({
         <h4 className="label text-muted">Movement</h4>
         <p className="figure mt-1 text-3xl leading-none text-highlight-deep">{movementScore.toFixed(1)}</p>
         <p className="mt-1 text-sm text-muted">
-          How hard and how recently it moved. Out of 100, and this is what puts it on the list.
+          How hard and how recently it moved. Out of 100, counted at half, and never what puts it on the list.
         </p>
         <div className="mt-3">
           {movement.length ? (
@@ -80,10 +87,12 @@ export function ScoreBreakdown({
       </section>
 
       <p className="text-sm text-muted sm:col-span-2">
-        The two are added, not blended. {qualityScore.toFixed(1)} and {movementScore.toFixed(1)}, out of 200, so a
-        mediocre property that has just dropped can outrank a good one that has not moved. Cashflow is scored against
-        the other properties in your week rather than a fixed figure, because £300 a month clear means something
-        different in Salford and in Surrey. Scoring {version}.
+        Quality in full and movement at half: {qualityScore.toFixed(1)} plus half of {movementScore.toFixed(1)} is{' '}
+        <span className="figure">{total.toFixed(1)}</span> of 150, which is {band.label.toLowerCase()}. Whether a
+        property is here at all is decided on quality alone, so a seller who has been cutting separates two good buys
+        rather than earning a place for a bad one. Cashflow is scored against what the same strategy has been worth in
+        your area over recent months rather than a fixed figure, because £300 a month clear means something different
+        in Salford and in Surrey. Scoring {version}.
       </p>
     </div>
   )

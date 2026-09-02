@@ -110,6 +110,19 @@ export function StageControl({
                 </option>
               ))}
             </optgroup>
+
+            {/* A stage only the run can write still has to be selectable as the
+                current value, or the control renders blank on the one deal
+                whose state it most needs to state. Disabled, because it is not
+                something anybody chooses — moving it on is, and that is what
+                the groups above are for. */}
+            {current?.systemOnly ? (
+              <optgroup label="Observed">
+                <option value={optimistic} disabled>
+                  {current.label}
+                </option>
+              </optgroup>
+            ) : null}
           </select>
 
           {/* Untracking is for a mis-click. A deal that died should be passed

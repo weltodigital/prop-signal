@@ -26,18 +26,24 @@ changed since you last looked is flagged rather than being the reason anything a
 | 3 | Onboarding, and the first-run backfill | Done |
 | 4 | The weekly pipeline | Done |
 | 5 | Scoring | Done |
-| 6 | Subscriber app — the five, timelines, archive, watchlist, calculator | Done |
+| 6 | Subscriber app — the list, timelines, archive, deal tracking, calculator | Done |
 | 7 | Delivery — the run date, the unseen marker, in-app only | Done |
 | 8 | Admin export for the newsletter | Not started |
 
-The pipeline is written, covered by tests, and its field names were verified against the
-live API on 24 August 2026 — but it has never been run end to end. Every table is empty
-except the cache. The PropertyData key on file is a 500-credit trial that does not renew,
-which is enough to prove the pipeline and not enough to run it for paying subscribers.
+The pipeline has run live against a real account, several times, and the runs are what
+found most of the bugs worth finding — the valuation endpoints that never worked, a demand
+figure parsed as a number when it was a phrase, comparables read forty miles from the
+property, and an upsert that would have broken every run from week two onward. All fixed,
+all in DECISIONS.md.
+
+The blocker is credits, not code. The PropertyData key on file is a 500-credit trial that
+does not renew, which is enough to prove the pipeline and not enough to run it for paying
+subscribers. A paid plan is the gate.
 
 Stripe is live: the £29 price, the webhook endpoint and the portal are all configured on
-the live account, and `pnpm stripe:check` passes. A subscriber can sign up, pay, answer
-the two questions and reach a dashboard that waits for the first run.
+the live account, and `pnpm stripe:check` passes. A subscriber can sign up, answer the
+questions, be told how many properties their area holds, pay, and reach a dashboard that
+builds their first list while they watch.
 
 ## The subscriber app
 
@@ -46,7 +52,7 @@ wrote. Nothing a subscriber can click spends a credit.
 
 | Route | What it is |
 | --- | --- |
-| `/dashboard` | Everything on the list that still stacks, newest first. The qualifying event in the headline position, the numbers stacked, the score openable line by line. |
+| `/dashboard` | What moved this week, first. Then everything on the list that still stacks, newest first — the qualifying event in the headline position, the numbers stacked, the score openable line by line. |
 | `/property/[id]` | One property in full: the complete event timeline, every week it has been shown to you, and the calculator. |
 | `/archive` and `/archive/[runId]` | Previous weeks, exactly as they were published. |
 | `/deals` | Every property you have tracked, how far it got, and what has changed since you looked. |
@@ -71,15 +77,22 @@ on something you have an offer in on is the most time-sensitive thing on the pag
 
 ### Deals you're working
 
-The product's job ends when five properties are on the dashboard. This is what happens
+The product's job ends when the properties are on the dashboard. This is what happens
 after: **Interested → Contacted → Viewing → Offer made → Offer accepted → Completed**,
-plus two ways out — **Passed** and **Fell through**.
+plus three ways out — **Passed**, **Fell through** and **No longer listed**.
 
 The exits are not decoration. Without them a dead deal sits at "viewing" for ever and the
-completion rate reads far higher than the truth. Passed and fell through are kept apart
-because they are different problems: passing says something about the properties being
-surfaced, falling through says something about the market, and merging them would hide
-whichever is happening.
+completion rate reads far higher than the truth. All three are kept apart because they are
+different problems: passing says something about the properties being surfaced, falling
+through says something about the market, and delisting says nothing about either — the
+seller simply left. Merging any two would hide whichever is happening.
+
+**No longer listed is the one stage the subscriber cannot enter.** The run writes it when
+a tracked property stops coming back, and only for deals below an offer: a property under
+offer to *you* comes off the portals too, so closing those would record somebody's own
+purchase as a lost deal. Those keep their stage and are marked as no longer listed
+instead. It is also held out of the completion denominator, because a deal that ended
+because the seller left is not a deal that failed.
 
 Live deals appear above the week's five, because a deal at "offer accepted" wants
 attention today and a new listing can wait. The section renders nothing when it is empty.
@@ -119,7 +132,7 @@ rate, a refinance that pulls more out than went in, a top-up.
 
 ### Delivery, and why there is no email
 
-Nothing is sent. The week's five appear in the dashboard when the Sunday run
+Nothing is sent. The week's list appears in the dashboard when the Sunday run
 completes, and everything the subscriber would have been emailed is in the app.
 
 - The list carries the date it was published, so a returning visitor can tell a
@@ -127,7 +140,9 @@ completes, and everything the subscriber would have been emailed is in the app.
 - A week nobody has opened is marked new — on the list, on each deal, and as a
   dot in the navigation. The marker is cleared on the visit rather than on
   publish, so a list sitting unread on Monday still says so on Thursday.
-- Events on watched properties surface in the watchlist, not as a push.
+- What moved is the first thing on the dashboard, above the list. By week twenty the
+  list is largely the one the subscriber already worked through, and the reason to open
+  the page is what changed on it — which is too much to hang on a dot in the navigation.
 
 `weekly_selections` is the single source of truth for what was published and
 when, and it carries an unused `notified_at`. An email or push channel is a
@@ -286,7 +301,7 @@ Email and password. There is no magic link and no social login.
 
 | Route | What it is |
 | --- | --- |
-| `/signup` | Create an account. Costs nothing; the £29 is charged at the next step by Stripe. |
+| `/signup` | Create an account. Costs nothing, and leads to the questions rather than to the till — the £29 comes after we have told you what your area holds. |
 | `/login` | Email and password. |
 | `/forgot-password` | Sends a reset link. Reports the same thing whether or not the address has an account. |
 | `/reset-password` | Reached from that link, which the callback has already turned into a session. |
@@ -327,7 +342,7 @@ be at a launch spike. Custom SMTP is the fix, under Project Settings → Authent
 
 ## Onboarding
 
-Three questions, and an optional fourth.
+Three questions, and an optional fourth. They come **before** the card, not after.
 
 **Where** — a full UK postcode and a radius.
 
@@ -345,6 +360,29 @@ auction, short lease, slow to sell, large plot.
 
 **Narrow it down**, optional — price, bedrooms and type, applied to the payload after it
 arrives, so it costs nothing and can be changed as often as the subscriber likes.
+
+### The area is counted before anybody pays
+
+The last screen of onboarding runs one `/sourced-properties` call and says how many
+properties the search actually has to work with. Somebody in a sparse area should find out
+their list would be short before £29, not after, and the radius is right there to widen.
+
+- **About twenty credits at the very most**, at one credit per ten results — and a thin
+  area, which is the case this exists for, costs a fraction of that because there is
+  little to charge for. That is the right way round.
+- **A repeat of the same search is free.** The answer is stored in `search_probes` and
+  handed back, so a refresh, a back button or a second tab buys nothing.
+- **Three per allowance period**, so it cannot become a free market search for somebody
+  who never intends to subscribe.
+- **It never blocks the subscription.** A failed check says so and offers the way on.
+- **The wording refuses to let a stock count read as a promise about the list.** It says
+  plainly that most of this will not clear the quality floor, because filtering is the
+  product.
+
+This is the only thing in the codebase that spends a credit for an account with no
+subscription, which is why it has a quota, a stored answer, a credit ceiling on the call,
+and reads the profile through row level security so nobody can probe an area they have
+not saved.
 
 ### Two axes, deliberately
 
@@ -388,6 +426,16 @@ new area's standing inventory has never been shown to that user and their next l
 should draw on all of it. That costs credits, so it is capped at three changes per
 allowance period and the counter is visible on the account page. Changing only the
 optional filters is uncapped, because it cannot surface anything new.
+
+**Widening the radius has its own allowance**, three of its own, and never touches the
+one above. The cap exists so nobody re-sources a different part of the country every
+week, and it was landing hardest on the subscriber it should have helped: the one with a
+thin list, whose fix is to widen — which the form tells them, in the sentence beside the
+control. Rationing our own advice at three attempts was the wrong bound.
+
+Narrowing is not exempt, because it resets the backfill like any other move and nobody
+widening a thin search narrows it on the way. Neither is a postcode change that happens
+to widen at the same time, or the exemption would pay for the move.
 
 ## The credit wrapper
 
@@ -475,7 +523,11 @@ run, and keeps the ones that clear the quality floor. Two rules decide the list:
    no part in this. A 20% reduction on something that loses money every month is still
    something that loses money every month.
 2. **The subscriber decides what leaves.** Marking a property as not for you takes it off
-   the list for good, however well it scores later. Nothing else removes it.
+   the list for good, however well it scores later.
+3. **The market decides what is gone.** A property that has left the market is off the
+   list whatever it scores — withdrawn, or under offer to somebody else. Those two are
+   kept apart, because a sale that collapses fires a return to market and puts the
+   property straight back.
 
 Runs still diff against the last one and write events, because the events are what say
 *what changed*. Events are permanent, dated, and marked as historical observations.
@@ -490,8 +542,10 @@ subscriber last saw it.
 
 `tests/standing-list.test.ts` runs fifty-two weeks against one property and asserts it
 appears in all fifty-two, is flagged the week it is reduced and not the week after,
-disappears the moment the subscriber removes it, and falls off on its own if the asking
-price rises far enough that it stops being a good buy.
+disappears the moment the subscriber removes it, falls off on its own if the asking price
+rises far enough that it stops being a good buy, and goes the week it leaves the market —
+whether it was withdrawn or went under offer — however good a buy it still is, coming
+back on its own if the sale collapses.
 
 #### What this replaced, and why
 
@@ -554,7 +608,7 @@ then `qualityScores` over the whole cohort. `movement` stays per property.
 
 | Factor | Weight | How |
 | --- | --- | --- |
-| Whatever the strategy is judged on | 40 | Percentile against the other candidates in this run, **under the same strategy** |
+| Whatever the strategy is judged on | 40 | Percentile against 90 days of that area's candidates, **under the same strategy** |
 | Asking £/sq ft against nearby completed sales | 30 | 0% → 25% below scores nothing → everything |
 | Local sales demand | 15 | Rated 20 → 80 out of 100 |
 | Value-add lists the subscriber did *not* ask for | 15 | One scores half, two scores all |
@@ -574,6 +628,15 @@ ceilings are what stop either dominating by construction.
 yesterday has no movement and never will have, so it can still reach 100 of 150 on its
 own merits. Movement separates two comparable deals rather than earning a place.
 
+**The subscriber sees a band, not the fraction.** Modest, Fair, Good, Strong,
+Exceptional, in `src/lib/score-band.ts`, with the full 150 kept in the breakdown. The
+arithmetic is untouched; what changed is that a fraction gets read as a percentage
+whether or not it is one. A perfect new listing comes to about 100 of 150, which reads as
+67% — a C, on the best property in somebody's area — and since the ceiling needs a
+property to be both an excellent buy *and* to have a seller who has been cutting for a
+year, most of a good list sat in the sixties and presented as mediocre. The meter fills by
+band for the same reason: a bar two-thirds full is a percentage by another route.
+
 At parity the two used to be equal, which meant a mediocre property that had dropped
 twelve per cent beat an excellent one listed yesterday. That is the wrong answer for a
 product that sources deals rather than reports news.
@@ -583,9 +646,12 @@ product that sources deals rather than reports news.
 The floor was chosen against v5's normalised scale and has never been tested against real
 output, because the pipeline has not run. It is the first thing to retune after it does.
 
-One wrinkle worth knowing: 40 of the 100 quality points come from a percentile against
-the rest of the run, so the floor is partly relative. A lone candidate scores 0.5 on that
-factor by definition, which leaves the other 60 points to carry it over the floor.
+One wrinkle worth knowing: 40 of the 100 quality points are a percentile, so the floor is
+partly relative. It is a percentile against the area's own recent history rather than
+against whoever turned up the same Sunday, which is what makes a score mean the same
+thing two weeks running — see below. An area with fewer than 30 observations behind it
+falls back to the run, and there a lone candidate still scores 0.5 on that factor by
+definition, leaving the other 60 points to carry it over the floor.
 
 #### The strategy decides what the 40 points measure
 
@@ -605,16 +671,33 @@ subscriber runs and ranked by whichever suits it best, and the card says which.
 Each strategy is percentiled against its own cohort, so a room rate is never ranked
 against a refinance.
 
-#### Why the return is a percentile
+#### Why the return is a percentile, and what it is a percentile against
 
 An absolute band does not survive leaving one part of the country. £0 to £350 a month
 scores nearly nothing across the South East and nearly everything up north, and a
 40-point factor that is constant either way is not a factor at all.
 
-The price of the change: a percentile ranks within a filtered, event-driven cohort that
-is not a sample of the local market. The one place that matters is a run where every
-property loses money, so a property with negative cashflow cannot take more than half
-the factor however well it ranks against the rest.
+What it ranks against is a rolling 90-day window of the same measure in the same area,
+in `strategy_return_observations`, with the run's own values folded in so today's market
+is represented. It used to be the other candidates in the same run, which made a score a
+fact about a Sunday rather than about a property: a property could fall under the quality
+floor because the *others* improved — no fact about it at all, on a list whose whole
+promise is that a property leaves for a reason — and no two scores were comparable across
+weeks or subscribers, which is the ground the completion figures stand on.
+
+The window is keyed on the outward code of the search postcode and not on the radius, so
+two subscribers searching M14 share one. That is deliberate: a score has to mean the same
+thing for both of them. Every measured property goes in, published or not, because the
+window is what the area offered rather than what we picked out of it. Below 30
+observations it is ignored and the run is the cohort, as before.
+
+There is no owner_id on that table and none derivable from it. Dated market observations
+are exactly the derived material the licence lets us keep.
+
+The price of a percentile at all: it ranks within a filtered, list-driven cohort that is
+not a sample of the local market. The one place that matters is where every property
+loses money, so a property with negative cashflow cannot take more than half the factor
+however well it ranks against the rest.
 
 Gross yield against the local benchmark was removed rather than reweighted. It and
 cashflow are both rent over price, so between them they put 45 of 100 quality points on
@@ -664,7 +747,7 @@ so a risk now carries a severity instead. None of them adjusts a factor.
 | Risk | Severity |
 | --- | --- |
 | Flood risk high | **Exclude** — never reaches the subscriber |
-| EPC F or G | **Cap** at 120 of 200 — unless the subscriber picked unmodernised, auction or repossessed, where it is what they came for |
+| EPC F or G | **Cap** at 90 of 150 — unless the subscriber picked unmodernised, auction or repossessed, where it is what they came for |
 | EPC D or E, middling flood risk, short lease | Note |
 
 Short lease moved out of value-add and into risks. A lease with 70 years left is a bill

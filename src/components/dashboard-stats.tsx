@@ -1,6 +1,7 @@
 import type { PublishedDeal } from '@/lib/deals'
 import type { TrackedDeal } from '@/lib/deal-progress'
 import { CountUp, Meter } from '@/components/motion-ui'
+import { BAND_COUNT, scoreBand } from '@/lib/score-band'
 
 /**
  * The four numbers the page leads with.
@@ -20,6 +21,7 @@ function Tile({
   share,
   note,
   tone = 'plain',
+  word = false,
 }: {
   label: string
   /** Printed as-is where there is no figure to count, like an em dash. */
@@ -32,11 +34,17 @@ function Tile({
   share?: number
   note?: string | null
   tone?: 'plain' | 'accent'
+  /** A word rather than a figure. Sized to fit one, and not set in figures. */
+  word?: boolean
 }) {
   return (
     <div className="min-w-0 border-t border-line pt-4">
       <p className="label truncate text-muted">{label}</p>
-      <p className={`figure mt-1.5 text-3xl leading-none ${tone === 'accent' ? 'text-highlight-deep' : 'text-ink'}`}>
+      <p
+        className={`mt-1.5 leading-none ${word ? 'truncate text-2xl font-medium' : 'figure text-3xl'} ${
+          tone === 'accent' ? 'text-highlight-deep' : 'text-ink'
+        }`}
+      >
         {count === undefined ? value : <CountUp value={count} decimals={decimals} suffix={suffix} />}
       </p>
       {share !== undefined ? (
@@ -72,6 +80,7 @@ export function DashboardStats({
 
   const bestYield = yields.length ? Math.max(...yields) : null
   const topScore = deals.length ? Math.max(...deals.map((deal) => deal.totalScore)) : null
+  const topBand = topScore === null ? null : scoreBand(topScore)
 
   return (
     <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
@@ -80,15 +89,17 @@ export function DashboardStats({
         count={deals.length}
         note={newThisWeek > 0 ? `${newThisWeek} new this week` : 'nothing new this week'}
       />
-      {/* The only figure here with a real ceiling: quality in full plus half of
-          movement. The others have no scale, so they get no bar. */}
+      {/* The band rather than the fraction, for the reason in `score-band.ts`:
+          a score printed out of 150 is read as a percentage, and the top
+          property in somebody's area kept reading as a C. The bar fills by
+          band, so it says the same thing the word does. */}
       <Tile
-        label="Best score"
-        value="—"
-        count={topScore ?? undefined}
-        share={topScore === null ? undefined : topScore / 150}
-        note={topScore === null ? null : 'out of 150'}
+        label="Best on your list"
+        value={topBand ? topBand.label : '—'}
+        share={topBand ? topBand.rank / BAND_COUNT : undefined}
+        note={topBand ? topBand.note : null}
         tone="accent"
+        word
       />
       <Tile
         label="Best yield"

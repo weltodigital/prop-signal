@@ -8,8 +8,15 @@ import { authErrorMessage, emailField, firstIssue, passwordField, safeRedirect }
 
 export type SignUpState = { status: 'idle' | 'error' | 'confirm'; message?: string; email?: string }
 
-/** Where a new account goes. They have not paid yet, so: to the till. */
-const AFTER_SIGNUP = '/subscribe'
+/**
+ * Where a new account goes.
+ *
+ * The questions, not the till. Answering them costs nothing and ends on the one
+ * screen that tells somebody how many properties their area actually holds —
+ * which is worth knowing before £29 rather than after it. The till is one
+ * button from there.
+ */
+const AFTER_SIGNUP = '/onboarding'
 
 const schema = z.object({
   email: emailField,

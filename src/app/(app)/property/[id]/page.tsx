@@ -15,6 +15,7 @@ import { Timeline } from '@/components/timeline'
 import { StageControl } from '@/components/stage-control'
 import { STAGE_DEFINITIONS } from '@/lib/deal-stages'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
+import { scoreBand } from '@/lib/score-band'
 
 export const dynamic = 'force-dynamic'
 
@@ -182,8 +183,9 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
                   </Link>
                   <span className="text-muted">, {appearance.headline}</span>
                 </span>
-                <span className="figure text-muted">
-                  Position {appearance.position}, score {appearance.totalScore.toFixed(0)}
+                <span className="text-muted" title={`Scored ${appearance.totalScore.toFixed(1)} of 150 that week`}>
+                  Position <span className="figure">{appearance.position}</span>,{' '}
+                  {scoreBand(appearance.totalScore).label.toLowerCase()}
                 </span>
               </li>
             ))}

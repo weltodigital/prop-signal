@@ -43,6 +43,13 @@ import {
   type Score,
 } from './scoring'
 import {
+  areaKeyFor,
+  loadReturnWindow,
+  MIN_WINDOW_SAMPLE,
+  recordReturnObservations,
+} from './return-window'
+import { DELISTABLE_STAGES } from '@/lib/deal-stages'
+import {
   areaDataNeeded,
   EMPTY_ASSUMPTIONS,
   isInvestmentStrategy,
@@ -116,6 +123,12 @@ export type RunSummary = {
   candidatesThinData: number
   /** Left out because the subscriber removed them from their list. */
   candidatesRemoved: number
+  /** Left out because somebody else is already buying them. */
+  candidatesUnderOffer: number
+  /** Held before, absent from this run's payload, and now off every list. */
+  candidatesDelisted: number
+  /** Tracked deals closed out because the property left the market. */
+  dealsDelisted: number
   /** New to this subscriber, as opposed to already standing on their list. */
   dealsAdded: number
   dealsSelected: number
@@ -221,6 +234,9 @@ export async function runProfile(options: {
     candidatesRiskExcluded: 0,
     candidatesThinData: 0,
     candidatesRemoved: 0,
+    candidatesUnderOffer: 0,
+    candidatesDelisted: 0,
+    dealsDelisted: 0,
     dealsAdded: 0,
     dealsSelected: 0,
     creditsSpent: 0,
@@ -274,7 +290,7 @@ export async function runProfile(options: {
 
     // --- 3. Diff against what we last observed -----------------------------
     const existing = await loadExistingProperties(supabase, profile.owner_id)
-    const { propertyIds, events } = await diffAndPersist(supabase, {
+    const { propertyIds, events, delisted } = await diffAndPersist(supabase, {
       ownerId: profile.owner_id,
       profileId: profile.id,
       runId: run.id,
@@ -284,6 +300,16 @@ export async function runProfile(options: {
     })
 
     summary.eventsWritten = [...events.values()].reduce((total, list) => total + list.length, 0)
+    summary.candidatesDelisted = delisted.length
+
+    // Anything that has left the market is already off the list, because the
+    // list is built from what came back. This is the other half: a deal
+    // somebody was working on it does not close itself.
+    summary.dealsDelisted = await closeDelistedDeals(supabase, {
+      ownerId: profile.owner_id,
+      propertyIds: delisted,
+      observedAt,
+    })
 
     // --- 4. Enrich a capped number of candidates ---------------------------
     //
@@ -410,14 +436,70 @@ export async function runProfile(options: {
 
     // Pass two: score each strategy against its own cohort. A room rate is
     // never ranked against a refinance, so each strategy gets its own pass.
+    //
+    // The cohort is the area's own recent history rather than whoever else
+    // turned up this Sunday. Without it a property could fall under the floor
+    // because the others improved — no fact about the property, and a standing
+    // list that drops something has to be able to say why — and no two scores
+    // were comparable across weeks or subscribers, which is the ground the
+    // completion figures stand on. An area with too little history falls back
+    // to the run, which is how this worked before.
+    const areaKey = areaKeyFor(profile.postcode)
+    const windows = new Map<InvestmentStrategy, number[]>(
+      await Promise.all(
+        scorable.map(async (strategy): Promise<[InvestmentStrategy, number[]]> => {
+          const window = await loadReturnWindow(supabase, { areaKey, strategy, now: observedAt })
+          const enough = window.length >= MIN_WINDOW_SAMPLE
+
+          log('return_window', {
+            run_id: run.id,
+            area_key: areaKey,
+            strategy,
+            observations: window.length,
+            used: enough,
+          })
+
+          return [strategy, enough ? window : []]
+        }),
+      ),
+    )
+
     const byStrategy = new Map<InvestmentStrategy, Score[]>(
       scorable.map((strategy) => [
         strategy,
         qualityScores(
           measured.map((entry) => entry.measurements.get(strategy)!),
           DEFAULT_WEIGHTS,
+          windows.get(strategy) ?? [],
         ),
       ]),
+    )
+
+    // What this run measured goes into the window for the runs after it. Every
+    // strategy that could be scored, whether or not the property was published:
+    // the window is what the area offered, not what we chose out of it, and
+    // filtering it to the winners would make every later percentile a
+    // percentile against a list of winners.
+    await recordReturnObservations(
+      supabase,
+      measured.flatMap((entry) =>
+        scorable.flatMap((strategy) => {
+          const measurement = entry.measurements.get(strategy)
+          const value = measurement?.strategyReturn.value
+          if (measurement === undefined || value === null || value === undefined) return []
+
+          return [
+            {
+              areaKey,
+              strategy,
+              propertyKey: entry.listing.key,
+              value,
+              belowWater: measurement.strategyReturn.belowWater,
+              observedAt,
+            },
+          ]
+        }),
+      ),
     )
 
     // Pass three: a property is ranked by whichever strategy suits it best, and
@@ -452,11 +534,13 @@ export async function runProfile(options: {
           // that loses money every month is still something that loses money.
           qualityScore: best.quality.score,
           removed: removed.has(entry.propertyId),
+          listingState: entry.listing.state,
         },
         DEFAULT_QUALIFICATION,
       )
       if (!verdict.qualifies) {
         if (verdict.reason === 'removed') summary.candidatesRemoved += 1
+        if (verdict.reason === 'under_offer') summary.candidatesUnderOffer += 1
         return []
       }
 
@@ -580,6 +664,9 @@ export async function runProfile(options: {
     candidates_risk_excluded: summary.candidatesRiskExcluded,
     candidates_thin_data: summary.candidatesThinData,
     candidates_removed: summary.candidatesRemoved,
+    candidates_under_offer: summary.candidatesUnderOffer,
+    candidates_delisted: summary.candidatesDelisted,
+    deals_delisted: summary.dealsDelisted,
     deals_added: summary.dealsAdded,
     deals_selected: summary.dealsSelected,
     credits_spent: summary.creditsSpent,
@@ -730,7 +817,12 @@ async function diffAndPersist(
     existing: Map<string, ExistingProperty>
     observedAt: Date
   },
-): Promise<{ propertyIds: Map<string, string>; events: Map<string, PropertyEvent[]> }> {
+): Promise<{
+  propertyIds: Map<string, string>
+  events: Map<string, PropertyEvent[]>
+  /** Ids of properties we held that did not come back in this run. */
+  delisted: string[]
+}> {
   const { ownerId, profileId, runId, listings, existing, observedAt } = input
   const propertyIds = new Map<string, string>()
   const byListing = new Map<string, PropertyEvent[]>()
@@ -793,6 +885,13 @@ async function diffAndPersist(
   }
 
   // Anything we held that did not come back in this run has gone.
+  //
+  // It is already off the list by then, because the list is built from what
+  // came back and this did not. What it is not yet is *closed*: a subscriber
+  // part-way through working it is still being shown it under "deals you're
+  // working", and will be for ever unless somebody says so. The ids go back to
+  // the caller for exactly that.
+  const delisted: string[] = []
   const seen = new Set(listings.map((listing) => listing.key))
   for (const [key, previous] of existing) {
     if (seen.has(key)) continue
@@ -802,9 +901,73 @@ async function diffAndPersist(
     await writeEvents(supabase, { ownerId, profileId, runId, propertyId: previous.id, events: [event] })
     await supabase.from('properties').update({ state: 'withdrawn' }).eq('id', previous.id)
     byListing.set(key, [event])
+    delisted.push(previous.id)
   }
 
-  return { propertyIds, events: byListing }
+  return { propertyIds, events: byListing, delisted }
+}
+
+/**
+ * Closes out tracked deals whose property has left the market.
+ *
+ * `delisted` is a terminal stage of its own rather than `passed`. Passing is a
+ * judgement the subscriber made about a property, and counting a seller's
+ * withdrawal as one would quietly say we surfaced a property they rejected —
+ * in the very numbers built to tell us whether the properties we surface are
+ * any good.
+ *
+ * Only deals below an offer are closed. A property under offer to *you* comes
+ * off the portals; that is what an accepted offer looks like from the outside,
+ * and marking it lost would record somebody's purchase as a failure. Those keep
+ * their stage and are shown as no longer listed instead, which is the honest
+ * version of what we know.
+ *
+ * Append-only, like every other stage. A subscriber who knows better moves it
+ * on and the newest row wins.
+ */
+async function closeDelistedDeals(
+  supabase: SupabaseClient,
+  input: { ownerId: string; propertyIds: string[]; observedAt: Date },
+): Promise<number> {
+  if (input.propertyIds.length === 0) return 0
+
+  const { data, error } = await supabase
+    .from('deal_progress')
+    .select('property_id, stage, entered_at')
+    .eq('owner_id', input.ownerId)
+    .in('property_id', input.propertyIds)
+    .order('entered_at', { ascending: false })
+
+  if (error) {
+    log('delisted_deal_read_failed', { owner_id: input.ownerId, message: error.message })
+    return 0
+  }
+
+  // The newest row per property is the current stage. One pass, because the
+  // rows arrive newest first.
+  const current = new Map<string, string>()
+  for (const row of data ?? []) {
+    if (!current.has(row.property_id)) current.set(row.property_id, row.stage)
+  }
+
+  const closing = [...current.entries()]
+    .filter(([, stage]) => (DELISTABLE_STAGES as readonly string[]).includes(stage))
+    .map(([propertyId]) => ({
+      owner_id: input.ownerId,
+      property_id: propertyId,
+      stage: 'delisted',
+      entered_at: input.observedAt.toISOString(),
+    }))
+
+  if (closing.length === 0) return 0
+
+  const { error: writeError } = await supabase.from('deal_progress').insert(closing)
+  if (writeError) {
+    log('delisted_deal_write_failed', { owner_id: input.ownerId, message: writeError.message })
+    return 0
+  }
+
+  return closing.length
 }
 
 async function writeEvents(

@@ -16,11 +16,17 @@ function FieldError({ message }: { message?: string }) {
   )
 }
 
-function Submit({ isNew }: { isNew: boolean }) {
+function Submit({ isNew, subscribed }: { isNew: boolean; subscribed: boolean }) {
   const { pending } = useFormStatus()
+
+  // Somebody who has not paid yet is not building a list with this button —
+  // they are on their way to being told what their area holds, which is the
+  // whole reason these questions now come before the card.
+  const label = subscribed ? (isNew ? 'Save and build my first list' : 'Save changes') : 'Check my area'
+
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? 'Saving…' : isNew ? 'Save and build my first list' : 'Save changes'}
+      {pending ? 'Saving…' : label}
     </Button>
   )
 }
@@ -30,11 +36,19 @@ export function SearchForm({
   profile,
   searchChangesUsed,
   searchChangeLimit,
+  wideningsUsed,
+  wideningLimit,
+  subscribed,
 }: {
   sourcingLists: SourcingList[]
   profile: SearchProfile | null
   searchChangesUsed: number
   searchChangeLimit: number
+  /** Widenings of the radius, which come out of their own allowance. */
+  wideningsUsed: number
+  wideningLimit: number
+  /** False before checkout, where this form leads to the area check. */
+  subscribed: boolean
 }) {
   const [state, formAction] = useActionState<OnboardingState, FormData>(saveSearch, { status: 'idle' })
   // Some lists will not search as wide as others, and one call carries all of
@@ -112,7 +126,8 @@ export function SearchForm({
             <FieldError message={errors.radiusMiles} />
             <p className="mt-1.5 text-sm text-muted">
               This is the biggest thing you control. Ten miles of a quiet market may hold two properties worth your
-              time; forty miles of the same market holds far more. Widen it if your list is short.
+              time; forty miles of the same market holds far more. Widen it if your list is short — that has its own
+              allowance and never uses one of your area changes.
             </p>
             {capping ? (
               <p className="mt-1.5 text-sm">
@@ -298,10 +313,11 @@ export function SearchForm({
       </Card>
 
       <div className="flex flex-wrap items-center gap-4">
-        <Submit isNew={isNew} />
+        <Submit isNew={isNew} subscribed={subscribed} />
         {!isNew ? (
           <span className="text-sm text-muted">
-            Area and strategy changes used this month: {searchChangesUsed} of {searchChangeLimit}.
+            Area and strategy changes used this month: {searchChangesUsed} of {searchChangeLimit}. Widening your
+            radius does not use one of those — it has its own allowance, {wideningsUsed} of {wideningLimit} used.
           </span>
         ) : null}
       </div>

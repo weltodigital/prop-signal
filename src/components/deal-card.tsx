@@ -8,7 +8,8 @@ import { RiskFlags } from '@/components/risk-flags'
 import { StageControl } from '@/components/stage-control'
 import { setStageAction } from '@/app/(app)/deals/actions'
 import { ActionAnchor, ActionButton, ActionLink } from '@/components/ui'
-import { CountUp, Meter } from '@/components/motion-ui'
+import { Meter } from '@/components/motion-ui'
+import { BAND_COUNT, scoreBand } from '@/lib/score-band'
 import { RefurbEstimate } from '@/components/refurb-estimate'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import type { DealStage } from '@/lib/deal-stages'
@@ -43,30 +44,34 @@ function Figure({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * The score, as a number and a meter.
+ * The score, as a band rather than a fraction.
  *
- * A column of bare numbers reads flat: an eye running down the list has to
- * compare five two-digit figures to find the one worth stopping at. The meter
- * does that comparison for it.
+ * The arithmetic behind it has not changed and the breakdown one click down
+ * still shows every point out of 150. What changed is that the card stopped
+ * printing the fraction, because a fraction is read as a percentage whether or
+ * not it is one.
  *
- * The track is a lighter step of the same ramp rather than grey, so the state
- * reads across the whole bar rather than only across the filled part. Out of
- * 150, which is the real ceiling: quality in full plus half of movement.
+ * The ceiling of 150 needs a property to be both an excellent buy and to have a
+ * seller who has been cutting for a year, so almost nothing reaches it. A
+ * perfect new listing comes to about 100 — which read as 67% and made the best
+ * property in somebody's area look like a C. The word says what the number
+ * meant all along.
  *
- * Tabular figures here, because this is a column and the digits have to line up
- * down the page.
+ * The meter fills by band rather than by score for the same reason: a bar
+ * two-thirds full is a percentage by another route.
  */
 function ScoreMeter({ score }: { score: number }) {
-  const share = Math.max(0, Math.min(1, score / 150))
+  const band = scoreBand(score)
 
   return (
-    <div className="w-14 shrink-0 text-right" title={`${score.toFixed(1)} out of 150`}>
-      <p className="figure text-2xl leading-none text-highlight-deep">
-        <CountUp value={score} />
-      </p>
+    <div
+      className="w-[5.5rem] shrink-0 text-right"
+      title={`${band.note} Scored ${score.toFixed(1)} of 150 — open the breakdown for the workings.`}
+    >
+      <p className="text-base leading-none font-medium text-highlight-deep">{band.label}</p>
       <Meter
-        share={Math.max(share, 0.04)}
-        trackClassName="mt-1.5 h-[3px] w-full bg-line"
+        share={band.rank / BAND_COUNT}
+        trackClassName="mt-2 h-[3px] w-full bg-line"
         className="h-full bg-highlight-deep"
       />
     </div>

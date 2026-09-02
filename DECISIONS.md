@@ -1142,3 +1142,191 @@ The property page runs the same arithmetic in the browser as the pipeline runs
 on the server. If the deposit, the rate or the refinance LTV differed between
 them, the page would quietly argue with the score printed above it, so both now
 read the same constant.
+
+## The fixes before launch — 2 September 2026
+
+Seven things, in the order they mattered. Two of them turned out to be
+investigations rather than bugs, and saying which is which is the point of
+writing them down.
+
+### A delisted property was already off the list, and a delisted *deal* was not
+
+The first question was whether a property that had left the market stayed
+visible. On the list, no: the list is built from what came back in the payload,
+a delisted property is not in the payload, so it falls off on its own. That part
+was right by construction.
+
+What was wrong was everything after the list. `listTrackedDeals` joins
+`properties` with no filter on state, so a house somebody had marked
+"interested" in and which sold two months ago sat in "deals you're working" on
+the dashboard for ever, looking live. The one place a stale property does real
+damage is the place the list mechanic never reached.
+
+So `no_longer_listed` now closes the deal out, into a terminal stage of its own:
+
+- **`delisted` is not `passed`.** Passing is a judgement the subscriber made
+  about a property we surfaced, and counting a seller's withdrawal as one would
+  put a fault in exactly the numbers the deal tracking exists to produce. It is
+  not `fell_through` either, which is losing it *after* an offer and says
+  something about the market rather than about the property going.
+- **Only deals below an offer are closed.** A property under offer to you comes
+  off the portals — that is what an accepted offer looks like from the outside —
+  so a run that marked those delisted would record somebody's own purchase as a
+  lost deal. Those keep their stage and the row says "No longer listed" instead,
+  which is the honest version of what we actually know.
+- **It is the one stage the subscriber cannot enter.** `systemOnly` on the
+  definition, refused in the server action, and shown in the select as the
+  current value rather than offered as a choice. Nobody chooses to have a
+  property withdrawn.
+- **It is out of the completion denominator.** A deal that ended because the
+  seller left is not a deal that failed, and dragging the rate down with it would
+  make the rate mean less, not more.
+
+Two things came out of it that were not asked for and are the same bug:
+
+**Sold subject to contract was still on the list.** SSTC properties *do* come
+back in the payload, and nothing filtered them, so the most common route to
+"this house sold months ago" was untouched by fixing the rarer one. It is now
+`under_offer` and off the live list — kept apart from `delisted` because a
+collapse fires `returned_to_market`, which puts the property straight back with
+one of the best headlines this product has.
+
+**The progress meter read a dead deal as nearly complete.** All three exits sit
+at step six so a mixed list sorts sensibly, and the meter took that as the reach
+— drawing a deal abandoned at "interested" as five-sixths done. It reads the
+furthest forward stage out of the history now.
+
+### The EPC cap was right in the code and wrong in the README
+
+The README said the cap was 120 of 200. `RISK_CAPPED_TOTAL` is 90, and the
+ceiling has been 150 since scoring v5 halved movement. The 200 was left over from
+the era when quality and movement were each worth 100 and both counted in full.
+
+Nothing to fix in the pipeline. 90 of 150 binds, and binds about where it should:
+a property with an EPC of F cannot lead a week on the strength of a seller who
+has been cutting, and can still appear on a thin one.
+
+The same 200 was still in the score breakdown the subscriber reads, in a sentence
+that also said the two scores were "added, not blended" and that movement "is
+what puts it on the list" — one stale number and two statements the product had
+since reversed. Documentation drift in a README is a nuisance; the same drift on
+the page explaining the score is the product lying about how it works.
+
+### The score is displayed as a band. The score is unchanged
+
+A strong new listing — perfect on quality, no movement because nothing has
+happened to it yet — comes to about 100 of 150. Printed as a fraction that reads
+as 67%, which is a C, on the best property in somebody's area. The ceiling needs
+a property to be *both* an excellent buy and to have a seller who has been
+cutting for a year, which is rare by construction, so most of a good list sat in
+the sixties and presented as mediocre.
+
+The arithmetic is untouched and the breakdown still shows every point out of 150.
+The card, the dashboard tile and the appearance history show a band —
+Modest, Fair, Good, Strong, Exceptional — and the meter fills by band rather than
+by score, because a bar two-thirds full is a percentage by another route.
+
+The bands are set against what the scale can produce rather than against 150:
+50 is the real floor, since nothing qualifies below that on quality; 100 is a
+property with nothing wrong with it; above that is a good buy whose seller is
+moving too.
+
+### The strategy return is percentiled against the area, not against the Sunday
+
+Forty of the hundred quality points were a percentile against the other
+candidates in the same run. Right in principle — an absolute band does not
+survive leaving one part of the country — and wrong in what it ranked against,
+in two ways that a standing list makes serious:
+
+- A property could fall under the quality floor because *other* properties
+  improved. Nothing about it changed. A standing list is a promise that a
+  property leaves for a reason, and a reason has to be about the property.
+- A score meant something different every week and something different for every
+  subscriber, so nothing was comparable across either — which is the ground the
+  completion figures are supposed to stand on.
+
+`strategy_return_observations` is the fix: every run records what it measured,
+and later runs percentile against a ninety-day window of that. The run's own
+values are folded in with the window, so today's market is represented and the
+property being scored is present in its own cohort, which is what `percentile`
+assumes. Below thirty observations the window is ignored and the run is the
+cohort, exactly as before — thirty values is enough for a place in an order to
+mean something and a dozen is not.
+
+**Keyed on the outward code of the search postcode, not the property's own.** A
+window is read for the search that is running, so it has to be written for the
+search that found the property; keying on the property would file a Portsmouth
+house found from Southampton under Portsmouth and then never read it back for
+either. Radius is deliberately not in the key, so two subscribers on M14 at ten
+and forty miles share a window — a score has to mean the same thing for both of
+them or nothing can be compared. The cost is that the wider search contributes
+values from further out, which is a fair trade for a window dense enough to be a
+percentile at all.
+
+**Every measured property goes in, not only the published ones.** The window is
+what the area offered, not what we chose out of it. Filtering it to the winners
+would make every later percentile a percentile against a list of winners.
+
+No owner_id and none derivable. These are dated observations of a market, which
+is the derived material the licence lets us keep, and the table has no policy for
+`authenticated` at all — the pipeline writes it and the pipeline reads it.
+
+A side effect worth having: a lone candidate in a quiet week used to score half
+the factor by definition, because a cohort of one has no ranking to give. It now
+gets a real place. That is also the first thing that makes the quality floor
+tunable, since the floor was previously being compared against a scale that moved
+every week.
+
+### The area is counted before the card, not after
+
+Somebody in a sparse area could pay £29 and then discover their list would be
+two. One `/sourced-properties` call answers it, so it now runs at the end of
+onboarding and before Stripe.
+
+The flow is reordered: signup goes to the questions, the questions end on the
+count, and the count has the button to checkout. `requireSubscriber` checks the
+profile before the subscription for the same reason.
+
+- **It costs about twenty credits at the very most**, at one credit per ten
+  results, and a thin area — the case this exists for — costs a fraction of that,
+  because there is little to charge for. That is the right way round.
+- **A repeat of the same search is free.** The answer is stored and handed back,
+  so a refresh, a back button or a second tab buys nothing.
+- **Three per allowance period**, so it cannot become a free market search for
+  somebody who never intends to subscribe.
+- **It never blocks the subscription.** A failed check says so and offers the way
+  on. Somebody who wants to subscribe without the number is entitled to.
+- **The wording refuses to let a stock count read as a promise.** It says plainly
+  that this is what the search has to work with before scoring throws most of it
+  away.
+
+### Widening the radius has its own allowance
+
+The three-change cap exists so nobody re-sources a different part of the country
+every week. It was landing hardest on the subscriber it should have been helping:
+the one with a thin list, whose fix is to widen — which the onboarding form tells
+them, in the sentence next to the control. We rationed our own advice, three
+tries and then locked out for the month.
+
+A widening is now counted separately, three of its own. Still bounded, because it
+still costs a backfill; bounded by something only widening can spend. A narrowing
+is not exempt: it resets the backfill like any other move, and nobody widening a
+thin search narrows it on the way. Neither is a postcode change that happens to
+widen at the same time, or the exemption would pay for the move.
+
+### The dashboard leads with what moved
+
+By week twenty the list is largely the list the subscriber already worked
+through, and the reason to open the page is not the list — it is what changed on
+it. That was a dot on a nav item, which is where you put something you do not
+mind being missed.
+
+`WhatMoved` is now the first thing on the page: "three properties on your list
+moved this week, one you are working". Two sources merged into one lede — a
+standing property whose qualifying event landed since they last looked, and an
+unread event on a deal in the pipeline — with the worked ones first, because a
+price cut on something you have an offer in on is the most time-sensitive thing
+in this product. One row per property, or the count above it would be a lie.
+
+Both come from rows the run already wrote. Nothing here costs a credit and there
+is still no notifications table.

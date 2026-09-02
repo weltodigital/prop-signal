@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { searchProfileSchema } from '@/lib/search-profile'
-import { RADIUS_OPTIONS, SEARCH_CHANGE_LIMIT } from '@/lib/search-profile.types'
+import { classifyChange, searchProfileSchema } from '@/lib/search-profile'
+import {
+  RADIUS_OPTIONS,
+  SEARCH_CHANGE_LIMIT,
+  type SearchProfile,
+} from '@/lib/search-profile.types'
 
 function form(overrides: Record<string, unknown> = {}) {
   return {
@@ -150,5 +154,53 @@ describe('investment strategies', () => {
   it('leaves it null when it is not needed', () => {
     const parsed = searchProfileSchema.safeParse(form({ assumptions: { refurbCostPerSqFt: '' } }))
     expect(parsed.data?.assumptions.refurbCostPerSqFt).toBeNull()
+  })
+})
+
+describe('which allowance a change comes out of', () => {
+  const previous: SearchProfile = {
+    id: 'p1',
+    postcode: 'M14 5TP',
+    radiusMiles: 10,
+    sourcingLists: ['reduced-properties'],
+    investmentStrategies: ['btl'],
+    assumptions: { refurbCostPerSqFt: null },
+    minPrice: null,
+    maxPrice: null,
+    minBedrooms: null,
+    propertyTypes: null,
+    backfillCompletedAt: null,
+    lastRunAt: null,
+  }
+
+  const next = (overrides: Record<string, unknown> = {}) =>
+    searchProfileSchema.parse(form(overrides))
+
+  it('charges a widening to its own allowance', () => {
+    // The whole point. This is the change we tell somebody with a thin list to
+    // make, so it must not be rationed out of the budget for moving house.
+    expect(classifyChange(previous, next({ radiusMiles: '20' }))).toBe('radius_widened')
+    expect(classifyChange(previous, next({ radiusMiles: '100' }))).toBe('radius_widened')
+  })
+
+  it('does not exempt a narrowing, which is a different decision', () => {
+    expect(classifyChange(previous, next({ radiusMiles: '5' }))).toBe('search_changed')
+  })
+
+  it('charges a new postcode to the search allowance even when the radius widens too', () => {
+    // Somebody moving to a new area and widening on the way has moved area.
+    // Reading that as a widening would let the exemption pay for the move.
+    expect(classifyChange(previous, next({ postcode: 'PO9 1AB', radiusMiles: '40' }))).toBe(
+      'search_changed',
+    )
+  })
+
+  it('charges a change of sourcing lists to the search allowance', () => {
+    expect(classifyChange(previous, next({ sourcingLists: ['auction'] }))).toBe('search_changed')
+  })
+
+  it('charges nothing for the optional filters, or for a strategy', () => {
+    expect(classifyChange(previous, next({ maxPrice: '250000' }))).toBe('filters_changed')
+    expect(classifyChange(previous, next({ investmentStrategies: ['hmo'] }))).toBe('filters_changed')
   })
 })

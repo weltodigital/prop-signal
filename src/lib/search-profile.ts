@@ -10,7 +10,13 @@ import {
   type InvestmentStrategy,
   type StrategyAssumptions,
 } from '@/lib/strategies'
-import { RADIUS_OPTIONS, SEARCH_CHANGE_LIMIT, type SearchProfile, type SourcingList } from '@/lib/search-profile.types'
+import {
+  RADIUS_OPTIONS,
+  RADIUS_WIDEN_LIMIT,
+  SEARCH_CHANGE_LIMIT,
+  type SearchProfile,
+  type SourcingList,
+} from '@/lib/search-profile.types'
 
 /**
  * The saved search: where a subscriber buys and what they buy.
@@ -23,7 +29,12 @@ import { RADIUS_OPTIONS, SEARCH_CHANGE_LIMIT, type SearchProfile, type SourcingL
  * `server-only` guard and can therefore be imported by the form.
  */
 
-export { PROPERTY_TYPES, RADIUS_OPTIONS, SEARCH_CHANGE_LIMIT } from '@/lib/search-profile.types'
+export {
+  PROPERTY_TYPES,
+  RADIUS_OPTIONS,
+  RADIUS_WIDEN_LIMIT,
+  SEARCH_CHANGE_LIMIT,
+} from '@/lib/search-profile.types'
 export type { SearchProfile, SourcingList } from '@/lib/search-profile.types'
 
 /** The sourcing lists on offer. Only enabled rows, so an unverified guess is never shown. */
@@ -158,15 +169,40 @@ export type SearchProfileInput = z.infer<typeof searchProfileSchema>
 export type SaveOutcome =
   | { status: 'created'; backfillPending: true }
   | { status: 'updated'; backfillPending: boolean }
-  | { status: 'quota_exhausted'; used: number; limit: number }
+  | { status: 'quota_exhausted'; kind: CountedChange; used: number; limit: number }
 
-function searchChanged(previous: SearchProfile, next: SearchProfileInput): boolean {
-  if (previous.postcode !== next.postcode) return true
-  if (previous.radiusMiles !== next.radiusMiles) return true
+/** The kinds of change that cost something, and are therefore counted. */
+export type CountedChange = 'search_changed' | 'radius_widened'
+type ChangeKind = CountedChange | 'filters_changed'
 
+/**
+ * What kind of change this is, which decides which allowance it comes out of.
+ *
+ * Widening the radius is separated from everything else because it is the one
+ * change a subscriber makes *because we told them to*. The onboarding form says
+ * the radius is the biggest thing they control and that a short list is fixed
+ * by widening it — and then the same three-change cap that exists to stop
+ * somebody re-sourcing a different part of the country every week locked them
+ * out after three attempts at the advice we gave them.
+ *
+ * It still costs a backfill, so it is still bounded. It is bounded separately,
+ * out of an allowance that only widening can spend.
+ *
+ * Narrowing is not the same thing and is not exempt. It resets the backfill
+ * exactly as any other move does, and nobody widening a thin search is
+ * narrowing it on the way.
+ */
+export function classifyChange(previous: SearchProfile, next: SearchProfileInput): ChangeKind {
   const before = [...previous.sourcingLists].sort().join(',')
   const after = [...next.sourcingLists].sort().join(',')
-  return before !== after
+
+  if (previous.postcode !== next.postcode || before !== after) return 'search_changed'
+
+  if (previous.radiusMiles !== next.radiusMiles) {
+    return next.radiusMiles > previous.radiusMiles ? 'radius_widened' : 'search_changed'
+  }
+
+  return 'filters_changed'
 }
 
 /**
@@ -232,14 +268,25 @@ export async function saveSearchProfile(userId: string, input: SearchProfileInpu
     lastRunAt: existingRow.last_run_at,
   }
 
-  const isSearchChange = searchChanged(previous, input)
+  const kind = classifyChange(previous, input)
 
-  if (isSearchChange) {
+  if (kind === 'search_changed') {
     const used = await countSearchChanges(userId)
     if (used >= SEARCH_CHANGE_LIMIT) {
-      return { status: 'quota_exhausted', used, limit: SEARCH_CHANGE_LIMIT }
+      return { status: 'quota_exhausted', kind, used, limit: SEARCH_CHANGE_LIMIT }
     }
   }
+
+  if (kind === 'radius_widened') {
+    const used = await countRadiusWidenings(userId)
+    if (used >= RADIUS_WIDEN_LIMIT) {
+      return { status: 'quota_exhausted', kind, used, limit: RADIUS_WIDEN_LIMIT }
+    }
+  }
+
+  // Anything that moves the search itself brings inventory this subscriber has
+  // never been shown, so the database resets the backfill for all of them.
+  const isSearchChange = kind !== 'filters_changed'
 
   const { error } = await admin.from('search_profiles').update(row).eq('owner_id', userId)
   if (error) throw new Error(`Could not save the search profile: ${error.message}`)
@@ -247,7 +294,7 @@ export async function saveSearchProfile(userId: string, input: SearchProfileInpu
   await admin.from('search_profile_changes').insert({
     owner_id: userId,
     profile_id: previous.id,
-    kind: isSearchChange ? 'search_changed' : 'filters_changed',
+    kind,
     previous: {
       postcode: previous.postcode,
       radius_miles: previous.radiusMiles,
@@ -265,8 +312,7 @@ export async function saveSearchProfile(userId: string, input: SearchProfileInpu
   return { status: 'updated', backfillPending: isSearchChange }
 }
 
-/** Search changes used in the current allowance period. */
-export async function countSearchChanges(userId: string): Promise<number> {
+async function countChanges(userId: string, kind: CountedChange): Promise<number> {
   const admin = createAdminClient()
 
   const { data: periodStart, error: periodError } = await admin.rpc('current_period_start', {
@@ -278,9 +324,19 @@ export async function countSearchChanges(userId: string): Promise<number> {
     .from('search_profile_changes')
     .select('id', { count: 'exact', head: true })
     .eq('owner_id', userId)
-    .eq('kind', 'search_changed')
+    .eq('kind', kind)
     .gte('created_at', periodStart ?? new Date(0).toISOString())
 
-  if (error) throw new Error(`Could not count search changes: ${error.message}`)
+  if (error) throw new Error(`Could not count ${kind} changes: ${error.message}`)
   return count ?? 0
+}
+
+/** Moves of the postcode, the sourcing lists or a narrowing, this period. */
+export async function countSearchChanges(userId: string): Promise<number> {
+  return countChanges(userId, 'search_changed')
+}
+
+/** Widenings of the radius this period, out of their own allowance. */
+export async function countRadiusWidenings(userId: string): Promise<number> {
+  return countChanges(userId, 'radius_widened')
 }

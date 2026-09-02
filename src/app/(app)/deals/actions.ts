@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { recordStage, untrack } from '@/lib/deal-progress'
-import { isDealStage } from '@/lib/deal-stages'
+import { isDealStage, STAGE_DEFINITIONS } from '@/lib/deal-stages'
 
 /**
  * Recording what the subscriber did next.
@@ -39,8 +39,13 @@ export async function setStageAction(formData: FormData) {
   const propertyId = String(formData.get('propertyId') ?? '')
   const stage = String(formData.get('stage') ?? '')
 
-  // A stage that is not one of the eight is a crafted post, not a mistake.
+  // A stage that is not one of the nine is a crafted post, not a mistake.
   if (!propertyId || !isDealStage(stage)) return
+
+  // "No longer listed" is an observation the run makes, not a claim the
+  // subscriber gets to enter. Somebody who wants a deal closed has Passed and
+  // Fell through, which say what actually happened.
+  if (STAGE_DEFINITIONS[stage].systemOnly) return
 
   await recordStage(propertyId, stage)
   revalidateDealSurfaces(propertyId)

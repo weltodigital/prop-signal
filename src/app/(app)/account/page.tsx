@@ -1,7 +1,14 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
-import { countSearchChanges, getSearchProfile, listSourcingLists, SEARCH_CHANGE_LIMIT } from '@/lib/search-profile'
+import {
+  countRadiusWidenings,
+  countSearchChanges,
+  getSearchProfile,
+  listSourcingLists,
+  RADIUS_WIDEN_LIMIT,
+  SEARCH_CHANGE_LIMIT,
+} from '@/lib/search-profile'
 import { ButtonLink } from '@/components/ui'
 import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
 import { ChangePasswordForm } from './change-password-form'
@@ -40,10 +47,11 @@ export default async function AccountPage({
   const state = await getSubscriptionState()
   const subscription = state.subscription
 
-  const [profile, sourcingLists, changesUsed, params] = await Promise.all([
+  const [profile, sourcingLists, changesUsed, wideningsUsed, params] = await Promise.all([
     state.active ? getSearchProfile() : Promise.resolve(null),
     state.active ? listSourcingLists() : Promise.resolve([]),
     state.active ? countSearchChanges(user.id) : Promise.resolve(0),
+    state.active ? countRadiusWidenings(user.id) : Promise.resolve(0),
     searchParams,
   ])
 
@@ -147,10 +155,19 @@ export default async function AccountPage({
                   {profile.sourcingLists.map((id) => listLabels.get(id) ?? id).join(', ')}
                 </dd>
               </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted">Changes used this month</dt>
+              <div className="flex justify-between gap-4 border-b border-line pb-3">
+                <dt className="text-muted">Area and strategy changes this month</dt>
                 <dd className="figure font-medium">
                   {changesUsed} of {SEARCH_CHANGE_LIMIT}
+                </dd>
+              </div>
+              {/* Its own allowance, because widening is what somebody with a
+                  thin list is told to do and it should not come out of the
+                  budget for moving house. */}
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">Radius widenings this month</dt>
+                <dd className="figure font-medium">
+                  {wideningsUsed} of {RADIUS_WIDEN_LIMIT}
                 </dd>
               </div>
             </dl>
