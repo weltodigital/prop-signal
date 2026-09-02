@@ -7,7 +7,27 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 800
 
 /**
- * The weekly run. Sunday 22:00, one cron.
+ * How long the batch may work before it stops and leaves the rest.
+ *
+ * Short of `maxDuration` on purpose. A run killed by the platform mid-flight
+ * leaves a `pipeline_runs` row stuck at 'running', and the next invocation
+ * treats that profile as in flight and skips it — so a hard kill does not just
+ * lose a run, it loses the profile for the rest of the cycle. Stopping early
+ * and cleanly costs one profile's worth of wall clock and avoids all of that.
+ */
+const BUDGET_MS = 700_000
+
+/**
+ * The weekly run. Sunday night into Monday, one profile at a time.
+ *
+ * Fires repeatedly rather than once, and each invocation picks up the profiles
+ * the last one did not reach. A single 800-second request could hold about
+ * five subscribers at the old write rate, which was the real ceiling on how
+ * many people this product could serve — well below what the credit plan
+ * would fund, and about to be five times worse with multi-area plans.
+ *
+ * Nothing runs twice: a profile with any run row since the cycle opened is
+ * skipped, so the repeats drain a queue rather than redoing work.
  *
  * Vercel sends `Authorization: Bearer $CRON_SECRET`. Anything without it is
  * refused — this endpoint spends money.
@@ -24,12 +44,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { batchId, summaries } = await runWeekly()
+    const { batchId, summaries, remaining } = await runWeekly({ budgetMs: BUDGET_MS })
 
     return NextResponse.json({
       ok: true,
       batchId,
       profiles: summaries.length,
+      // Left for the next invocation. Zero means the cycle is drained.
+      remaining,
       creditsSpent: summaries.reduce((total, s) => total + s.creditsSpent, 0),
       dealsSelected: summaries.reduce((total, s) => total + s.dealsSelected, 0),
       thinWeeks: summaries.filter((s) => s.isThin).length,

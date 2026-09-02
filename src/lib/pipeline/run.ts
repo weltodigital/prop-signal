@@ -90,6 +90,22 @@ const ENRICHMENT_CAP = 25
 const WEEKLY_CEILING = 100
 const BACKFILL_CEILING = 150
 
+/**
+ * Rows per write statement.
+ *
+ * Everything a run persists goes in bulk now rather than a row at a time. This
+ * is the size of one statement: large enough that three hundred properties are
+ * one round trip, small enough that a busy area is not one enormous one.
+ */
+const WRITE_CHUNK = 500
+
+/** Splits a list into runs of at most `size`. */
+function chunked<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size))
+  return chunks
+}
+
 export type RunKind = 'backfill' | 'weekly' | 'manual'
 
 export type ProfileRow = {
@@ -687,10 +703,17 @@ export async function runWeekly(options: {
   now?: () => Date
   /** Restrict the batch to one owner. Used by a manual refresh. */
   ownerId?: string
-} = {}): Promise<{ batchId: string; summaries: RunSummary[] }> {
+  /**
+   * Wall-clock this invocation may use before it stops and leaves the rest for
+   * the next one. Null runs everything, which is what a CLI wants.
+   */
+  budgetMs?: number | null
+} = {}): Promise<{ batchId: string; summaries: RunSummary[]; remaining: number }> {
   const supabase = options.supabase ?? createAdminClient()
   const now = options.now ?? (() => new Date())
   const batchId = crypto.randomUUID()
+  const startedAt = Date.now()
+  const budgetMs = options.budgetMs === undefined ? null : options.budgetMs
 
   let query = supabase
     .from('search_profiles')
@@ -700,14 +723,42 @@ export async function runWeekly(options: {
 
   if (options.ownerId) query = query.eq('owner_id', options.ownerId)
 
-  const { data: profiles, error } = await query
+  const { data: allProfiles, error } = await query
   if (error) throw new Error(`Could not read the search profiles: ${error.message}`)
 
-  log('batch_start', { batch_id: batchId, profiles: profiles?.length ?? 0 })
+  // Profiles already attempted in this cycle, so a second invocation picks up
+  // where the first stopped rather than paying for the same areas again.
+  //
+  // Attempted, not succeeded: one try per profile per cycle. A profile that
+  // failed is left until next week rather than retried on the next invocation,
+  // because a profile that fails repeatedly would otherwise take the whole
+  // budget every half hour and starve everyone behind it.
+  //
+  // A named owner is a manual refresh and skips all of this — somebody asking
+  // for a run by hand means it.
+  const done = options.ownerId ? new Set<string>() : await profilesRunThisCycle(supabase, now())
+  const profiles = (allProfiles ?? []).filter((profile) => !done.has(profile.id))
+
+  log('batch_start', {
+    batch_id: batchId,
+    profiles: profiles.length,
+    already_run: done.size,
+    budget_ms: budgetMs,
+  })
 
   const summaries: RunSummary[] = []
+  let remaining = 0
 
-  for (const profile of profiles ?? []) {
+  for (const profile of profiles) {
+    // Stop cleanly with time to spare rather than being killed mid-run. A run
+    // cut off by the platform leaves a 'running' row that nothing closes, and
+    // the next invocation would treat that profile as in flight for ever.
+    if (budgetMs !== null && Date.now() - startedAt > budgetMs) {
+      remaining = profiles.length - summaries.length
+      log('batch_budget_reached', { batch_id: batchId, ran: summaries.length, remaining })
+      break
+    }
+
     // Every subscriber costs credits, so only people who are paying are run.
     const { data: entitled } = await supabase.rpc('has_active_subscription', { p_owner_id: profile.owner_id })
     if (entitled !== true) {
@@ -735,9 +786,51 @@ export async function runWeekly(options: {
     deals_selected: summaries.reduce((total, s) => total + s.dealsSelected, 0),
     thin_weeks: summaries.filter((s) => s.isThin).length,
     failures: summaries.filter((s) => s.status !== 'completed').length,
+    remaining,
   })
 
-  return { batchId, summaries }
+  return { batchId, summaries, remaining }
+}
+
+/**
+ * Profiles already attempted since this cycle opened.
+ *
+ * The cycle is the Sunday run: everything since the most recent Sunday 22:00.
+ * A profile with a run row in that window is left alone, which is what lets a
+ * second invocation continue a batch the first could not finish rather than
+ * re-sourcing areas that are already done.
+ *
+ * A row still marked 'running' counts as attempted too. That is deliberate: an
+ * overlapping invocation must not start a second run for the same profile, and
+ * paying twice is worse than skipping once.
+ */
+async function profilesRunThisCycle(supabase: SupabaseClient, now: Date): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('pipeline_runs')
+    .select('profile_id')
+    .gte('created_at', cycleStart(now).toISOString())
+
+  if (error) {
+    // Without this the batch would re-run everybody, which costs real credits.
+    // Refusing is the safe direction.
+    throw new Error(`Could not read this cycle's runs: ${error.message}`)
+  }
+
+  return new Set((data ?? []).map((row) => row.profile_id).filter((id): id is string => Boolean(id)))
+}
+
+/** The most recent Sunday 22:00 UTC at or before `now`. */
+export function cycleStart(now: Date): Date {
+  const start = new Date(now)
+  start.setUTCHours(22, 0, 0, 0)
+
+  // Sunday is 0. Wind back to the last Sunday, and back one more week where
+  // it is Sunday but not yet ten at night.
+  const daysSinceSunday = start.getUTCDay()
+  start.setUTCDate(start.getUTCDate() - daysSinceSunday)
+  if (start > now) start.setUTCDate(start.getUTCDate() - 7)
+
+  return start
 }
 
 /**
@@ -827,62 +920,84 @@ async function diffAndPersist(
   const propertyIds = new Map<string, string>()
   const byListing = new Map<string, PropertyEvent[]>()
 
-  for (const listing of listings) {
+  // The diff is pure, so all of it happens before anything is written. What
+  // used to be here was a loop doing one upsert and one event write per
+  // property: three hundred properties meant six hundred sequential round
+  // trips, which was most of the two and a half minutes a run took and all of
+  // the reason only about five subscribers fitted in one cron invocation.
+  //
+  // Nothing about what is written has changed. It is written in two calls
+  // instead of six hundred.
+  const rows = listings.map((listing) => {
     const previous = existing.get(listing.key) ?? null
-    const events = diffListing(listing, previous, observedAt, DEFAULT_THRESHOLDS)
+    byListing.set(listing.key, diffListing(listing, previous, observedAt, DEFAULT_THRESHOLDS))
 
     const lowest = Math.min(...[previous?.lowestPrice, listing.price].filter((v): v is number => typeof v === 'number'))
     const highest = Math.max(...[previous?.highestPrice, listing.price].filter((v): v is number => typeof v === 'number'))
 
+    return {
+      owner_id: ownerId,
+      property_key: listing.key,
+      last_observed_at: observedAt.toISOString(),
+      last_run_id: runId,
+      // Always sent, never omitted. The conflict path would not touch it,
+      // but the insert path this is built from still has to satisfy the
+      // NOT NULL, and a property we already hold keeps the date we first
+      // saw it rather than being reset to today.
+      first_observed_at: previous?.firstObservedAt ?? observedAt.toISOString(),
+      address: listing.address,
+      precise_address: listing.preciseAddress,
+      postcode: listing.postcode,
+      internal_area_sqft: listing.internalAreaSqFt,
+      reduced_by_percent: listing.reducedByPercent,
+      days_since_price_change: listing.daysSincePriceChange,
+      price: listing.price,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
+      property_type: listing.propertyType,
+      listing_url: listing.listingUrl,
+      agent: listing.agent,
+      state: listing.state,
+      days_on_market: listing.daysOnMarket,
+      first_listed_at: listing.firstListedAt,
+      lists: listing.lists,
+      lowest_price_seen: Number.isFinite(lowest) ? lowest : null,
+      highest_price_seen: Number.isFinite(highest) ? highest : null,
+    }
+  })
+
+  // Chunked, because one statement carrying five hundred rows is a statement
+  // and one carrying fifty thousand is a timeout. A failed chunk is logged and
+  // the rest still land, which is the same tolerance the old loop had per row.
+  for (const chunk of chunked(rows, WRITE_CHUNK)) {
     const { data, error } = await supabase
       .from('properties')
-      .upsert(
-        {
-          owner_id: ownerId,
-          property_key: listing.key,
-          last_observed_at: observedAt.toISOString(),
-          last_run_id: runId,
-          // Always sent, never omitted. The conflict path would not touch it,
-          // but the insert path this is built from still has to satisfy the
-          // NOT NULL, and a property we already hold keeps the date we first
-          // saw it rather than being reset to today.
-          first_observed_at: previous?.firstObservedAt ?? observedAt.toISOString(),
-          address: listing.address,
-          precise_address: listing.preciseAddress,
-          postcode: listing.postcode,
-          internal_area_sqft: listing.internalAreaSqFt,
-          reduced_by_percent: listing.reducedByPercent,
-          days_since_price_change: listing.daysSincePriceChange,
-          price: listing.price,
-          bedrooms: listing.bedrooms,
-          bathrooms: listing.bathrooms,
-          property_type: listing.propertyType,
-          listing_url: listing.listingUrl,
-          agent: listing.agent,
-          state: listing.state,
-          days_on_market: listing.daysOnMarket,
-          first_listed_at: listing.firstListedAt,
-          lists: listing.lists,
-          lowest_price_seen: Number.isFinite(lowest) ? lowest : null,
-          highest_price_seen: Number.isFinite(highest) ? highest : null,
-        },
-        { onConflict: 'owner_id,property_key' },
-      )
-      .select('id')
-      .single()
+      .upsert(chunk, { onConflict: 'owner_id,property_key' })
+      .select('id, property_key')
 
     if (error || !data) {
-      log('property_upsert_failed', { key: listing.key, message: error?.message })
+      log('property_upsert_failed', { rows: chunk.length, message: error?.message })
       continue
     }
 
-    propertyIds.set(listing.key, data.id)
-    byListing.set(listing.key, events)
-
-    if (events.length) {
-      await writeEvents(supabase, { ownerId, profileId, runId, propertyId: data.id, events })
-    }
+    for (const row of data) propertyIds.set(row.property_key, row.id)
   }
+
+  // Every event from every property, in one write rather than one per
+  // property. The ids come from the upsert above, so a property whose chunk
+  // failed contributes nothing and its events are dropped with it — the same
+  // outcome as the old `continue`.
+  const eventRows = [...byListing.entries()].flatMap(([key, events]) => {
+    const propertyId = propertyIds.get(key)
+    if (!propertyId || events.length === 0) return []
+    return [{ propertyId, events }]
+  })
+
+  await writeEvents(
+    supabase,
+    { ownerId, profileId, runId },
+    eventRows.flatMap((entry) => entry.events.map((event) => ({ propertyId: entry.propertyId, event }))),
+  )
 
   // Anything we held that did not come back in this run has gone.
   //
@@ -892,16 +1007,29 @@ async function diffAndPersist(
   // working", and will be for ever unless somebody says so. The ids go back to
   // the caller for exactly that.
   const delisted: string[] = []
+  const goneEvents: Array<{ propertyId: string; event: PropertyEvent }> = []
+
   const seen = new Set(listings.map((listing) => listing.key))
   for (const [key, previous] of existing) {
     if (seen.has(key)) continue
     if (previous.state === 'withdrawn') continue
 
     const event = disappearanceEvent(previous, observedAt)
-    await writeEvents(supabase, { ownerId, profileId, runId, propertyId: previous.id, events: [event] })
-    await supabase.from('properties').update({ state: 'withdrawn' }).eq('id', previous.id)
     byListing.set(key, [event])
+    goneEvents.push({ propertyId: previous.id, event })
     delisted.push(previous.id)
+  }
+
+  if (delisted.length) {
+    await writeEvents(supabase, { ownerId, profileId, runId }, goneEvents)
+
+    // One statement for the lot. Marking them withdrawn one at a time was the
+    // same round-trip-per-row problem as the upsert above, and a week that
+    // clears a lot of stock is exactly when a run can least afford it.
+    for (const chunk of chunked(delisted, WRITE_CHUNK)) {
+      const { error } = await supabase.from('properties').update({ state: 'withdrawn' }).in('id', chunk)
+      if (error) log('withdrawn_write_failed', { rows: chunk.length, message: error.message })
+    }
   }
 
   return { propertyIds, events: byListing, delisted }
@@ -970,13 +1098,22 @@ async function closeDelistedDeals(
   return closing.length
 }
 
+/**
+ * Every event from a run, in as few statements as the row count allows.
+ *
+ * Takes the whole run's events rather than one property's. The events of three
+ * hundred properties are one write, and were three hundred.
+ */
 async function writeEvents(
   supabase: SupabaseClient,
-  input: { ownerId: string; profileId: string; runId: string; propertyId: string; events: PropertyEvent[] },
+  input: { ownerId: string; profileId: string; runId: string },
+  events: ReadonlyArray<{ propertyId: string; event: PropertyEvent }>,
 ): Promise<void> {
-  const rows = input.events.map((event) => ({
+  if (events.length === 0) return
+
+  const rows = events.map(({ propertyId, event }) => ({
     owner_id: input.ownerId,
-    property_id: input.propertyId,
+    property_id: propertyId,
     profile_id: input.profileId,
     run_id: input.runId,
     event_type: event.type,
@@ -990,12 +1127,14 @@ async function writeEvents(
 
   // ignoreDuplicates, because the unique constraint is the point: the same move
   // observed by two runs is one event.
-  const { error } = await supabase.from('property_events').upsert(rows, {
-    onConflict: 'owner_id,property_id,dedupe_key',
-    ignoreDuplicates: true,
-  })
+  for (const chunk of chunked(rows, WRITE_CHUNK)) {
+    const { error } = await supabase.from('property_events').upsert(chunk, {
+      onConflict: 'owner_id,property_id,dedupe_key',
+      ignoreDuplicates: true,
+    })
 
-  if (error) log('event_write_failed', { property_id: input.propertyId, message: error.message })
+    if (error) log('event_write_failed', { rows: chunk.length, message: error.message })
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1193,20 +1332,37 @@ async function persistEnrichment(
     .eq('owner_id', ownerId)
     .in('id', [...propertyIds.values()])
 
+  // Enrichment is held per postcode, type and bedroom count, and there are at
+  // most ENRICHMENT_CAP of those in a run — so the properties sharing a figure
+  // are updated together. This was one statement per property, which on a
+  // three-hundred-property area was three hundred round trips to write
+  // twenty-five distinct values.
+  const byKey = new Map<string, string[]>()
   for (const row of rows ?? []) {
     const key = `${row.postcode ?? ''}|${row.property_type ?? ''}|${row.bedrooms ?? ''}`.toLowerCase()
-    const found = enrichment.get(key)
-    if (!found) continue
+    if (!enrichment.has(key)) continue
 
-    await supabase
-      .from('properties')
-      .update({
-        enriched_at: observedAt.toISOString(),
-        estimated_value: found.estimatedValue,
-        estimated_rent: found.estimatedRent,
-        area_demand_rating: found.areaDemandRating,
-      })
-      .eq('id', row.id)
+    const ids = byKey.get(key)
+    if (ids) ids.push(row.id)
+    else byKey.set(key, [row.id])
+  }
+
+  for (const [key, ids] of byKey) {
+    const found = enrichment.get(key)!
+
+    for (const chunk of chunked(ids, WRITE_CHUNK)) {
+      const { error } = await supabase
+        .from('properties')
+        .update({
+          enriched_at: observedAt.toISOString(),
+          estimated_value: found.estimatedValue,
+          estimated_rent: found.estimatedRent,
+          area_demand_rating: found.areaDemandRating,
+        })
+        .in('id', chunk)
+
+      if (error) log('enrichment_write_failed', { rows: chunk.length, message: error.message })
+    }
   }
 }
 
