@@ -12,7 +12,7 @@ import sourcing from '@/assets/prop-signal-property-sourcing.jpg'
 export const metadata: Metadata = {
   title: 'Prop Signal. Sourced deals for how you invest',
   description:
-    'Tell us where you buy and how you make your money. We source the best deals in your area against those criteria, score them, and keep them in front of you. BRRR in Portsmouth, HMOs in Leeds, buy to let near home. £29 a month.',
+    'Tell us where you buy and how you make your money. We source the best deals in your area against those criteria, score them, and keep them in front of you. BRRR in Portsmouth, HMOs in Leeds, buy to let near home. From £29 a month.',
 }
 
 const CLAIMS = [
@@ -85,11 +85,11 @@ const COMPARISON = {
     },
     {
       label: 'What it costs',
-      cells: ['£29 a month', 'A fee in the thousands, on each deal', 'A subscription, and your weekends'],
+      cells: ['From £29 a month', 'A fee in the thousands, on each deal', 'A subscription, and your weekends'],
     },
     {
       label: 'What they earn if you walk away',
-      cells: ['The same £29', 'Nothing, which is the problem', 'The same subscription'],
+      cells: ['The same monthly fee', 'Nothing, which is the problem', 'The same subscription'],
     },
   ],
 } as const
@@ -101,7 +101,7 @@ const FAQS = [
   },
   {
     q: 'How is this different from a deal sourcer?',
-    a: 'A sourcer finds one property, charges a fee in the thousands, and you buy what they picked. We show you everything in your area that moved this week, with the numbers and the reasoning in the open, and you pick. Nobody here has an interest in you buying any particular property, because we are paid the same £29 whether you buy or not.',
+    a: 'A sourcer finds one property, charges a fee in the thousands, and you buy what they picked. We show you everything in your area that moved this week, with the numbers and the reasoning in the open, and you pick. Nobody here has an interest in you buying any particular property, because we are paid the same whether you buy or not.',
   },
   {
     q: 'How many properties will I get?',
@@ -141,7 +141,7 @@ export default async function HomePage() {
 
   const signedIn = Boolean(user)
   const primaryHref = signedIn ? '/dashboard' : '/signup'
-  const primaryLabel = signedIn ? 'Go to your dashboard' : 'Start for £29 a month'
+  const primaryLabel = signedIn ? 'Go to your dashboard' : 'Start from £29 a month'
 
   return (
     <div className="min-h-screen bg-ground">
@@ -206,7 +206,7 @@ export default async function HomePage() {
                   </Press>
                 </div>
 
-                <p className="mt-6 text-sm text-muted">£29 a month for your area. Cancel any time.</p>
+                <p className="mt-6 text-sm text-muted">From £29 a month, by how many areas you buy in. Cancel any time.</p>
               </Arrive>
 
               <Arrive className="relative col-span-12 lg:col-span-5" delay={0.12}>
@@ -530,7 +530,7 @@ export default async function HomePage() {
                 <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
                   Tell us how you invest. We will find the deals.
                 </h2>
-                <p className="mt-6 text-body text-muted">£29 a month for your area. Cancel any time.</p>
+                <p className="mt-6 text-body text-muted">From £29 a month, by how many areas you buy in. Cancel any time.</p>
 
                 <div className="mt-9 flex flex-wrap gap-3 lg:justify-center">
                   <Press>

@@ -29,7 +29,7 @@ export default async function LoginPage({
   return (
     <AuthShell
       title="Sign in"
-      intro="£29 a month. The deals, brought to you. Cancel any time."
+      intro="From £29 a month. The deals, brought to you. Cancel any time."
       notice={
         notice ? (
           <Notice tone={notice.tone} title={notice.title}>

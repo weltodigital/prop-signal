@@ -16,6 +16,8 @@ import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
 import { ChangePasswordForm } from './change-password-form'
 import { chooseAreaAction } from './actions'
 import { areaName } from '@/lib/search-profile.types'
+import { PLANS, tierForPrice } from '@/lib/plans'
+import { planPriceIds } from '@/lib/stripe/client'
 import { Button, Card, Notice } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -63,6 +65,10 @@ export default async function AccountPage({
 
   const listLabels = new Map(sourcingLists.map((list) => [list.id, list.label]))
 
+  // Which tier this subscription is, by price id and the explicit map.
+  const tier = tierForPrice(subscription?.priceId ?? null, planPriceIds())
+  const plan = tier ? PLANS[tier] : null
+
   return (
     <>
       <h1 className="font-display text-h2 font-normal">Account</h1>
@@ -85,8 +91,21 @@ export default async function AccountPage({
               <dd className="font-medium">{STATUS_WORDING[subscription.status] ?? subscription.status}</dd>
             </div>
             <div className="flex justify-between gap-4 border-b border-line pb-3">
-              <dt className="text-muted">Price</dt>
-              <dd className="figure font-medium">£29 per month</dd>
+              <dt className="text-muted">Plan</dt>
+              {/* Read from the price they actually bought rather than printed
+                  as a constant. A hardcoded £29 on a Portfolio account is the
+                  kind of wrong that costs a support email. */}
+              <dd className="font-medium">
+                {plan ? (
+                  <>
+                    {plan.label} —{' '}
+                    <span className="figure">£{plan.monthlyPrice}</span> a month,{' '}
+                    <span className="figure">{plan.areas}</span> {plan.areas === 1 ? 'area' : 'areas'}
+                  </>
+                ) : (
+                  'Active'
+                )}
+              </dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-muted">

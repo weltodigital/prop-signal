@@ -39,7 +39,7 @@ export function MarketingNav({ signedIn }: { signedIn: boolean }) {
                 Sign in
               </Link>
               <ButtonLink href="/signup">
-                Start for £29 a month
+                Start from £29 a month
               </ButtonLink>
             </>
           )}

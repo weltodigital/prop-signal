@@ -52,7 +52,7 @@ export function SignUpForm({ next }: { next: string }) {
       </Button>
 
       <p className="text-sm text-muted">
-        Creating an account costs nothing. The £29 is charged at the next step, by Stripe.
+        Creating an account costs nothing. You pick a plan and pay after we have shown you what your area holds.
       </p>
     </form>
   )
