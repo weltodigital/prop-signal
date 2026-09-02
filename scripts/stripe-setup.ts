@@ -178,7 +178,21 @@ async function ensurePortal(stripe: Stripe): Promise<void> {
     subscription_update: {
       enabled: priced.length > 1,
       default_allowed_updates: ['price'],
-      proration_behavior: 'create_prorations' as const,
+      // Prorate and invoice at once. An upgrade grants areas immediately and
+      // we start spending credits on them that Sunday, so the money should
+      // land before the entitlement does rather than on next month's invoice.
+      proration_behavior: 'always_invoice' as const,
+      // A downgrade waits for the period end. Applied immediately it would
+      // credit somebody back for data we have already bought — the weekly runs
+      // for their areas are sunk by mid-period — and it would take areas away
+      // the instant they clicked, possibly one they have an offer in on. At
+      // the boundary, cost and revenue stop together.
+      //
+      // Stated here rather than left to the dashboard, because this whole
+      // object replaces the stored one: anything omitted is reset, and a
+      // setting that survives only until the next `stripe:setup` is a setting
+      // that will be silently lost.
+      schedule_at_period_end: { conditions: [{ type: 'decreasing_item_amount' as const }] },
       products: priced,
     },
   }

@@ -166,6 +166,63 @@ async function main() {
     }
     if (active.features.payment_method_update.enabled) ok('card update', 'allowed')
     else bad('card update', 'not allowed — a past_due subscriber cannot fix their card')
+
+    // Switching plan is the whole point of having tiers, and only some of it
+    // can be checked from here.
+    //
+    // `products` — the list of plans a customer may switch to — is returned
+    // only when the configuration was written through the API. A portal
+    // managed in the Dashboard reports every other field and simply omits it,
+    // so an absent list means "we cannot see it", not "it is empty". Treating
+    // the two as the same thing made this check fail no matter what was
+    // configured, which is worse than not checking at all: it teaches you to
+    // ignore the output.
+    const update = active.features.subscription_update
+    const wanted = PLAN_LIST.filter((plan) => PRICE_ENV[plan.id]).length
+
+    if (!update?.enabled) {
+      bad('plan switching', 'disabled — nobody can upgrade or downgrade')
+    } else if (!(update.default_allowed_updates ?? []).includes('price')) {
+      bad('plan switching', 'enabled, but price is not an allowed update')
+    } else if (update.products === undefined || update.products === null) {
+      ok('plan switching', `enabled, proration ${update.proration_behavior}`)
+      note('The switchable plan list is managed in the Dashboard and is not readable')
+      note('from the API, so this cannot confirm all three tiers are on it. Check it')
+      note('at https://dashboard.stripe.com/settings/billing/portal, or run')
+      note('`pnpm stripe:setup` to set the list from your price ids and make it readable.')
+    } else {
+      const listed = update.products.length
+      const prices = update.products.flatMap((entry) => entry.prices ?? [])
+
+      if (listed < wanted) {
+        bad('plan switching', `only ${listed} of ${wanted} tiers listed — the rest cannot be switched to`)
+      } else {
+        ok('plan switching', `${listed} tiers, proration ${update.proration_behavior}`)
+      }
+
+      // Every tier has to be reachable by the exact price id the code maps to
+      // an area count. A product listed under some other price would switch
+      // somebody onto a plan the entitlement map does not know, and unknown
+      // prices floor at one area — so a Portfolio subscriber would silently
+      // get one.
+      for (const plan of PLAN_LIST) {
+        const id = PRICE_ENV[plan.id]
+        if (!id) continue
+        if (!prices.includes(id)) bad(`  ${plan.label}`, 'its price is not switchable in the portal')
+      }
+    }
+
+    // A downgrade taking effect immediately refunds a subscriber for data we
+    // have already bought — the weekly runs for their areas are sunk by
+    // mid-period. At the period end, cost and revenue stop together.
+    const scheduled = update?.schedule_at_period_end?.conditions ?? []
+    if (scheduled.some((c) => c.type === 'decreasing_item_amount')) {
+      ok('downgrades', 'at end of billing period')
+    } else if (update?.enabled) {
+      note('Downgrades apply immediately. Setting them to take effect at the end of')
+      note('the billing period keeps cost and revenue together — the weekly runs for')
+      note('an area are already paid for by the time somebody drops a tier.')
+    }
   }
 
   console.log('')
