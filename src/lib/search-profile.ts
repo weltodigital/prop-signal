@@ -58,33 +58,86 @@ export async function listSourcingLists(): Promise<SourcingList[]> {
   }))
 }
 
-export async function getSearchProfile(): Promise<SearchProfile | null> {
+/** Every column a profile is read through, in one place. */
+const PROFILE_COLUMNS =
+  'id, owner_id, label, postcode, radius_miles, sourcing_lists, investment_strategies, strategy_assumptions, min_price, max_price, min_bedrooms, property_types, backfill_completed_at, last_run_at, paused_at, paused_reason, created_at'
+
+function toProfile(data: Record<string, unknown>): SearchProfile {
+  return {
+    id: data.id as string,
+    label: (data.label as string | null) ?? null,
+    postcode: data.postcode as string,
+    radiusMiles: data.radius_miles as number,
+    sourcingLists: data.sourcing_lists as string[],
+    investmentStrategies: readStrategies(data.investment_strategies),
+    assumptions: readAssumptions(data.strategy_assumptions),
+    minPrice: (data.min_price as number | null) ?? null,
+    maxPrice: (data.max_price as number | null) ?? null,
+    minBedrooms: (data.min_bedrooms as number | null) ?? null,
+    propertyTypes: (data.property_types as string[] | null) ?? null,
+    backfillCompletedAt: (data.backfill_completed_at as string | null) ?? null,
+    lastRunAt: (data.last_run_at as string | null) ?? null,
+    pausedAt: (data.paused_at as string | null) ?? null,
+    pausedReason: (data.paused_reason as string | null) ?? null,
+    createdAt: data.created_at as string,
+  }
+}
+
+/**
+ * Every area this subscriber has, oldest first, paused ones included.
+ *
+ * Oldest first so the order is stable: an area switcher that reshuffles itself
+ * because one area ran more recently than another is a switcher nobody can
+ * use. Paused areas are returned rather than hidden — the account page has to
+ * be able to say what is paused and why, and offer it back.
+ */
+export async function listSearchProfiles(): Promise<SearchProfile[]> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('search_profiles')
-    .select(
-      'id, postcode, radius_miles, sourcing_lists, investment_strategies, strategy_assumptions, min_price, max_price, min_bedrooms, property_types, backfill_completed_at, last_run_at',
-    )
-    .maybeSingle()
+    .select(PROFILE_COLUMNS)
+    .order('created_at', { ascending: true })
 
-  if (error) throw new Error(`Could not read the search profile: ${error.message}`)
-  if (!data) return null
+  if (error) throw new Error(`Could not read the search profiles: ${error.message}`)
 
-  return {
-    id: data.id,
-    postcode: data.postcode,
-    radiusMiles: data.radius_miles,
-    sourcingLists: data.sourcing_lists,
-    investmentStrategies: readStrategies(data.investment_strategies),
-    assumptions: readAssumptions(data.strategy_assumptions),
-    minPrice: data.min_price,
-    maxPrice: data.max_price,
-    minBedrooms: data.min_bedrooms,
-    propertyTypes: data.property_types,
-    backfillCompletedAt: data.backfill_completed_at,
-    lastRunAt: data.last_run_at,
-  }
+  return (data ?? []).map((row) => toProfile(row as Record<string, unknown>))
+}
+
+/** The areas the weekly run will actually search. */
+export async function listActiveProfiles(): Promise<SearchProfile[]> {
+  return (await listSearchProfiles()).filter((profile) => profile.pausedAt === null)
+}
+
+/**
+ * One area by id, or the subscriber's first active one.
+ *
+ * Row level security scopes it, so an id belonging to somebody else is not
+ * found rather than forbidden.
+ */
+export async function getSearchProfile(profileId?: string): Promise<SearchProfile | null> {
+  const profiles = await listSearchProfiles()
+  if (!profiles.length) return null
+
+  if (profileId) return profiles.find((profile) => profile.id === profileId) ?? null
+
+  return profiles.find((profile) => profile.pausedAt === null) ?? null
+}
+
+/** How many areas the plan covers, and how many are in use. */
+export async function areaAllowance(userId: string): Promise<{ limit: number; used: number }> {
+  const admin = createAdminClient()
+
+  const { data: limit, error } = await admin.rpc('area_limit_for', { p_owner_id: userId })
+  if (error) throw new Error(`Could not read the area allowance: ${error.message}`)
+
+  const { count } = await admin
+    .from('search_profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+    .is('paused_at', null)
+
+  return { limit: Number(limit ?? 1), used: count ?? 0 }
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +178,15 @@ function readAssumptions(stored: unknown): StrategyAssumptions {
 
 export const searchProfileSchema = z
   .object({
+    // What the subscriber calls this area. Optional: with one area nobody
+    // needs to name it, and with five everybody does.
+    label: z
+      .string()
+      .trim()
+      .max(40, 'Forty characters is plenty for an area name.')
+      .transform((value) => (value === '' ? null : value))
+      .nullable()
+      .default(null),
     postcode: z
       .string()
       .trim()
@@ -167,9 +229,11 @@ export type SearchProfileInput = z.infer<typeof searchProfileSchema>
 // ---------------------------------------------------------------------------
 
 export type SaveOutcome =
-  | { status: 'created'; backfillPending: true }
-  | { status: 'updated'; backfillPending: boolean }
+  | { status: 'created'; profileId: string; backfillPending: true }
+  | { status: 'updated'; profileId: string; backfillPending: boolean }
   | { status: 'quota_exhausted'; kind: CountedChange; used: number; limit: number }
+  | { status: 'area_limit_reached'; limit: number; used: number }
+  | { status: 'not_found' }
 
 /** The kinds of change that cost something, and are therefore counted. */
 export type CountedChange = 'search_changed' | 'radius_widened'
@@ -213,21 +277,33 @@ export function classifyChange(previous: SearchProfile, next: SearchProfileInput
  * costs credits, so it is capped. Changing only the optional filters is free
  * and uncapped, because it cannot surface anything new.
  */
-export async function saveSearchProfile(userId: string, input: SearchProfileInput): Promise<SaveOutcome> {
+export async function saveSearchProfile(
+  userId: string,
+  input: SearchProfileInput,
+  /**
+   * The area being edited. Absent means a new one, which the database refuses
+   * if the plan does not cover it — the limit is a trigger, not a check here,
+   * so no route can forget it.
+   */
+  profileId?: string,
+): Promise<SaveOutcome> {
   const admin = createAdminClient()
 
-  const { data: existingRow, error: readError } = await admin
-    .from('search_profiles')
-    .select(
-      'id, postcode, radius_miles, sourcing_lists, investment_strategies, strategy_assumptions, min_price, max_price, min_bedrooms, property_types, backfill_completed_at, last_run_at',
-    )
-    .eq('owner_id', userId)
-    .maybeSingle()
+  const { data: existingRow, error: readError } = profileId
+    ? await admin
+        .from('search_profiles')
+        .select(PROFILE_COLUMNS)
+        .eq('owner_id', userId)
+        .eq('id', profileId)
+        .maybeSingle()
+    : { data: null, error: null }
 
   if (readError) throw new Error(`Could not read the existing search profile: ${readError.message}`)
+  if (profileId && !existingRow) return { status: 'not_found' }
 
   const row = {
     owner_id: userId,
+    label: input.label,
     postcode: input.postcode,
     radius_miles: input.radiusMiles,
     sourcing_lists: input.sourcingLists,
@@ -241,6 +317,15 @@ export async function saveSearchProfile(userId: string, input: SearchProfileInpu
 
   if (!existingRow) {
     const { data, error } = await admin.from('search_profiles').insert(row).select('id').single()
+
+    // The area limit is a trigger, so this is where a plan that does not cover
+    // another area says so. Raised as a check violation, and reported as the
+    // upgrade prompt it actually is rather than as a failure.
+    if (error?.code === '23514' && error.message.includes('plan covers')) {
+      const { limit, used } = await areaAllowance(userId)
+      return { status: 'area_limit_reached', limit, used }
+    }
+
     if (error) throw new Error(`Could not save the search profile: ${error.message}`)
 
     await admin.from('search_profile_changes').insert({
@@ -250,35 +335,22 @@ export async function saveSearchProfile(userId: string, input: SearchProfileInpu
       current: row,
     })
 
-    return { status: 'created', backfillPending: true }
+    return { status: 'created', profileId: data.id, backfillPending: true }
   }
 
-  const previous: SearchProfile = {
-    id: existingRow.id,
-    postcode: existingRow.postcode,
-    radiusMiles: existingRow.radius_miles,
-    sourcingLists: existingRow.sourcing_lists,
-    investmentStrategies: readStrategies(existingRow.investment_strategies),
-    assumptions: readAssumptions(existingRow.strategy_assumptions),
-    minPrice: existingRow.min_price,
-    maxPrice: existingRow.max_price,
-    minBedrooms: existingRow.min_bedrooms,
-    propertyTypes: existingRow.property_types,
-    backfillCompletedAt: existingRow.backfill_completed_at,
-    lastRunAt: existingRow.last_run_at,
-  }
+  const previous = toProfile(existingRow as Record<string, unknown>)
 
   const kind = classifyChange(previous, input)
 
   if (kind === 'search_changed') {
-    const used = await countSearchChanges(userId)
+    const used = await countSearchChanges(userId, previous.id)
     if (used >= SEARCH_CHANGE_LIMIT) {
       return { status: 'quota_exhausted', kind, used, limit: SEARCH_CHANGE_LIMIT }
     }
   }
 
   if (kind === 'radius_widened') {
-    const used = await countRadiusWidenings(userId)
+    const used = await countRadiusWidenings(userId, previous.id)
     if (used >= RADIUS_WIDEN_LIMIT) {
       return { status: 'quota_exhausted', kind, used, limit: RADIUS_WIDEN_LIMIT }
     }
@@ -288,7 +360,7 @@ export async function saveSearchProfile(userId: string, input: SearchProfileInpu
   // never been shown, so the database resets the backfill for all of them.
   const isSearchChange = kind !== 'filters_changed'
 
-  const { error } = await admin.from('search_profiles').update(row).eq('owner_id', userId)
+  const { error } = await admin.from('search_profiles').update(row).eq('id', previous.id)
   if (error) throw new Error(`Could not save the search profile: ${error.message}`)
 
   await admin.from('search_profile_changes').insert({
@@ -309,10 +381,10 @@ export async function saveSearchProfile(userId: string, input: SearchProfileInpu
 
   // The database resets backfill_completed_at on a search change, so a pending
   // backfill after an update means exactly that the search moved.
-  return { status: 'updated', backfillPending: isSearchChange }
+  return { status: 'updated', profileId: previous.id, backfillPending: isSearchChange }
 }
 
-async function countChanges(userId: string, kind: CountedChange): Promise<number> {
+async function countChanges(userId: string, kind: CountedChange, profileId?: string): Promise<number> {
   const admin = createAdminClient()
 
   const { data: periodStart, error: periodError } = await admin.rpc('current_period_start', {
@@ -320,23 +392,30 @@ async function countChanges(userId: string, kind: CountedChange): Promise<number
   })
   if (periodError) throw new Error(`Could not read the allowance period: ${periodError.message}`)
 
-  const { count, error } = await admin
+  let query = admin
     .from('search_profile_changes')
     .select('id', { count: 'exact', head: true })
     .eq('owner_id', userId)
     .eq('kind', kind)
     .gte('created_at', periodStart ?? new Date(0).toISOString())
 
+  // Per area, not per person. A five-area subscriber moving one of them has
+  // not used up the allowance for the other four — they are five searches,
+  // and each one's changes cost their own backfill.
+  if (profileId) query = query.eq('profile_id', profileId)
+
+  const { count, error } = await query
+
   if (error) throw new Error(`Could not count ${kind} changes: ${error.message}`)
   return count ?? 0
 }
 
 /** Moves of the postcode, the sourcing lists or a narrowing, this period. */
-export async function countSearchChanges(userId: string): Promise<number> {
-  return countChanges(userId, 'search_changed')
+export async function countSearchChanges(userId: string, profileId?: string): Promise<number> {
+  return countChanges(userId, 'search_changed', profileId)
 }
 
 /** Widenings of the radius this period, out of their own allowance. */
-export async function countRadiusWidenings(userId: string): Promise<number> {
-  return countChanges(userId, 'radius_widened')
+export async function countRadiusWidenings(userId: string, profileId?: string): Promise<number> {
+  return countChanges(userId, 'radius_widened', profileId)
 }

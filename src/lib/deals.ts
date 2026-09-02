@@ -391,12 +391,17 @@ async function loadWeek(selection: SelectionRow): Promise<PublishedWeek> {
 }
 
 /** The most recent list published to the signed-in user, or null if none yet. */
-export async function getCurrentWeek(): Promise<PublishedWeek | null> {
+export async function getCurrentWeek(profileId?: string): Promise<PublishedWeek | null> {
   const supabase = await createClient()
 
-  const { data: selection, error } = await supabase
-    .from('weekly_selections')
-    .select(SELECTION_COLUMNS)
+  // Scoped to one area. Without this, "the current week" was whichever area
+  // happened to run last, so a subscriber with three would see a Portsmouth
+  // list under a Manchester heading — and the two lists are not comparable,
+  // which is exactly why they are kept apart rather than merged.
+  let query = supabase.from('weekly_selections').select(SELECTION_COLUMNS)
+  if (profileId) query = query.eq('profile_id', profileId)
+
+  const { data: selection, error } = await query
     .order('published_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -429,13 +434,13 @@ export async function getWeekByRunId(runId: string): Promise<PublishedWeek | nul
  * Summaries only — the deals themselves are read when a week is opened, so the
  * archive index stays one query however many weeks accumulate.
  */
-export async function listPublishedWeeks(): Promise<WeekSummary[]> {
+export async function listPublishedWeeks(profileId?: string): Promise<WeekSummary[]> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('weekly_selections')
-    .select(SELECTION_COLUMNS)
-    .order('published_at', { ascending: false })
+  let query = supabase.from('weekly_selections').select(SELECTION_COLUMNS)
+  if (profileId) query = query.eq('profile_id', profileId)
+
+  const { data, error } = await query.order('published_at', { ascending: false })
 
   if (error) throw new Error(`Could not read the archive: ${error.message}`)
 
@@ -457,17 +462,29 @@ export async function listPublishedWeeks(): Promise<WeekSummary[]> {
  * One indexed row. Read on every page for the marker in the navigation, so it
  * asks for the seen flag and nothing else.
  */
+/**
+ * Whether any area has a list the subscriber has not opened.
+ *
+ * Across every area rather than one, because it drives the dot in the
+ * navigation and that dot means "there is something new somewhere".
+ */
 export async function hasUnseenWeek(): Promise<boolean> {
   const supabase = await createClient()
 
+  // The newest published list per area, which is the only one whose unread
+  // state matters — an old week nobody opened is not news.
   const { data } = await supabase
     .from('weekly_selections')
-    .select('seen_at')
+    .select('profile_id, seen_at, published_at')
     .order('published_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
 
-  return Boolean(data) && data?.seen_at === null
+  const newestPerArea = new Map<string, string | null>()
+  for (const row of data ?? []) {
+    const key = row.profile_id ?? 'legacy'
+    if (!newestPerArea.has(key)) newestPerArea.set(key, row.seen_at)
+  }
+
+  return [...newestPerArea.values()].some((seenAt) => seenAt === null)
 }
 
 /** Clears the unseen marker. The only column a user may write on that table. */

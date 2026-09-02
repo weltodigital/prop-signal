@@ -160,6 +160,10 @@ describe('investment strategies', () => {
 describe('which allowance a change comes out of', () => {
   const previous: SearchProfile = {
     id: 'p1',
+    label: null,
+    pausedAt: null,
+    pausedReason: null,
+    createdAt: '2026-09-01T00:00:00.000Z',
     postcode: 'M14 5TP',
     radiusMiles: 10,
     sourcingLists: ['reduced-properties'],

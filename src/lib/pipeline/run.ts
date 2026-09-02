@@ -602,6 +602,7 @@ export async function runProfile(options: {
     // --- 6. Publish --------------------------------------------------------
     await publish(supabase, {
       ownerId: profile.owner_id,
+      profileId: profile.id,
       runId: run.id,
       kind,
       observedAt,
@@ -720,6 +721,9 @@ export async function runWeekly(options: {
     .select(
       'id, owner_id, postcode, radius_miles, sourcing_lists, investment_strategies, strategy_assumptions, min_price, max_price, min_bedrooms, property_types, backfill_completed_at',
     )
+    // An area paused by a downgrade is kept whole and not searched. Running it
+    // would be spending credits on something the subscriber is not paying for.
+    .is('paused_at', null)
 
   if (options.ownerId) query = query.eq('owner_id', options.ownerId)
 
@@ -1467,17 +1471,22 @@ async function publish(
   supabase: SupabaseClient,
   input: {
     ownerId: string
+    profileId: string
     runId: string
     kind: RunKind
     observedAt: Date
     selected: SelectedCandidate[]
   },
 ): Promise<void> {
-  const { ownerId, runId, kind, observedAt, selected } = input
+  const { ownerId, profileId, runId, kind, observedAt, selected } = input
 
   if (selected.length) {
     const rows = selected.map((entry, index) => ({
       owner_id: ownerId,
+      // Which area this was published for. A subscriber with three areas has
+      // three lists, and they are kept apart rather than merged: a Manchester
+      // HMO and a Portsmouth flat ranked against each other means nothing.
+      profile_id: profileId,
       property_id: entry.candidate.propertyId,
       run_id: runId,
       shown_at: observedAt.toISOString(),
@@ -1524,6 +1533,7 @@ async function publish(
   const { error } = await supabase.from('weekly_selections').upsert(
     {
       owner_id: ownerId,
+      profile_id: profileId,
       run_id: runId,
       kind,
       published_at: observedAt.toISOString(),

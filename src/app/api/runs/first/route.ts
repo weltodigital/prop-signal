@@ -31,7 +31,7 @@ export const maxDuration = 800
  * is deliberately independent of the flag, because the flag is set by a write
  * at the end of a run and a write can fail.
  */
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient()
 
   const {
@@ -46,20 +46,34 @@ export async function POST() {
     return NextResponse.json({ error: 'No active subscription' }, { status: 402 })
   }
 
+  // Which area to build. Absent means the first one without a list yet, which
+  // is what a subscriber who has just answered the questions wants.
+  const requested = new URL(request.url).searchParams.get('area')
+
   // Read through row level security, so this can only ever be the caller's own.
-  const { data: profile, error } = await supabase
+  let query = supabase
     .from('search_profiles')
     .select(
       'id, owner_id, postcode, radius_miles, sourcing_lists, investment_strategies, strategy_assumptions, min_price, max_price, min_bedrooms, property_types, backfill_completed_at',
     )
-    .maybeSingle()
+    .is('paused_at', null)
+    .order('created_at', { ascending: true })
+
+  if (requested) query = query.eq('id', requested)
+
+  const { data: profiles, error } = await query
+  const profile = requested
+    ? (profiles ?? [])[0]
+    : (profiles ?? []).find((row) => row.backfill_completed_at === null)
 
   if (error) {
     return NextResponse.json({ error: 'Could not read your search' }, { status: 500 })
   }
 
   if (!profile) {
-    return NextResponse.json({ error: 'No search set up yet', status: 'no_profile' }, { status: 409 })
+    // Either they have no areas at all, or every area already has its list —
+    // both of which the dashboard handles by simply showing what is there.
+    return NextResponse.json({ ok: true, status: 'already_done' })
   }
 
   if (profile.backfill_completed_at !== null) {
@@ -69,11 +83,14 @@ export async function POST() {
 
   const admin = createAdminClient()
 
-  // A run already in flight. Two tabs, or a refresh partway through.
+  // A run already in flight *for this area*. Two tabs, or a refresh partway
+  // through. Scoped to the profile rather than the owner: a subscriber with
+  // three areas building their second must not be blocked by the first, which
+  // is exactly what an owner-wide guard would have done.
   const { data: inFlight } = await admin
     .from('pipeline_runs')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('profile_id', profile.id)
     .eq('status', 'running')
     .limit(1)
 
@@ -89,7 +106,7 @@ export async function POST() {
   const { data: pastRuns } = await admin
     .from('pipeline_runs')
     .select('id')
-    .eq('owner_id', user.id)
+    .eq('profile_id', profile.id)
     .eq('kind', 'backfill')
     .in('status', ['completed', 'aborted'])
     .limit(1)

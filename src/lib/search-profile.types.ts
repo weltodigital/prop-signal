@@ -63,6 +63,8 @@ export type SourcingList = {
 
 export type SearchProfile = {
   id: string
+  /** What the subscriber calls this area. Falls back to the postcode. */
+  label: string | null
   postcode: string
   radiusMiles: number
   /** PropertyData sourcing lists — which stock to pull. */
@@ -76,4 +78,20 @@ export type SearchProfile = {
   propertyTypes: string[] | null
   backfillCompletedAt: string | null
   lastRunAt: string | null
+  /**
+   * Set when a downgrade left more areas than the plan covers.
+   *
+   * Paused, never deleted. Somebody dropping a tier has not asked us to throw
+   * away a search and its deal history, and doing it anyway is how a downgrade
+   * becomes a chargeback. A paused area is skipped by the run and offered back
+   * the moment there is room for it.
+   */
+  pausedAt: string | null
+  pausedReason: string | null
+  createdAt: string
+}
+
+/** What this area is called on screen. */
+export function areaName(profile: Pick<SearchProfile, 'label' | 'postcode'>): string {
+  return profile.label?.trim() || profile.postcode
 }

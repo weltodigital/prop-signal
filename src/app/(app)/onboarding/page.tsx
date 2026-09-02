@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic'
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checked?: string }>
+  searchParams: Promise<{ checked?: string; area?: string; new?: string }>
 }) {
   const supabase = await createClient()
   const {
@@ -33,13 +33,21 @@ export default async function OnboardingPage({
   // next screen can say how many properties the area actually holds — the one
   // thing somebody cannot find out for themselves and the one thing worth
   // knowing before £29. Nothing on this page spends anything.
-  const [subscription, profile, sourcingLists, changesUsed, wideningsUsed, params] = await Promise.all([
+  const params = await searchParams
+
+  // Adding an area is a fresh form; editing one names it. With a single-area
+  // plan neither parameter is ever set and this reads exactly as it did.
+  const [subscription, existing, sourcingLists] = await Promise.all([
     getSubscriptionState(),
-    getSearchProfile(),
+    getSearchProfile(params.area),
     listSourcingLists(),
-    countSearchChanges(user.id),
-    countRadiusWidenings(user.id),
-    searchParams,
+  ])
+
+  const profile = params.new === '1' ? null : existing
+
+  const [changesUsed, wideningsUsed] = await Promise.all([
+    countSearchChanges(user.id, profile?.id),
+    countRadiusWidenings(user.id, profile?.id),
   ])
 
   const isNew = profile === null

@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/format'
 import { DealCard } from '@/components/deal-card'
 import { DealTracker } from '@/components/deal-tracker'
 import { DashboardStats } from '@/components/dashboard-stats'
+import { AreaSwitcher } from '@/components/area-switcher'
 import { WhatMoved, whatMoved } from '@/components/what-moved'
 import { listNotifications } from '@/lib/watchlist'
 import { FirstRun } from '@/components/first-run'
@@ -23,11 +24,12 @@ function describeArea(postcode: string, radiusMiles: number): string {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string; onboarded?: string }>
+  searchParams: Promise<{ checkout?: string; onboarded?: string; area?: string }>
 }) {
-  const { email, profile } = await requireSubscriber('/dashboard')
+  const requested = (await searchParams).area
+  const { email, profile, profiles } = await requireSubscriber('/dashboard', requested)
   const [week, params, tracked, stages, gdvPerSqFt, notifications] = await Promise.all([
-    getCurrentWeek(),
+    getCurrentWeek(profile.id),
     searchParams,
     listTrackedDeals(),
     currentStages(),
@@ -62,11 +64,18 @@ export default async function DashboardPage({
             <h1 className="font-display text-h2 font-normal">Your properties</h1>
             <p className="text-sm text-muted">
               {describeArea(profile.postcode, profile.radiusMiles)} ·{' '}
-              <Link href="/onboarding" className="underline underline-offset-4 hover:text-ink">
+              <Link
+                href={`/onboarding?area=${profile.id}`}
+                className="underline underline-offset-4 hover:text-ink"
+              >
                 change
               </Link>
             </p>
           </div>
+
+          {/* Nothing at all for a subscriber with one area, which is everyone
+              until the tiers ship. */}
+          <AreaSwitcher profiles={profiles} current={profile} />
 
           {/* The run date, so the user knows the list is fresh rather than the
               one they saw last time. */}
