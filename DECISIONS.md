@@ -1103,3 +1103,42 @@ miles of a quiet market may hold two.
 So the number is gone from the copy and replaced with what decides it. The onboarding form
 says the radius is the biggest lever, on the screen where somebody sets it. A new question
 on the front page answers "how many will I get" with the levers rather than a figure.
+
+## The refurbishment cost moves to the property — 2 September 2026
+
+### Asking for it on the onboarding form was asking at the wrong moment
+
+A flip is scored on what the works cost, and this product holds no such figure,
+so the form asked for one: pounds per square foot, before the subscriber had
+seen a single property. Almost nobody knows what a rewire costs per square foot
+in the abstract. They know when they are looking at the house.
+
+So the question is gone from the form and the decision happens on the property,
+where there is a floor area, an asking price and a local end value to put it
+against. Three bands, the works priced for that property in each, and a box for
+their own figure. Everything recomputes in the browser: the works, the cash in,
+the value after works, and what is left in after a refinance at 75%.
+
+### The ranking assumes a full refurbishment, and says so
+
+Something has to be assumed or a flip cannot be ranked at all, and a strategy
+that silently scores nothing is worse than one that scores on a stated band. So
+the run uses £75 a square foot — the middle of the full-refurbishment band — and
+the score line says `£63,750 of works at £75/sq ft — a full refurbishment,
+change it on the property`.
+
+That is a stated average inside a ranking, which this codebase has refused
+everywhere else, and the difference is worth being honest about: it is in the
+open, it is named, it is one click from being changed, and every other factor in
+the score still refuses to invent anything. A subscriber who sets their own
+figure on their account is still preferred over the band.
+
+The alternative was leaving BRRR unscorable for anybody who had not filled in a
+box, which is how it behaved until today.
+
+### `STRATEGY_FINANCE` moved to `@/lib/strategies`
+
+The property page runs the same arithmetic in the browser as the pipeline runs
+on the server. If the deposit, the rate or the refinance LTV differed between
+them, the page would quietly argue with the score printed above it, so both now
+read the same constant.

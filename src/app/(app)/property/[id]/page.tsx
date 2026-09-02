@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getPropertyDetail } from '@/lib/deals'
+import { developmentGdvPerSqFt, getPropertyDetail } from '@/lib/deals'
 import { stageHistory } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { markReadAction } from '@/app/(app)/deals/mark-read'
@@ -10,6 +10,7 @@ import { RiskFlags } from '@/components/risk-flags'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
 import { StackIt } from '@/components/stack-it'
+import { RefurbEstimate } from '@/components/refurb-estimate'
 import { Timeline } from '@/components/timeline'
 import { StageControl } from '@/components/stage-control'
 import { STAGE_DEFINITIONS } from '@/lib/deal-stages'
@@ -27,11 +28,12 @@ export const dynamic = 'force-dynamic'
  */
 export default async function PropertyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { email } = await requireSubscriber(`/property/${id}`)
+  const { email, profile } = await requireSubscriber(`/property/${id}`)
 
   // Scoped by row level security, so another subscriber's property is not found
   // rather than forbidden.
   const property = await getPropertyDetail(id)
+  const gdvPerSqFt = await developmentGdvPerSqFt()
   if (!property) notFound()
 
   const progress = await stageHistory(id)
@@ -202,6 +204,25 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               qualityScore={property.latest.qualityScore}
               movementScore={property.latest.movementScore}
               version={property.latest.scoreVersion}
+            />
+          </Card>
+        </section>
+      ) : null}
+
+      {/* A flip is scored on a refurbishment cost nobody holds, so the
+          assumption is stated and moved here, on the property. */}
+      {profile.investmentStrategies.includes('brrr') ? (
+        <section className="mt-10">
+          <h2 className="text-h3 font-medium">If you refurbish it</h2>
+          <p className="mt-1 text-sm text-muted">
+            Scored at a full refurbishment. Move it to the job you think this is and the arithmetic follows.
+          </p>
+          <Card className="mt-3">
+            <RefurbEstimate
+              price={property.price}
+              internalAreaSqFt={property.internalAreaSqFt}
+              gdvPerSqFt={gdvPerSqFt}
+              monthlyRent={property.enrichment.estimatedRent}
             />
           </Card>
         </section>

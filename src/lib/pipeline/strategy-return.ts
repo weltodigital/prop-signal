@@ -1,7 +1,9 @@
+import { DEFAULT_REFURB_PER_SQ_FT } from '@/lib/refurb'
 import { stack } from '@/lib/stack'
 import {
   COSTS_PERCENT_OF_RENT,
   STRATEGY_DEFINITIONS,
+  STRATEGY_FINANCE,
   type InvestmentStrategy,
   type StrategyAssumptions,
 } from '@/lib/strategies'
@@ -24,15 +26,13 @@ import type { Listing } from './listing'
  * Pure. Every input is passed in.
  */
 
-/** The finance every strategy borrows on, unless it says otherwise. */
-export const STRATEGY_FINANCE = {
-  depositPercent: 25,
-  annualRatePercent: 5.5,
-  interestOnly: true,
-  termYears: 25,
-  /** What a lender will go back to on the refinance. */
-  refinanceLtvPercent: 75,
-} as const
+/**
+ * The finance every strategy borrows on, unless it says otherwise.
+ *
+ * Defined in `@/lib/strategies` so the property page can run the same numbers
+ * in the browser, and re-exported here because this is where they are used.
+ */
+export { STRATEGY_FINANCE } from '@/lib/strategies'
 
 export type StrategyReturn = {
   /** Higher is better, whatever the unit. Null where it cannot be worked out. */
@@ -156,10 +156,15 @@ function hmo(price: number | null, bedrooms: number | null, roomRate: number | n
  * deposit, and a BRRR that cashflows nicely but leaves £40,000 stuck in the
  * wall has failed at the thing it was for.
  *
- * Refurb cost is the subscriber's own figure per square foot. This product
- * does not hold one and will not derive one — `/build-cost` prices building
- * from nothing, and what fraction of that a refurbishment costs is exactly the
- * invented number the scoring refuses everywhere else.
+ * Refurb cost is the subscriber's own figure per square foot where they have
+ * set one, and a full refurbishment where they have not. The figure used is
+ * stated in the detail line rather than buried, and the property page lets them
+ * move it and watch the arithmetic change.
+ *
+ * We still hold no refurbishment cost and still will not derive one:
+ * `/build-cost` prices building from nothing, and what fraction of that a
+ * refurbishment comes to is the invented number the scoring refuses everywhere
+ * else. This is a stated band, not a valuation.
  */
 function brrr(
   price: number | null,
@@ -171,9 +176,9 @@ function brrr(
   if (!price) return missing('brrr', 'No asking price held')
   if (!internalAreaSqFt) return missing('brrr', 'No floor area held, so no refurb cost and no end value')
   if (!gdvPerSqFt) return missing('brrr', 'No local development value held')
-  if (!refurbPerSqFt) return missing('brrr', 'No refurb cost per square foot set on your account')
 
-  const refurbCost = refurbPerSqFt * internalAreaSqFt
+  const perSqFt = refurbPerSqFt ?? DEFAULT_REFURB_PER_SQ_FT
+  const refurbCost = perSqFt * internalAreaSqFt
   const postRefurbValue = gdvPerSqFt * internalAreaSqFt
 
   const result = stack({
@@ -196,7 +201,9 @@ function brrr(
   }
 
   const recovered = ((result.cashIn - result.refinance.leftIn) / result.cashIn) * 100
-  const summary = `${money(refurbCost)} of works at ${money(refurbPerSqFt)}/sq ft, out at ${money(postRefurbValue)}`
+  const summary = `${money(refurbCost)} of works at ${money(perSqFt)}/sq ft${
+    refurbPerSqFt === null ? ' — a full refurbishment, change it on the property' : ''
+  }, out at ${money(postRefurbValue)}`
 
   return {
     value: Number(recovered.toFixed(2)),

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getCurrentWeek } from '@/lib/deals'
+import { developmentGdvPerSqFt, getCurrentWeek } from '@/lib/deals'
 import { currentStages, listTrackedDeals } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
@@ -23,11 +23,12 @@ export default async function DashboardPage({
   searchParams: Promise<{ checkout?: string; onboarded?: string }>
 }) {
   const { email, profile } = await requireSubscriber('/dashboard')
-  const [week, params, tracked, stages] = await Promise.all([
+  const [week, params, tracked, stages, gdvPerSqFt] = await Promise.all([
     getCurrentWeek(),
     searchParams,
     listTrackedDeals(),
     currentStages(),
+    developmentGdvPerSqFt(),
   ])
 
   // Read before the marker is cleared, so this render still shows it. The
@@ -123,6 +124,7 @@ export default async function DashboardPage({
               deal={deal}
               isNew={unseen}
               stage={stages.get(deal.propertyId)?.stage ?? null}
+              gdvPerSqFt={gdvPerSqFt}
             />
           ))
         ) : awaitingFirstRun ? (

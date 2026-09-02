@@ -50,6 +50,23 @@ export const REFURB_BANDS: readonly RefurbBand[] = [
   },
 ] as const
 
+/**
+ * The band the ranking assumes, and the figure it uses.
+ *
+ * A flip has to be scored on something, and every subscriber typing their own
+ * number in before they have seen a single property was a worse answer than a
+ * stated one: most people do not know what a rewire costs per square foot until
+ * they are looking at the house.
+ *
+ * So the run scores every BRRR at a full refurbishment, says so on the property
+ * in those words, and lets the subscriber move it. The assumption is in the
+ * open and one click from being changed, which is the most this product will do
+ * with a figure it does not hold.
+ */
+export const SCORING_BAND = REFURB_BANDS[1] as RefurbBand
+
+export const DEFAULT_REFURB_PER_SQ_FT = 75
+
 /** The middle of a band, which is what a picker fills the box with. */
 export function bandMidpoint(band: RefurbBand): number {
   return Math.round((band.perSqFtLow + band.perSqFtHigh) / 2)

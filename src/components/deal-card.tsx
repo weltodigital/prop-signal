@@ -8,6 +8,7 @@ import { RiskFlags } from '@/components/risk-flags'
 import { StageControl } from '@/components/stage-control'
 import { setStageAction } from '@/app/(app)/deals/actions'
 import { ActionAnchor, ActionButton, ActionLink } from '@/components/ui'
+import { RefurbEstimate } from '@/components/refurb-estimate'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import type { DealStage } from '@/lib/deal-stages'
 
@@ -74,11 +75,14 @@ export function DealCard({
   deal,
   isNew = false,
   stage = null,
+  gdvPerSqFt = null,
 }: {
   deal: PublishedDeal
   isNew?: boolean
   /** Where this one got to, where the subscriber has started tracking it. */
   stage?: DealStage | null
+  /** Local development value per square foot, for re-costing a flip. */
+  gdvPerSqFt?: number | null
 }) {
   const winner = deal.strategyScores.find((s) => s.strategy === deal.winningStrategy) ?? null
   const runnersUp = deal.strategyScores
@@ -221,6 +225,19 @@ export function DealCard({
                     .join(', and as ')}.`
                 : ''}
             </p>
+          ) : null}
+
+          {/* A flip is the one strategy scored on a figure we do not hold, so
+              the assumption is stated here and can be moved. */}
+          {deal.strategyScores.some((entry) => entry.strategy === 'brrr') ? (
+            <div className="border-t border-line pt-4">
+              <RefurbEstimate
+                price={deal.price}
+                internalAreaSqFt={deal.internalAreaSqFt}
+                gdvPerSqFt={gdvPerSqFt}
+                monthlyRent={deal.enrichment.estimatedRent}
+              />
+            </div>
           ) : null}
 
           <ScoreBreakdown

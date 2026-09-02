@@ -638,3 +638,27 @@ export async function getPropertyDetail(propertyId: string): Promise<PropertyDet
       : null,
   }
 }
+
+/**
+ * What finished space is worth per square foot in this subscriber's area.
+ *
+ * Written by the run into `area_insights` and read here so a flip can be
+ * re-costed in the browser: the end value of a refurbishment is this figure
+ * times the floor area, and without it there is nothing to compare the works
+ * against. Null where the last run could not get one, in which case the
+ * property says so rather than guessing.
+ */
+export async function developmentGdvPerSqFt(): Promise<number | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('area_insights')
+    .select('development_gdv_per_sqf')
+    .order('observed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+  const value = Number(data.development_gdv_per_sqf)
+  return Number.isFinite(value) && value > 0 ? value : null
+}

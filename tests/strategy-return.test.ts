@@ -93,12 +93,21 @@ describe('BRRR', () => {
     expect(cheapWorks.value).toBeGreaterThan(dearWorks.value!)
   })
 
-  it('refuses to score without the subscriber own refurb figure', () => {
-    // This product does not hold a refurb cost and will not derive one. No
-    // figure means no score, not an assumed average.
+  it('scores at a full refurbishment where the subscriber has set no figure', () => {
+    // The assumption is stated rather than hidden: nobody knows what a rewire
+    // costs per square foot before they have seen the house, so the ranking
+    // says which band it used and the property page lets them move it.
     const result = strategyReturn('brrr', listing(), 1_100, area, assumptions())
-    expect(result.value).toBeNull()
-    expect(result.detail).toMatch(/refurb cost/i)
+
+    expect(result.value).not.toBeNull()
+    expect(result.detail).toMatch(/£75\/sq ft/)
+    expect(result.detail).toMatch(/full refurbishment/i)
+  })
+
+  it('prefers the subscriber own figure over the band', () => {
+    const theirs = strategyReturn('brrr', listing(), 1_100, area, assumptions({ refurbCostPerSqFt: 40 }))
+    expect(theirs.detail).toMatch(/£40\/sq ft/)
+    expect(theirs.detail).not.toMatch(/full refurbishment/i)
   })
 
   it('refuses to score without a floor area', () => {

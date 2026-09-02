@@ -36,6 +36,22 @@ export const EMPTY_ASSUMPTIONS: StrategyAssumptions = {
 }
 
 /**
+ * The finance every strategy is scored on, unless it says otherwise.
+ *
+ * Here rather than in the pipeline because the property page runs the same
+ * arithmetic in the browser when somebody moves the refurbishment cost, and
+ * both have to agree or the page would argue with the score above it.
+ */
+export const STRATEGY_FINANCE = {
+  depositPercent: 25,
+  annualRatePercent: 5.5,
+  interestOnly: true,
+  termYears: 25,
+  /** What a lender will go back to on the refinance. */
+  refinanceLtvPercent: 75,
+} as const
+
+/**
  * Running costs as a share of gross rent, by strategy.
  *
  * A buy-to-let landlord pays management, insurance and maintenance. An HMO
@@ -95,9 +111,11 @@ export const STRATEGY_DEFINITIONS: Record<InvestmentStrategy, StrategyDefinition
     description: 'Buy, refurbish, then refinance or sell. The value is in the works.',
     measures: 'How much of your money comes back out on the refinance.',
     needs: { hmoRents: false, developmentGdv: true },
-    // Without a refurb cost there is no margin to score. We do not hold one and
-    // will not derive one — see DECISIONS.md on /build-cost.
-    requiresAssumptions: ['refurbCostPerSqFt'],
+    // Scored at a full refurbishment unless the subscriber has set their own
+    // figure. The assumption is stated on the property and can be moved there,
+    // which beats an empty box on the onboarding form asking for a number
+    // nobody knows before they have seen the house. See `@/lib/refurb`.
+    requiresAssumptions: [],
     sortOrder: 30,
   },
 }
