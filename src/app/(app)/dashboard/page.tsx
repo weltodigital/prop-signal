@@ -9,6 +9,7 @@ import { DashboardStats } from '@/components/dashboard-stats'
 import { FirstRun } from '@/components/first-run'
 import { MarkSeen } from '@/components/mark-seen'
 import { EmptyState, Notice } from '@/components/ui'
+import { Rise } from '@/components/motion-ui'
 import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
 
 export const dynamic = 'force-dynamic'
@@ -44,29 +45,44 @@ export default async function DashboardPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h1 className="font-display text-h2 font-normal">Your properties</h1>
-        <p className="text-sm text-muted">
-          {describeArea(profile.postcode, profile.radiusMiles)} ·{' '}
-          <Link href="/onboarding" className="underline underline-offset-4 hover:text-ink">
-            change
-          </Link>
-        </p>
-      </div>
+      {/* The head of the page sits on the same wash the front page opens on, so
+          the figures have something to sit on and the list below has somewhere
+          to start. Full width of the shell, which is why the negative margin. */}
+      <div className="-mx-6 -mt-12 bg-gradient-to-b from-tint to-ground px-6 pt-12 pb-10">
+        <Rise>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <h1 className="font-display text-h2 font-normal">Your properties</h1>
+            <p className="text-sm text-muted">
+              {describeArea(profile.postcode, profile.radiusMiles)} ·{' '}
+              <Link href="/onboarding" className="underline underline-offset-4 hover:text-ink">
+                change
+              </Link>
+            </p>
+          </div>
 
-      {/* The run date, so the user knows the list is fresh rather than the one
-          they saw last time. */}
-      {week ? (
-        <p className="mt-2 text-sm text-muted">
-          {unseen ? (
-            <span className="label mr-2 border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
-              New
-            </span>
+          {/* The run date, so the user knows the list is fresh rather than the
+              one they saw last time. */}
+          {week ? (
+            <p className="mt-3 text-sm text-muted">
+              {unseen ? (
+                <span className="label mr-2 border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
+                  New
+                </span>
+              ) : null}
+              {week.dealCount} {week.dealCount === 1 ? 'property' : 'properties'} that stack in your area, last
+              checked {formatDate(week.publishedAt)}.
+            </p>
           ) : null}
-          {week.dealCount} {week.dealCount === 1 ? 'property' : 'properties'} that stack in your area, last
-          checked {formatDate(week.publishedAt)}.
-        </p>
-      ) : null}
+        </Rise>
+
+        {week && week.deals.length > 0 ? (
+          <DashboardStats
+            deals={week.deals}
+            tracked={tracked}
+            newThisWeek={week.deals.filter((deal) => deal.changedSinceSeen).length}
+          />
+        ) : null}
+      </div>
 
       {params.checkout === 'complete' ? (
         <div className="mt-6">
@@ -96,14 +112,6 @@ export default async function DashboardPage({
         </div>
       ) : null}
 
-      {week && week.deals.length > 0 ? (
-        <DashboardStats
-          deals={week.deals}
-          tracked={tracked}
-          newThisWeek={week.deals.filter((deal) => deal.changedSinceSeen).length}
-        />
-      ) : null}
-
       {/* The opening backfill has not happened yet. Run it now rather than
           leaving somebody who has just paid looking at an empty dashboard
           until Sunday. */}
@@ -116,16 +124,17 @@ export default async function DashboardPage({
 
       {tracked.length ? <h2 className="mt-12 text-h3 font-medium">Your properties</h2> : null}
 
-      <div className="stagger mt-8">
+      <div className="mt-8">
         {week && week.deals.length > 0 ? (
-          week.deals.map((deal) => (
-            <DealCard
-              key={deal.propertyId}
-              deal={deal}
-              isNew={unseen}
-              stage={stages.get(deal.propertyId)?.stage ?? null}
-              gdvPerSqFt={gdvPerSqFt}
-            />
+          week.deals.map((deal, index) => (
+            <Rise key={deal.propertyId} delay={Math.min(index, 6) * 0.05}>
+              <DealCard
+                deal={deal}
+                isNew={unseen}
+                stage={stages.get(deal.propertyId)?.stage ?? null}
+                gdvPerSqFt={gdvPerSqFt}
+              />
+            </Rise>
           ))
         ) : awaitingFirstRun ? (
           // The panel above is doing it. Saying "not built yet" underneath

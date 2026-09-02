@@ -8,6 +8,7 @@ import { RiskFlags } from '@/components/risk-flags'
 import { StageControl } from '@/components/stage-control'
 import { setStageAction } from '@/app/(app)/deals/actions'
 import { ActionAnchor, ActionButton, ActionLink } from '@/components/ui'
+import { CountUp, Meter } from '@/components/motion-ui'
 import { RefurbEstimate } from '@/components/refurb-estimate'
 import { directListingUrl, listingPortal } from '@/lib/listing-url'
 import type { DealStage } from '@/lib/deal-stages'
@@ -60,13 +61,14 @@ function ScoreMeter({ score }: { score: number }) {
 
   return (
     <div className="w-14 shrink-0 text-right" title={`${score.toFixed(1)} out of 150`}>
-      <p className="figure text-2xl leading-none text-highlight-deep">{score.toFixed(0)}</p>
-      <div className="mt-1.5 h-[3px] w-full overflow-hidden bg-line">
-        <div
-          className="h-full bg-highlight-deep transition-[width] duration-300"
-          style={{ width: `${Math.max(share * 100, 4)}%` }}
-        />
-      </div>
+      <p className="figure text-2xl leading-none text-highlight-deep">
+        <CountUp value={score} />
+      </p>
+      <Meter
+        share={Math.max(share, 0.04)}
+        trackClassName="mt-1.5 h-[3px] w-full bg-line"
+        className="h-full bg-highlight-deep"
+      />
     </div>
   )
 }
@@ -98,7 +100,7 @@ export function DealCard({
       : null
 
   return (
-    <article className="group border-t border-line py-4 transition-colors duration-150 hover:bg-ink/[0.02]">
+    <article className="group -mx-4 border-t border-line px-4 py-5 transition-colors duration-150 hover:bg-tint/50">
       {/* Line one: why it is here, what it is, and how good it is. */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

@@ -1,5 +1,6 @@
 import type { PublishedDeal } from '@/lib/deals'
 import type { TrackedDeal } from '@/lib/deal-progress'
+import { CountUp, Meter } from '@/components/motion-ui'
 
 /**
  * The four numbers the page leads with.
@@ -13,11 +14,22 @@ import type { TrackedDeal } from '@/lib/deal-progress'
 function Tile({
   label,
   value,
+  count,
+  decimals = 0,
+  suffix = '',
+  share,
   note,
   tone = 'plain',
 }: {
   label: string
-  value: string
+  /** Printed as-is where there is no figure to count, like an em dash. */
+  value?: string
+  /** The figure, where there is one. Counts up on arrival. */
+  count?: number
+  decimals?: number
+  suffix?: string
+  /** Where the figure has a real ceiling, the bar that shows it against one. */
+  share?: number
   note?: string | null
   tone?: 'plain' | 'accent'
 }) {
@@ -25,8 +37,15 @@ function Tile({
     <div className="min-w-0 border-t border-line pt-4">
       <p className="label truncate text-muted">{label}</p>
       <p className={`figure mt-1.5 text-3xl leading-none ${tone === 'accent' ? 'text-highlight-deep' : 'text-ink'}`}>
-        {value}
+        {count === undefined ? value : <CountUp value={count} decimals={decimals} suffix={suffix} />}
       </p>
+      {share !== undefined ? (
+        <Meter
+          share={share}
+          trackClassName="mt-3 h-[3px] w-full bg-line"
+          className={`h-full ${tone === 'accent' ? 'bg-highlight-deep' : 'bg-ink/70'}`}
+        />
+      ) : null}
       {note ? <p className="mt-2 truncate text-sm text-muted">{note}</p> : null}
     </div>
   )
@@ -58,23 +77,30 @@ export function DashboardStats({
     <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
       <Tile
         label="On your list"
-        value={String(deals.length)}
+        count={deals.length}
         note={newThisWeek > 0 ? `${newThisWeek} new this week` : 'nothing new this week'}
       />
+      {/* The only figure here with a real ceiling: quality in full plus half of
+          movement. The others have no scale, so they get no bar. */}
       <Tile
         label="Best score"
-        value={topScore === null ? '—' : topScore.toFixed(0)}
+        value="—"
+        count={topScore ?? undefined}
+        share={topScore === null ? undefined : topScore / 150}
         note={topScore === null ? null : 'out of 150'}
         tone="accent"
       />
       <Tile
         label="Best yield"
-        value={bestYield === null ? '—' : `${bestYield.toFixed(1)}%`}
+        value="—"
+        count={bestYield ?? undefined}
+        decimals={1}
+        suffix="%"
         note={bestYield === null ? 'no rent held yet' : 'gross, on the asking price'}
       />
       <Tile
         label="Being worked"
-        value={String(tracked.length)}
+        count={tracked.length}
         note={tracked.length ? 'in your deals' : 'nothing started'}
       />
     </div>

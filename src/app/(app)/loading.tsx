@@ -1,3 +1,5 @@
+import { LoadingBar, Rise } from '@/components/motion-ui'
+
 /**
  * What sits under the header while a page loads.
  *
@@ -5,6 +7,9 @@
  * content. Shaped like the list it is replacing, down to the line count, so
  * nothing jumps when the real thing arrives — a skeleton that changes the
  * layout on landing is worse than no skeleton at all.
+ *
+ * The bar at the top says work is happening and refuses to say how much is
+ * left, because we do not know and a percentage that guesses is a lie.
  */
 function Row() {
   return (
@@ -37,12 +42,28 @@ function Row() {
 export default function Loading() {
   return (
     <div role="status" aria-live="polite">
+      <div className="-mt-12 mb-10">
+        <LoadingBar />
+      </div>
+
       <div className="shimmer h-8 w-52" />
       <div className="shimmer mt-3 h-3.5 w-80 max-w-full" />
 
+      <div className="mt-10 grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((tile) => (
+          <div key={tile} className="border-t border-line pt-4">
+            <div className="shimmer h-2.5 w-20" />
+            <div className="shimmer mt-2.5 h-7 w-16" />
+            <div className="shimmer mt-3 h-[3px] w-full" />
+          </div>
+        ))}
+      </div>
+
       <div className="mt-8">
         {[0, 1, 2, 3].map((row) => (
-          <Row key={row} />
+          <Rise key={row} delay={row * 0.06}>
+            <Row />
+          </Rise>
         ))}
       </div>
 

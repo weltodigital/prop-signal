@@ -3,6 +3,7 @@ import type { TrackedDeal } from '@/lib/deal-progress'
 import { FORWARD_STAGES, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
 import { StageControl } from '@/components/stage-control'
 import { formatDate, formatMoney } from '@/lib/format'
+import { Meter } from '@/components/motion-ui'
 
 /**
  * The deals the subscriber is working.
@@ -59,12 +60,11 @@ function StageProgress({ stage }: { stage: DealStage }) {
       {FORWARD_STAGES.map((id, index) => {
         const done = index + 1 <= reached
         return (
-          <span
+          <Meter
             key={id}
-            aria-hidden="true"
-            className={`h-1 w-4 rounded-full transition-colors ${
-              done ? (definition.lost ? 'bg-muted/50' : 'bg-highlight-deep') : 'bg-line'
-            }`}
+            share={done ? 1 : 0}
+            trackClassName="h-1 w-4 rounded-full bg-line"
+            className={`h-full rounded-full ${definition.lost ? 'bg-muted/50' : 'bg-highlight-deep'}`}
           />
         )
       })}
