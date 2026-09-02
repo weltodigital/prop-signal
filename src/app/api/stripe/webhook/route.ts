@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ownerIdForCustomer } from '@/lib/stripe/customer'
 import { toSubscriptionRecord } from '@/lib/stripe/subscription-record'
+import { reconcileAreas } from '@/lib/areas'
 import { stripeEnv } from '@/lib/env'
 
 export const runtime = 'nodejs'
@@ -164,5 +165,29 @@ async function upsertSubscription(
     .from('billing_customers')
     .upsert({ owner_id: ownerId, stripe_customer_id: customerId }, { onConflict: 'owner_id' })
 
-  log('subscription_synced', { subscription: subscription.id, owner: ownerId, status: subscription.status })
+  // The plan may have moved in either direction. An upgrade gives back the
+  // areas a previous downgrade paused; a downgrade pauses the excess rather
+  // than deleting it. Failing this must not fail the webhook — Stripe would
+  // retry a delivery whose subscription row is already correct, and the areas
+  // are reconciled again on the next event either way.
+  let areas: Awaited<ReturnType<typeof reconcileAreas>> | null = null
+  try {
+    areas = await reconcileAreas(ownerId, admin)
+  } catch (error) {
+    log('area_reconcile_failed', {
+      subscription: subscription.id,
+      owner: ownerId,
+      message: error instanceof Error ? error.message : String(error),
+    })
+  }
+
+  log('subscription_synced', {
+    subscription: subscription.id,
+    owner: ownerId,
+    status: subscription.status,
+    price: record.price_id,
+    area_limit: record.area_limit,
+    areas_paused: areas?.paused ?? null,
+    areas_resumed: areas?.resumed ?? null,
+  })
 }

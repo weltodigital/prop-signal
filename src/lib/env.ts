@@ -29,7 +29,18 @@ const supabaseAdminSchema = z.object({
 const stripeSchema = z.object({
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  /** Starter, £29, one area. The original price, kept under its original name. */
   STRIPE_PRICE_ID: z.string().min(1),
+  /**
+   * The two larger tiers.
+   *
+   * Optional, and defaulting to empty rather than required. A deployment that
+   * has not created them yet — a preview, a fresh test account — must still
+   * boot and sell the Starter plan. An id that is missing simply matches no
+   * price, and `areaLimitForPrice` floors an unknown price at one area.
+   */
+  STRIPE_PRICE_ID_INVESTOR: z.string().default(''),
+  STRIPE_PRICE_ID_PORTFOLIO: z.string().default(''),
 })
 
 function fail(where: string, error: z.ZodError): never {

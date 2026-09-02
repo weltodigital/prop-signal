@@ -18,3 +18,18 @@ export function stripe(): Stripe {
   }
   return cached
 }
+
+/**
+ * The three price ids, as a map the plan functions can read.
+ *
+ * Assembled here so nothing else has to know which environment variable holds
+ * which tier. An unset id is the empty string, which matches no real price.
+ */
+export function planPriceIds(): { starter: string; investor: string; portfolio: string } {
+  const env = stripeEnv()
+  return {
+    starter: env.STRIPE_PRICE_ID,
+    investor: env.STRIPE_PRICE_ID_INVESTOR,
+    portfolio: env.STRIPE_PRICE_ID_PORTFOLIO,
+  }
+}

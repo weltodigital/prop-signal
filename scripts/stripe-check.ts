@@ -10,6 +10,7 @@
  */
 import './load-env'
 import Stripe from 'stripe'
+import { PLAN_LIST, type PlanTier } from '../src/lib/plans'
 
 /** The events src/app/api/stripe/webhook/route.ts acts on. */
 const REQUIRED_EVENTS = [
@@ -18,7 +19,6 @@ const REQUIRED_EVENTS = [
   'customer.subscription.deleted',
 ]
 
-const AMOUNT_PENCE = 2900
 const API_VERSION = '2026-07-29.dahlia'
 
 let problems = 0
@@ -38,8 +38,13 @@ function note(detail: string) {
 
 async function main() {
   const secret = process.env.STRIPE_SECRET_KEY
-  const priceId = process.env.STRIPE_PRICE_ID
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+  const PRICE_ENV: Record<PlanTier, string | undefined> = {
+    starter: process.env.STRIPE_PRICE_ID,
+    investor: process.env.STRIPE_PRICE_ID_INVESTOR,
+    portfolio: process.env.STRIPE_PRICE_ID_PORTFOLIO,
+  }
 
   if (!secret) {
     console.error('STRIPE_SECRET_KEY is not set.')
@@ -61,37 +66,51 @@ async function main() {
   if (account.details_submitted) ok('onboarding', 'complete')
   else bad('onboarding', 'incomplete — finish it in the Stripe dashboard')
 
-  console.log('\nPrice')
-  if (!priceId) {
-    bad('STRIPE_PRICE_ID', 'not set')
-  } else {
+  console.log('\nPlans')
+
+  // Every tier, priced on areas. Checked one at a time and by id, because the
+  // map from a price to an area count is the thing being sold: a tier pointing
+  // at the wrong price would hand somebody five areas for £29, and a tier with
+  // no price at all would take their money and sell them nothing.
+  for (const plan of PLAN_LIST) {
+    const id = PRICE_ENV[plan.id]
+    const label = `${plan.label} (${plan.areas} ${plan.areas === 1 ? 'area' : 'areas'})`
+
+    if (!id) {
+      // Only Starter is required. The larger tiers can be absent on a fresh
+      // test account without stopping the product selling anything.
+      if (plan.id === 'starter') bad(label, 'STRIPE_PRICE_ID is not set')
+      else note(`${label.padEnd(24)} not configured — this tier will not be offered`)
+      continue
+    }
+
     try {
-      const price = await stripe.prices.retrieve(priceId, { expand: ['product'] })
+      const price = await stripe.prices.retrieve(id, { expand: ['product'] })
       const product = price.product as Stripe.Product
-
-      if (price.livemode === live) ok('mode', price.livemode ? 'live' : 'test')
-      else bad('mode', `price is ${price.livemode ? 'live' : 'test'} but the key is ${live ? 'live' : 'test'}`)
-
-      if (price.active) ok('active', 'yes')
-      else bad('active', 'the price is archived — checkout will fail')
+      const pence = plan.monthlyPrice * 100
 
       const amount = `${((price.unit_amount ?? 0) / 100).toFixed(2)} ${price.currency.toUpperCase()}`
-      const period = price.recurring ? `every ${price.recurring.interval_count} ${price.recurring.interval}` : 'one-off'
-      if (price.unit_amount === AMOUNT_PENCE && price.currency === 'gbp') ok('amount', `${amount} ${period}`)
-      else bad('amount', `${amount} ${period} — expected 29.00 GBP every 1 month`)
 
-      if (price.recurring?.interval === 'month') ok('recurring', 'monthly')
-      else bad('recurring', 'not a monthly subscription price')
-
-      ok('product', `${product.id} — ${product.name}${product.active ? '' : ' (ARCHIVED)'}`)
-      if (!price.lookup_key) {
-        note('No lookup key on this price. `pnpm stripe:setup` finds the price by')
-        note('lookup key, so running it now would create a second product.')
+      const faults: string[] = []
+      if (price.livemode !== live) faults.push(`is ${price.livemode ? 'live' : 'test'} but the key is ${live ? 'live' : 'test'}`)
+      if (!price.active) faults.push('is archived — checkout will fail')
+      if (price.unit_amount !== pence || price.currency !== 'gbp') {
+        faults.push(`is ${amount}, expected ${plan.monthlyPrice.toFixed(2)} GBP`)
       }
+      if (price.recurring?.interval !== 'month') faults.push('is not monthly')
+
+      if (faults.length) bad(label, faults.join('; '))
+      else ok(label, `${amount}/month — ${product.name}${product.active ? '' : ' (ARCHIVED)'}`)
     } catch (error) {
-      bad('STRIPE_PRICE_ID', error instanceof Error ? error.message : 'could not be retrieved')
+      bad(label, error instanceof Error ? error.message : 'could not be retrieved')
     }
   }
+
+  // Two tiers sharing a price id would be a silent entitlement bug: whichever
+  // matched first in the map would decide, and the other would be unreachable.
+  const configured = PLAN_LIST.map((plan) => PRICE_ENV[plan.id]).filter(Boolean)
+  if (new Set(configured).size === configured.length) ok('distinct', 'each tier has its own price')
+  else bad('distinct', 'two tiers share a price id — entitlement would be decided by map order')
 
   console.log('\nWebhook')
   if (!webhookSecret) note('STRIPE_WEBHOOK_SECRET is not set — every delivery will be rejected.')

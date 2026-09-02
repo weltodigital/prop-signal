@@ -1,6 +1,8 @@
 import 'server-only'
 
 import type Stripe from 'stripe'
+import { areaLimitForPrice } from '@/lib/plans'
+import { planPriceIds } from '@/lib/stripe/client'
 
 /**
  * Flattens a Stripe subscription into the shape of our `subscriptions` row.
@@ -22,6 +24,14 @@ export type SubscriptionRecord = {
   cancel_at_period_end: boolean
   canceled_at: string | null
   trial_end: string | null
+  /**
+   * Areas this subscription buys, from the price id and an explicit map.
+   *
+   * Stored on the row rather than looked up on read, so a change to the map
+   * later cannot retroactively alter what somebody was sold. The database
+   * enforces the count against this column.
+   */
+  area_limit: number
   stripe_updated_at: string
 }
 
@@ -57,6 +67,7 @@ export function toSubscriptionRecord(
     cancel_at_period_end: subscription.cancel_at_period_end,
     canceled_at: toIso(subscription.canceled_at),
     trial_end: toIso(subscription.trial_end),
+    area_limit: areaLimitForPrice(item?.price.id ?? null, planPriceIds()),
     stripe_updated_at: observedAt.toISOString(),
   }
 }

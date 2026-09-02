@@ -148,22 +148,52 @@ async function ensureWebhook(stripe: Stripe, url: string, recreate: boolean): Pr
  * one price.
  */
 async function ensurePortal(stripe: Stripe): Promise<void> {
-  const existing = await stripe.billingPortal.configurations.list({ is_default: true, limit: 1 })
-  if (existing.data[0]) {
-    console.log(`  portal    ${existing.data[0].id} (already configured)`)
-    return
+  // Switching plan is a portal feature, and it has to name the prices it may
+  // switch between — Stripe will not offer a price the configuration does not
+  // list. So this is rebuilt whenever the set of tiers changes, rather than
+  // skipped because a portal already exists: a portal configured before the
+  // tiers existed cannot upgrade anybody.
+  const products = [
+    { price: process.env.STRIPE_PRICE_ID, name: 'Starter' },
+    { price: process.env.STRIPE_PRICE_ID_INVESTOR, name: 'Investor' },
+    { price: process.env.STRIPE_PRICE_ID_PORTFOLIO, name: 'Portfolio' },
+  ].filter((entry): entry is { price: string; name: string } => Boolean(entry.price))
+
+  const priced = await Promise.all(
+    products.map(async (entry) => {
+      const price = await stripe.prices.retrieve(entry.price, { expand: ['product'] })
+      const product = price.product as { id: string }
+      return { product: product.id, prices: [entry.price] }
+    }),
+  )
+
+  const features: Stripe.BillingPortal.ConfigurationCreateParams.Features = {
+    customer_update: { enabled: true, allowed_updates: ['email', 'address'] },
+    invoice_history: { enabled: true },
+    payment_method_update: { enabled: true },
+    subscription_cancel: { enabled: true, mode: 'at_period_end' as const },
+    // Upgrades and downgrades, prorated. A downgrade does not delete anything:
+    // the webhook pauses the areas the smaller plan no longer covers and the
+    // account page lets the subscriber choose which one stays live.
+    subscription_update: {
+      enabled: priced.length > 1,
+      default_allowed_updates: ['price'],
+      proration_behavior: 'create_prorations' as const,
+      products: priced,
+    },
   }
 
+  const existing = await stripe.billingPortal.configurations.list({ is_default: true, limit: 1 })
+
   try {
-    const config = await stripe.billingPortal.configurations.create({
-      features: {
-        customer_update: { enabled: true, allowed_updates: ['email', 'address'] },
-        invoice_history: { enabled: true },
-        payment_method_update: { enabled: true },
-        subscription_cancel: { enabled: true, mode: 'at_period_end' },
-      },
-    })
-    console.log(`  portal    ${config.id} (created)`)
+    if (existing.data[0]) {
+      const config = await stripe.billingPortal.configurations.update(existing.data[0].id, { features })
+      console.log(`  portal    ${config.id} (updated — ${priced.length} tiers switchable)`)
+      return
+    }
+
+    const config = await stripe.billingPortal.configurations.create({ features })
+    console.log(`  portal    ${config.id} (created — ${priced.length} tiers switchable)`)
   } catch (error) {
     // Live mode can refuse until the account has terms and privacy URLs on
     // file. That is a dashboard setting, not something to invent here.
