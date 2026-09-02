@@ -56,6 +56,9 @@ export async function GET(request: NextRequest) {
       dealsSelected: summaries.reduce((total, s) => total + s.dealsSelected, 0),
       thinWeeks: summaries.filter((s) => s.isThin).length,
       failures: summaries.filter((s) => s.status !== 'completed').length,
+      // Set when the PropertyData account ran out. The profiles behind it were
+      // not attempted and are picked up by the next invocation.
+      blockedOnCredits: summaries.some((s) => s.accountBlocked),
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error'

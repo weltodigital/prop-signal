@@ -2,7 +2,7 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createPropertyDataClient, CreditRefusal, PropertyDataError } from '@/lib/propertydata'
+import { checkAccount, createPropertyDataClient, CreditRefusal, PropertyDataError } from '@/lib/propertydata'
 import { applyFilter, listingsFromPayload, type Listing } from './listing'
 import {
   DEFAULT_THRESHOLDS,
@@ -91,6 +91,16 @@ const WEEKLY_CEILING = 100
 const BACKFILL_CEILING = 150
 
 /**
+ * Account credits never spent by the weekly batch.
+ *
+ * Held back for `/api/runs/first`: somebody who has just paid and is watching
+ * a panel build their opening list is the most time-critical spend this
+ * product has, and an existing subscriber missing one weekly refresh is the
+ * least. When the account is low, the batch is what gives way.
+ */
+const ACCOUNT_RESERVE = 200
+
+/**
  * Rows per write statement.
  *
  * Everything a run persists goes in bulk now rather than a row at a time. This
@@ -98,6 +108,36 @@ const BACKFILL_CEILING = 150
  * one round trip, small enough that a busy area is not one enormous one.
  */
 const WRITE_CHUNK = 500
+
+/**
+ * How a failed run should be recorded, and whether it stops the batch.
+ *
+ * The distinction is whose limit was hit.
+ *
+ * `abortedReason` is set only by a fatal PropertyDataError — X03, X04, X05,
+ * X13 — and every one of those is about the *account*: out of credits,
+ * cancelled, or a bad key. Nothing the subscriber did caused it, nothing about
+ * their area was tried, and every profile behind them would fail the same way.
+ * So it is `blocked`: the batch stops, and the run does not count as their
+ * attempt for the week.
+ *
+ * A `CreditRefusal` is the opposite. It is a limit of ours — the per-run
+ * ceiling or the subscriber's own monthly allowance — working exactly as
+ * intended, on one profile, and it says nothing about the account. That is
+ * `aborted`, and the batch carries on to the next subscriber.
+ *
+ * Reading the second as the first is what let one subscriber's exhausted
+ * allowance look like a dead account. Reading the first as the second is what
+ * let a dead account cost everybody their Monday list.
+ */
+export function runOutcome(
+  error: unknown,
+  abortedReason: string | null,
+): { status: 'failed' | 'aborted' | 'blocked'; accountBlocked: boolean } {
+  if (abortedReason !== null) return { status: 'blocked', accountBlocked: true }
+  if (error instanceof CreditRefusal) return { status: 'aborted', accountBlocked: false }
+  return { status: 'failed', accountBlocked: false }
+}
 
 /** Splits a list into runs of at most `size`. */
 function chunked<T>(items: readonly T[], size: number): T[][] {
@@ -128,7 +168,15 @@ export type RunSummary = {
   ownerId: string
   profileId: string
   kind: RunKind
-  status: 'completed' | 'failed' | 'aborted'
+  status: 'completed' | 'failed' | 'aborted' | 'blocked'
+  /**
+   * True where the PropertyData account itself was out of credits.
+   *
+   * A fact about us, not about this subscriber. It stops the batch and leaves
+   * the profile to be tried again, rather than counting as their attempt for
+   * the week.
+   */
+  accountBlocked: boolean
   candidatesSeen: number
   candidatesFiltered: number
   candidatesEnriched: number
@@ -247,6 +295,7 @@ export async function runProfile(options: {
     candidatesFiltered: 0,
     candidatesEnriched: 0,
     eventsWritten: 0,
+    accountBlocked: false,
     candidatesRiskExcluded: 0,
     candidatesThinData: 0,
     candidatesRemoved: 0,
@@ -634,8 +683,9 @@ export async function runProfile(options: {
       )
     }
   } catch (error) {
-    const refusal = error instanceof CreditRefusal
-    summary.status = refusal || client.abortedReason() ? 'aborted' : 'failed'
+    const outcome = runOutcome(error, client.abortedReason())
+    summary.accountBlocked = outcome.accountBlocked
+    summary.status = outcome.status
     summary.error = error instanceof Error ? error.message : String(error)
 
     log('profile_failed', {
@@ -750,8 +800,36 @@ export async function runWeekly(options: {
     budget_ms: budgetMs,
   })
 
+  // What the account has, before a penny of it is spent. `/account/credits`
+  // is free, so this costs nothing and answers the one question that decides
+  // whether the batch should start at all.
+  let budget: number | null = null
+  try {
+    const account = await checkAccount()
+    budget = account.creditsRemaining
+
+    if (budget !== null && budget < ACCOUNT_RESERVE + BACKFILL_CEILING) {
+      log('batch_refused_low_account', {
+        batch_id: batchId,
+        credits_remaining: budget,
+        reserve: ACCOUNT_RESERVE,
+        profiles: profiles.length,
+      })
+      return { batchId, summaries: [], remaining: profiles.length }
+    }
+  } catch (error) {
+    // Not being able to read the position is not a reason to refuse to run.
+    // The per-run ceilings and the per-user allowances still hold, and the
+    // block above still stops the batch if the account turns out to be dry.
+    log('account_check_failed', {
+      batch_id: batchId,
+      message: error instanceof Error ? error.message : String(error),
+    })
+  }
+
   const summaries: RunSummary[] = []
   let remaining = 0
+  let spent = 0
 
   for (const profile of profiles) {
     // Stop cleanly with time to spare rather than being killed mid-run. A run
@@ -771,7 +849,48 @@ export async function runWeekly(options: {
     }
 
     try {
-      summaries.push(await runProfile({ profile: profile as ProfileRow, batchId, supabase, now }))
+      const summary = await runProfile({ profile: profile as ProfileRow, batchId, supabase, now })
+      summaries.push(summary)
+
+      // The account is out of credits, cancelled, or the key is bad. Every
+      // remaining profile would make one doomed call and abort, so the batch
+      // stops here.
+      //
+      // The profiles behind this one are left untouched — no run row, so
+      // nothing marks them attempted — and the next invocation picks them up
+      // from where this stopped. Which is the whole point: one subscriber
+      // exhausting the account used to cost everybody else their Monday list
+      // for the rest of the week.
+      if (summary.accountBlocked) {
+        remaining = profiles.length - summaries.length
+        log('batch_blocked', {
+          batch_id: batchId,
+          reason: summary.error,
+          ran: summaries.length,
+          remaining,
+        })
+        break
+      }
+
+      spent += summary.creditsSpent
+
+      // Stop before the account is dry rather than after. `budget` is what the
+      // account had when the batch opened; the reserve is held back for the
+      // opening run of somebody who has just paid, because a new subscriber
+      // looking at an empty dashboard is worse than an existing one waiting a
+      // week for a refresh they have had fifty times.
+      if (budget !== null && budget - spent < ACCOUNT_RESERVE + BACKFILL_CEILING) {
+        remaining = profiles.length - summaries.length
+        log('batch_reserve_reached', {
+          batch_id: batchId,
+          account_credits_at_start: budget,
+          spent,
+          reserve: ACCOUNT_RESERVE,
+          ran: summaries.length,
+          remaining,
+        })
+        break
+      }
     } catch (error) {
       // One profile failing must not take the batch down. Its own run row
       // records what happened.
@@ -790,6 +909,7 @@ export async function runWeekly(options: {
     deals_selected: summaries.reduce((total, s) => total + s.dealsSelected, 0),
     thin_weeks: summaries.filter((s) => s.isThin).length,
     failures: summaries.filter((s) => s.status !== 'completed').length,
+    blocked: summaries.filter((s) => s.accountBlocked).length,
     remaining,
   })
 
@@ -813,6 +933,10 @@ async function profilesRunThisCycle(supabase: SupabaseClient, now: Date): Promis
     .from('pipeline_runs')
     .select('profile_id')
     .gte('created_at', cycleStart(now).toISOString())
+    // A blocked run is not an attempt. The account was out of credits and this
+    // profile never got a fair try, so it is picked up again by the next
+    // invocation rather than skipped until the following Sunday.
+    .neq('status', 'blocked')
 
   if (error) {
     // Without this the batch would re-run everybody, which costs real credits.
