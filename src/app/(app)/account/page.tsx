@@ -4,7 +4,9 @@ import { getSubscriptionState } from '@/lib/subscription'
 import {
   countRadiusWidenings,
   countSearchChanges,
+  areaAllowance,
   getSearchProfile,
+  listSearchProfiles,
   listSourcingLists,
   RADIUS_WIDEN_LIMIT,
   SEARCH_CHANGE_LIMIT,
@@ -12,6 +14,8 @@ import {
 import { ButtonLink } from '@/components/ui'
 import { STRATEGY_DEFINITIONS } from '@/lib/strategies'
 import { ChangePasswordForm } from './change-password-form'
+import { chooseAreaAction } from './actions'
+import { areaName } from '@/lib/search-profile.types'
 import { Button, Card, Notice } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -47,8 +51,10 @@ export default async function AccountPage({
   const state = await getSubscriptionState()
   const subscription = state.subscription
 
-  const [profile, sourcingLists, changesUsed, wideningsUsed, params] = await Promise.all([
+  const [profile, profiles, allowance, sourcingLists, changesUsed, wideningsUsed, params] = await Promise.all([
     state.active ? getSearchProfile() : Promise.resolve(null),
+    state.active ? listSearchProfiles() : Promise.resolve([]),
+    areaAllowance(user.id),
     state.active ? listSourcingLists() : Promise.resolve([]),
     state.active ? countSearchChanges(user.id) : Promise.resolve(0),
     state.active ? countRadiusWidenings(user.id) : Promise.resolve(0),
@@ -123,38 +129,82 @@ export default async function AccountPage({
               </Button>
             </form>
           ) : (
-            <form action="/api/stripe/checkout" method="post">
-              <Button type="submit">Subscribe for £29 a month</Button>
-            </form>
+            <ButtonLink href="/subscribe">Choose a plan</ButtonLink>
           )}
         </div>
       </Card>
 
       <Card className="mt-6">
-        <h2 className="text-base font-medium">Area and strategy</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+          <h2 className="text-base font-medium">Your areas</h2>
+          <p className="text-sm text-muted">
+            <span className="figure">{allowance.used}</span> of{' '}
+            <span className="figure">{allowance.limit}</span> used
+          </p>
+        </div>
+
+        {/* At the limit and wanting another: the honest next step is the plan,
+            and saying so beats a form that refuses on submit. */}
+        {allowance.used >= allowance.limit && state.active ? (
+          <p className="mt-2 text-sm text-muted">
+            Your plan covers {allowance.limit} {allowance.limit === 1 ? 'area' : 'areas'}.{' '}
+            <a href="/api/stripe/portal" className="underline underline-offset-4 hover:text-ink">
+              Move up a tier
+            </a>{' '}
+            to search more.
+          </p>
+        ) : null}
+
+        {profiles.length ? (
+          <div className="mt-5 space-y-4">
+            {profiles.map((area) => (
+              <div key={area.id} className="border-t border-line pt-4">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <p className="font-medium">
+                    {areaName(area)}
+                    {area.pausedAt ? <span className="label ml-2 text-muted">Paused</span> : null}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {area.postcode}, within {area.radiusMiles} {area.radiusMiles === 1 ? 'mile' : 'miles'}
+                  </p>
+                </div>
+
+                <p className="mt-1 text-sm text-muted">
+                  {area.investmentStrategies.map((id) => STRATEGY_DEFINITIONS[id].label).join(', ')} ·{' '}
+                  {area.sourcingLists.map((id) => listLabels.get(id) ?? id).join(', ')}
+                </p>
+
+                {/* Why it is paused, and that nothing has been thrown away.
+                    Somebody who has just downgraded needs to know their search
+                    is intact before they need to know anything else. */}
+                {area.pausedAt ? (
+                  <p className="mt-2 text-sm text-muted">
+                    {area.pausedReason ?? 'Paused.'} Nothing has been deleted — the search, its history and your
+                    deals are all still here, and it starts again the moment there is room for it.
+                  </p>
+                ) : null}
+
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <ButtonLink href={`/onboarding?area=${area.id}`} variant="secondary">
+                    {area.pausedAt ? 'View' : 'Change'}
+                  </ButtonLink>
+                  {area.pausedAt ? (
+                    <form action={chooseAreaAction}>
+                      <input type="hidden" name="profileId" value={area.id} />
+                      <Button type="submit" variant="quiet">
+                        Make this one live instead
+                      </Button>
+                    </form>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {profile ? (
           <>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex justify-between gap-4 border-b border-line pb-3">
-                <dt className="text-muted">Area</dt>
-                <dd className="font-medium">
-                  {profile.postcode}, within {profile.radiusMiles}{' '}
-                  {profile.radiusMiles === 1 ? 'mile' : 'miles'}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4 border-b border-line pb-3">
-                <dt className="text-muted">Strategy</dt>
-                <dd className="max-w-[60%] text-right font-medium">
-                  {profile.investmentStrategies.map((id) => STRATEGY_DEFINITIONS[id].label).join(', ')}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4 border-b border-line pb-3">
-                <dt className="text-muted">Looking for</dt>
-                <dd className="max-w-[60%] text-right font-medium">
-                  {profile.sourcingLists.map((id) => listLabels.get(id) ?? id).join(', ')}
-                </dd>
-              </div>
+            <dl className="mt-6 space-y-3 border-t border-line pt-4 text-sm">
               <div className="flex justify-between gap-4 border-b border-line pb-3">
                 <dt className="text-muted">Area and strategy changes this month</dt>
                 <dd className="figure font-medium">
@@ -172,11 +222,11 @@ export default async function AccountPage({
               </div>
             </dl>
 
-            <div className="mt-6">
-              <ButtonLink href="/onboarding" variant="secondary">
-                Change area or strategy
-              </ButtonLink>
-            </div>
+            {allowance.used < allowance.limit ? (
+              <div className="mt-6">
+                <ButtonLink href="/onboarding?new=1">Add another area</ButtonLink>
+              </div>
+            ) : null}
           </>
         ) : state.active ? (
           <>

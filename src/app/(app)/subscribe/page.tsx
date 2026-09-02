@@ -5,12 +5,18 @@ import { getSubscriptionState } from '@/lib/subscription'
 import { getSearchProfile } from '@/lib/search-profile'
 import { latestProbeFor } from '@/lib/search-probe'
 import { Button, Card, Notice } from '@/components/ui'
+import { PLAN_LIST } from '@/lib/plans'
 
 const MESSAGES: Record<string, { tone: 'info' | 'warn'; title: string; body: string }> = {
   cancelled: {
     tone: 'info',
     title: 'Checkout cancelled',
     body: 'Nothing was charged. You can start again whenever you are ready.',
+  },
+  unknown_tier: {
+    tone: 'warn',
+    title: 'That plan is not available',
+    body: 'Nothing was charged. Choose one of the plans below and we will take it from there.',
   },
   checkout_failed: {
     tone: 'warn',
@@ -22,7 +28,7 @@ const MESSAGES: Record<string, { tone: 'info' | 'warn'; title: string; body: str
 export default async function SubscribePage({
   searchParams,
 }: {
-  searchParams: Promise<{ checkout?: string; error?: string }>
+  searchParams: Promise<{ checkout?: string; error?: string; tier?: string }>
 }) {
   const supabase = await createClient()
   const {
@@ -44,9 +50,10 @@ export default async function SubscribePage({
 
   return (
     <>
-      <h1 className="font-display text-h2 font-normal">Subscribe</h1>
+      <h1 className="font-display text-h2 font-normal">Choose your plan</h1>
       <p className="mt-2 max-w-prose text-muted">
-        £29 a month. One area, searched every week, with the best of it kept on your list. Cancel any time from your account page.
+        Priced on how many areas you search. Each one gets its own list and its own scoring, and they are never
+        mixed. Cancel any time from your account page.
       </p>
 
       {/* What we already told them, repeated at the till so the decision is
@@ -98,13 +105,49 @@ export default async function SubscribePage({
         </div>
       ) : null}
 
-      <Card className="mt-8">
-        <div className="flex flex-wrap items-baseline gap-x-2">
-          <span className="figure text-3xl font-semibold">£29</span>
-          <span className="text-muted">per month</span>
-        </div>
+      {/* One card per tier, each its own form, so the tier is a real choice
+          rather than a hidden field somebody has to trust. The price itself is
+          resolved from the environment on the server — a tier name in a form
+          can only ask for a plan we sell. */}
+      <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        {PLAN_LIST.map((plan) => {
+          const chosen = params.tier === plan.id || (!params.tier && plan.recommended)
 
-        <ul className="mt-6 space-y-2 text-sm text-muted">
+          return (
+            <Card
+              key={plan.id}
+              className={chosen ? 'border-highlight-deep/40 bg-tint' : undefined}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="label text-highlight-deep">{plan.label}</p>
+                {plan.recommended ? <span className="label text-muted">Common</span> : null}
+              </div>
+
+              <p className="mt-3 flex items-baseline gap-1.5">
+                <span className="figure text-3xl font-semibold">£{plan.monthlyPrice}</span>
+                <span className="text-sm text-muted">/mo</span>
+              </p>
+
+              <p className="mt-3 text-sm">
+                <span className="figure font-medium">{plan.areas}</span>{' '}
+                {plan.areas === 1 ? 'area' : 'separate areas'}
+              </p>
+              <p className="mt-1 text-sm text-muted">{plan.summary}</p>
+
+              <form action="/api/stripe/checkout" method="post" className="mt-6">
+                <input type="hidden" name="tier" value={plan.id} />
+                <Button type="submit" variant={chosen ? 'primary' : 'secondary'}>
+                  Choose {plan.label}
+                </Button>
+              </form>
+            </Card>
+          )
+        })}
+      </div>
+
+      <Card className="mt-6">
+        <p className="text-sm font-medium">Every plan includes all of it</p>
+        <ul className="mt-3 space-y-2 text-sm text-muted">
           <li>Every property in your area that clears the bar, with new ones joining each Monday.</li>
           <li>No searching, no saved alerts, and nothing to check in between.</li>
           <li>The qualifying event stated on every one, with the date it was observed.</li>
@@ -113,12 +156,9 @@ export default async function SubscribePage({
           <li>Your first list drawn from everything standing in your area, not just this week.</li>
         </ul>
 
-        <form action="/api/stripe/checkout" method="post" className="mt-8">
-          <Button type="submit">Continue to payment</Button>
-        </form>
-
-        <p className="mt-4 text-sm text-muted">
-          Payment is handled by Stripe. We never see your card details.
+        <p className="mt-5 text-sm text-muted">
+          Payment is handled by Stripe. We never see your card details. You can change tier or cancel any time
+          from your account page.
         </p>
       </Card>
     </>

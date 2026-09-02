@@ -1,8 +1,11 @@
 'use server'
 
+import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { authErrorMessage, firstIssue, passwordField } from '@/lib/auth'
+import { chooseActiveArea } from '@/lib/areas'
 
 export type ChangePasswordState = { status: 'idle' | 'error' | 'saved'; message?: string }
 
@@ -68,4 +71,34 @@ export async function changePassword(
   await supabase.auth.signOut({ scope: 'others' })
 
   return { status: 'saved' }
+}
+
+/**
+ * Chooses which area stays live when a downgrade has left too many.
+ *
+ * The webhook pauses the newest ones, because something has to be picked and
+ * "keep the one you have had longest" is the least surprising rule available
+ * without asking. This is the asking: a subscriber who would rather keep a
+ * different one says so here, and the swap happens in the right order —
+ * pausing first, then activating — because the database counts active rows and
+ * would refuse the other way round.
+ */
+export async function chooseAreaAction(formData: FormData) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect('/login?next=/account')
+
+  const profileId = String(formData.get('profileId') ?? '')
+  if (!profileId) return
+
+  // Ownership is checked inside, against rows read with the service role, so a
+  // crafted post cannot activate somebody else's area.
+  await chooseActiveArea(user.id, profileId)
+
+  revalidatePath('/account')
+  revalidatePath('/dashboard')
+  redirect('/account?saved=1')
 }

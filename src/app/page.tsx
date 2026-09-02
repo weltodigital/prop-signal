@@ -6,6 +6,7 @@ import { MarketingNav } from '@/components/marketing/nav'
 import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 import { Arrive, Press, Reveal } from '@/components/marketing/motion'
+import { PLAN_LIST } from '@/lib/plans'
 import sourcing from '@/assets/prop-signal-property-sourcing.jpg'
 
 export const metadata: Metadata = {
@@ -329,34 +330,76 @@ export default async function HomePage() {
         </section>
 
         {/* Pricing --------------------------------------------------------- */}
+        {/* Priced on areas, because areas are what this costs us to run. One
+            postcode is a couple of hundred data credits a month; five is a
+            thousand. Charging the same for both would mean overcharging the
+            first or losing money on the last. */}
         <section id="pricing" className="bg-gradient-to-b from-tint/30 to-ground">
           <div className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-12 items-center gap-x-6 gap-y-12 border-t border-rule pt-16 pb-28 md:gap-x-8">
-            <Reveal className="col-span-12 lg:col-span-6">
-              <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
-                A sourcer charges thousands. We cost less than £1 a day.
-              </h2>
-              <p className="mt-6 text-body text-muted">
-                Your own area, searched every week against the way you invest. Cancel any time from your account
-                page.
-              </p>
-            </Reveal>
-
-            <Reveal
-              className="col-span-12 lg:col-span-5 lg:col-start-8"
-              delay={0.1}
-            >
-              <div className="rounded-lg border border-highlight-deep/25 bg-gradient-to-br from-tint to-tint-deep p-8">
-                <p className="flex items-baseline gap-3">
-                  <span className="figure text-6xl leading-none text-highlight-deep">£29</span>
-                  <span className="label text-muted">a month</span>
+            <div className="grid grid-cols-12 gap-x-6 gap-y-12 border-t border-rule pt-16 pb-28 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-7">
+                <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
+                  A sourcer charges thousands. We start at less than £1 a day.
+                </h2>
+                <p className="mt-6 text-body text-muted">
+                  Pick by how many areas you buy in. Every area gets its own search, its own list and its own
+                  scoring — they are never mixed, because a Manchester HMO and a Portsmouth flat cannot sensibly be
+                  ranked against each other. Change tier or cancel any time from your account page.
                 </p>
+              </Reveal>
 
-                <ul className="mt-8 space-y-3.5 border-t border-highlight-deep/20 pt-6 text-body">
+              <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-6 md:gap-x-8">
+                {PLAN_LIST.map((plan, index) => (
+                  <Reveal key={plan.id} className="col-span-12 lg:col-span-4" delay={index * 0.08}>
+                    <div
+                      className={`flex h-full flex-col rounded-lg border p-7 ${
+                        plan.recommended
+                          ? 'border-highlight-deep/40 bg-gradient-to-br from-tint to-tint-deep'
+                          : 'border-rule bg-card'
+                      }`}
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="label text-highlight-deep">{plan.label}</p>
+                        {plan.recommended ? (
+                          <span className="label border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
+                            Most take this
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <p className="mt-4 flex items-baseline gap-2">
+                        <span className="figure text-5xl leading-none text-highlight-deep">
+                          £{plan.monthlyPrice}
+                        </span>
+                        <span className="label text-muted">a month</span>
+                      </p>
+
+                      <p className="mt-4 text-body">
+                        <span className="figure font-medium">{plan.areas}</span>{' '}
+                        {plan.areas === 1 ? 'area' : 'separate areas'}
+                      </p>
+                      <p className="mt-2 text-sm text-muted">{plan.summary}</p>
+
+                      <Press className="mt-8">
+                        <ButtonLink
+                          href={signedIn ? `/subscribe?tier=${plan.id}` : `/signup?tier=${plan.id}`}
+                          variant={plan.recommended ? 'primary' : 'secondary'}
+                          className="w-full px-5 py-3 text-base"
+                        >
+                          {signedIn ? `Choose ${plan.label}` : `Start with ${plan.label}`}
+                        </ButtonLink>
+                      </Press>
+                    </div>
+                  </Reveal>
+                ))}
+              </div>
+
+              <Reveal className="col-span-12 lg:col-span-8">
+                <ul className="space-y-3.5 border-t border-rule pt-6 text-body">
                   {[
-                    'Your area, anything from one mile to a hundred from your postcode',
+                    'Every area searched from one mile to a hundred from your postcode',
                     'Scored for how you invest, whether that is a let, an HMO or a flip',
-                    'Every property in your area that stacks, kept in front of you',
+                    'Everything in your area that stacks, kept in front of you',
                     'The full price history, so you know what to offer',
                     'A calculator that runs your own numbers, not ours',
                     'Track each one from interested through to completed',
@@ -367,14 +410,10 @@ export default async function HomePage() {
                     </li>
                   ))}
                 </ul>
-
-                <Press className="mt-8">
-                  <ButtonLink href={primaryHref} className="w-full px-5 py-3 text-base">
-                    {primaryLabel}
-                  </ButtonLink>
-                </Press>
-              </div>
-            </Reveal>
+                <p className="mt-6 text-sm text-muted">
+                  Every plan includes all of it. The only difference is how many areas you search.
+                </p>
+              </Reveal>
             </div>
           </div>
         </section>
