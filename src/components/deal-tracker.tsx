@@ -28,7 +28,7 @@ export function DealTracker({ deals }: { deals: TrackedDeal[] }) {
         </p>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 space-y-3">
         {deals.map((deal) => (
           <TrackedRow key={deal.propertyId} deal={deal} />
         ))}
@@ -74,7 +74,7 @@ function StageProgress({ stage }: { stage: DealStage }) {
 
 export function TrackedRow({ deal }: { deal: TrackedDeal }) {
   return (
-    <div className="border-t border-line py-4 transition-colors duration-150 hover:bg-ink/[0.02]">
+    <div className="rounded-xl border border-line bg-card p-4 transition-colors duration-150 hover:border-highlight-deep/40">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0">
           <p className="text-sm font-medium">

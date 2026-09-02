@@ -13,7 +13,7 @@ import { LoadingBar, Rise } from '@/components/motion-ui'
  */
 function Row() {
   return (
-    <div className="border-t border-line py-4">
+    <div className="rounded-xl border border-line bg-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="shimmer h-3 w-28" />
@@ -59,7 +59,7 @@ export default function Loading() {
         ))}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-4">
         {[0, 1, 2, 3].map((row) => (
           <Rise key={row} delay={row * 0.06}>
             <Row />

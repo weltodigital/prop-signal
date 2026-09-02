@@ -100,7 +100,7 @@ export function DealCard({
       : null
 
   return (
-    <article className="group -mx-4 border-t border-line px-4 py-5 transition-colors duration-150 hover:bg-tint/50">
+    <article className="group rounded-xl border border-line bg-card p-5 transition-colors duration-150 hover:border-highlight-deep/40">
       {/* Line one: why it is here, what it is, and how good it is. */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -130,7 +130,9 @@ export function DealCard({
           </h3>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        {/* The score gets its own panel: it is the one figure the eye is
+            running down the list to find. */}
+        <div className="shrink-0 rounded-lg bg-tint px-3 py-2">
           <ScoreMeter score={deal.totalScore} />
         </div>
       </div>

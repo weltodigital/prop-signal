@@ -124,7 +124,7 @@ export default async function DashboardPage({
 
       {tracked.length ? <h2 className="mt-12 text-h3 font-medium">Your properties</h2> : null}
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-4">
         {week && week.deals.length > 0 ? (
           week.deals.map((deal, index) => (
             <Rise key={deal.propertyId} delay={Math.min(index, 6) * 0.05}>
