@@ -308,8 +308,8 @@ export default async function HomePage() {
         <section className="bg-gradient-to-b from-ground via-tint/40 to-ground">
           <div className="mx-auto max-w-6xl px-6">
             <div className="space-y-28 border-t border-rule pt-16 pb-28">
-            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 md:gap-x-8">
-              <Reveal className="col-span-12 lg:col-span-6">
+            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-12 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-5">
                 <p className="label text-highlight-deep">Leverage</p>
                 <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Walk in knowing exactly how much room there is.
@@ -319,15 +319,15 @@ export default async function HomePage() {
                   nobody has bought it in seven hundred days. You make your offer against that.
                 </p>
               </Reveal>
-              <Reveal className="col-span-12 lg:col-span-6" delay={0.1}>
+              <Reveal className="col-span-12 lg:col-span-7" delay={0.1}>
                 <div className="rounded-xl border border-highlight-deep/25 bg-card p-7 shadow-[0_1px_3px_rgba(13,27,47,0.04)] lg:p-8">
                   <TimelinePreview />
                 </div>
               </Reveal>
             </div>
 
-            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 md:gap-x-8">
-              <Reveal className="col-span-12 lg:col-span-6 lg:col-start-7">
+            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-12 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-5 lg:col-start-8">
                 <p className="label text-highlight-deep">Already worked out</p>
                 <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Nothing reaches you until it has been through the numbers.
@@ -338,15 +338,15 @@ export default async function HomePage() {
                   scores nothing.
                 </p>
               </Reveal>
-              <Reveal className="col-span-12 lg:col-span-6 lg:col-start-1 lg:row-start-1" delay={0.1}>
+              <Reveal className="col-span-12 lg:col-span-7 lg:col-start-1 lg:row-start-1" delay={0.1}>
                 <div className="rounded-xl border border-highlight-deep/25 bg-card p-7 shadow-[0_1px_3px_rgba(13,27,47,0.04)] lg:p-8">
                   <ScorePreview />
                 </div>
               </Reveal>
             </div>
 
-            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-12 md:gap-x-8">
-              <Reveal className="col-span-12 lg:col-span-6">
+            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-12 md:gap-x-8">
+              <Reveal className="col-span-12 lg:col-span-5">
                 <p className="label text-highlight-deep">Worth opening</p>
                 <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Short when it should be short.
@@ -357,7 +357,7 @@ export default async function HomePage() {
                 </p>
               </Reveal>
 
-              <Reveal className="col-span-12 lg:col-span-6" delay={0.1}>
+              <Reveal className="col-span-12 lg:col-span-7" delay={0.1}>
                 <div className="rounded-xl border border-highlight-deep/25 bg-card p-7 shadow-[0_1px_3px_rgba(13,27,47,0.04)] lg:p-8">
                   <p className="label text-highlight-deep">Nothing new this week</p>
                   <p className="mt-4 text-h3 font-medium">

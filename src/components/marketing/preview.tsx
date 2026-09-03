@@ -99,12 +99,12 @@ export function TimelinePreview() {
       <p className="label text-muted">Timeline</p>
       <p className="mt-2 text-sm text-muted">Every entry dated when it was observed.</p>
 
-      <ol className="mt-6">
+      <ol className="mt-5">
         {entries.map((entry) => (
-          <li key={entry.label} className="relative border-t border-rule py-5 pl-6">
+          <li key={entry.label} className="relative border-t border-rule py-4 pl-6">
             <span
               aria-hidden="true"
-              className={`absolute top-[1.55rem] left-0 h-1.5 w-1.5 ${
+              className={`absolute top-[1.3rem] left-0 h-1.5 w-1.5 ${
                 entry.material ? 'bg-ink' : 'bg-rule'
               }`}
             />
@@ -112,7 +112,7 @@ export function TimelinePreview() {
               <p className={`text-base ${entry.material ? 'font-medium' : 'text-muted'}`}>{entry.label}</p>
               <p className="figure text-sm text-muted">{entry.date}</p>
             </div>
-            <p className={`mt-2 leading-snug ${entry.figure ? 'figure text-lg' : 'text-base text-muted'}`}>
+            <p className={`mt-1.5 leading-snug ${entry.figure ? 'figure text-base' : 'text-base text-muted'}`}>
               {entry.detail}
             </p>
           </li>
