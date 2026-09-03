@@ -72,7 +72,8 @@ export function DealPreview() {
       </dl>
 
       <p className="mt-6 border-t border-rule pt-4 text-sm text-muted">
-        Observed 24 Aug 2026. An example entry, not a live listing.
+        An example, not a live listing. The photograph is ours — nothing in the product ever reproduces an
+        agent&rsquo;s image, which is why every property is described in words and linked to its advert.
       </p>
     </div>
   )

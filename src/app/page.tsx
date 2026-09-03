@@ -7,7 +7,7 @@ import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 import { Arrive, Press, Reveal } from '@/components/marketing/motion'
 import { PLAN_LIST } from '@/lib/plans'
-import sourcing from '@/assets/prop-signal-property-sourcing.jpg'
+import studio from '@/assets/studio-flat-listing.jpg'
 
 export const metadata: Metadata = {
   title: 'Prop Signal. Sourced deals for how you invest',
@@ -160,26 +160,8 @@ export default async function HomePage() {
           />
 
           <div className="relative mx-auto max-w-6xl px-6">
-            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-14 pt-16 pb-24 md:gap-x-8">
-              <Arrive className="relative col-span-12 lg:col-span-7">
-                {/* The bubble. The one photograph on the site, and it is ours
-                    rather than an agent's — no listing image is ever
-                    reproduced, which is the promise the footer makes. It fills
-                    the corner the headline leaves empty. */}
-                <div className="mb-8 lg:absolute lg:right-0 lg:bottom-0 lg:mb-0">
-                  <div className="relative h-28 w-28 overflow-hidden rounded-full ring-8 ring-tint/60 sm:h-36 sm:w-36 lg:h-36 lg:w-36">
-                    <Image
-                      src={sourcing}
-                      alt=""
-                      aria-hidden="true"
-                      fill
-                      sizes="(min-width: 1024px) 10rem, 9rem"
-                      className="object-cover"
-                      priority
-                    />
-                  </div>
-                </div>
-
+            <div className="grid grid-cols-12 gap-x-6 pt-16 pb-24 md:gap-x-8">
+              <Arrive className="col-span-12 lg:col-span-8">
                 <p className="label text-highlight-deep">For UK landlords and property investors</p>
 
                 <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
@@ -188,7 +170,7 @@ export default async function HomePage() {
                   without spending hours searching.
                 </h1>
 
-                <p className="mt-7 max-w-lg text-body text-muted">
+                <p className="mt-7 max-w-xl text-body text-muted">
                   Prop Signal searches your chosen area every week and highlights the properties that fit your
                   investment strategy.
                 </p>
@@ -200,17 +182,13 @@ export default async function HomePage() {
                     </ButtonLink>
                   </Press>
                   <Press>
-                    <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
+                    <ButtonLink href="#inside" variant="secondary" className="px-5 py-3 text-base">
                       See how it works
                     </ButtonLink>
                   </Press>
                 </div>
 
                 <p className="mt-6 text-sm text-muted">From £29 a month, by how many areas you buy in. Cancel any time.</p>
-              </Arrive>
-
-              <Arrive className="relative col-span-12 lg:col-span-5" delay={0.12}>
-                <DealPreview />
               </Arrive>
             </div>
           </div>
@@ -229,6 +207,51 @@ export default async function HomePage() {
                 <p className="mt-3 text-body text-muted">{step.body}</p>
               </Reveal>
             ))}
+          </div>
+        </section>
+
+        {/* One property, analysed -------------------------------------------- */}
+        {/* Its own band with a hard edge, rather than floating beside the
+            headline where it read as decoration. This is the product: one
+            property, why it is here, and the figures behind that. It earns a
+            section. */}
+        <section className="mx-auto max-w-6xl px-6">
+          <div className="border-t border-rule pt-16 pb-24">
+            <Reveal className="max-w-2xl">
+              <p className="label text-highlight-deep">One property, analysed</p>
+              <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
+                This is what lands on a Monday.
+              </h2>
+              <p className="mt-6 text-body text-muted">
+                Not a search result. A property we have already measured against the way you invest, with the
+                reasons stated and the figures behind them shown.
+              </p>
+            </Reveal>
+
+            <Reveal delay={0.1}>
+              <div className="mt-10 overflow-hidden rounded-xl border border-highlight-deep/25 bg-card shadow-[0_1px_3px_rgba(13,27,47,0.04)]">
+                <div className="grid grid-cols-12">
+                  {/* The photograph is ours, not an agent's. Nothing in the
+                      product reproduces a listing image, and this is an
+                      illustration of an example property rather than a
+                      reproduction of anybody's advert. */}
+                  <div className="relative col-span-12 min-h-56 lg:col-span-5 lg:min-h-full">
+                    <Image
+                      src={studio}
+                      alt="A dated studio flat of the kind this example describes"
+                      fill
+                      sizes="(min-width: 1024px) 40vw, 100vw"
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
+
+                  <div className="col-span-12 p-7 lg:col-span-7 lg:p-10">
+                    <DealPreview />
+                  </div>
+                </div>
+              </div>
+            </Reveal>
           </div>
         </section>
 
