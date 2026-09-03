@@ -684,3 +684,62 @@ export async function developmentGdvPerSqFt(): Promise<number | null> {
   const value = Number(data.development_gdv_per_sqf)
   return Number.isFinite(value) && value > 0 ? value : null
 }
+
+export type MarketEvidence = {
+  postcode: string
+  observedAt: string
+  soldPricePerSqFt: number | null
+  soldRangeLow: number | null
+  soldRangeHigh: number | null
+  soldTransactions: number | null
+  soldLatest: string | null
+  localGrossYieldPercent: number | null
+  growth1YearPercent: number | null
+  growth5YearPercent: number | null
+  floodRisk: string | null
+  councilTaxBandD: number | null
+  council: string | null
+}
+
+/**
+ * What the area itself was doing when this property was last looked at.
+ *
+ * The property page has always shown what we hold about the property. This is
+ * the other half of the same decision: a figure means nothing without the
+ * market it sits in, and "£141 per square foot" is only useful beside what
+ * nearby homes actually sold for.
+ *
+ * Read from the newest `area_insights` row, which the run writes once per
+ * search rather than per property — so this is the area's position as of the
+ * last run, and is dated as such rather than presented as today's.
+ */
+export async function getMarketEvidence(): Promise<MarketEvidence | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('area_insights')
+    .select(
+      'postcode, observed_at, sold_price_per_sqf, sold_price_per_sqf_low, sold_price_per_sqf_high, sold_transactions, sold_latest, local_gross_yield_pct, growth_1y_pct, growth_5y_pct, flood_risk, council_tax_band_d, council',
+    )
+    .order('observed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !data) return null
+
+  return {
+    postcode: data.postcode,
+    observedAt: data.observed_at,
+    soldPricePerSqFt: asNumber(data.sold_price_per_sqf),
+    soldRangeLow: asNumber(data.sold_price_per_sqf_low),
+    soldRangeHigh: asNumber(data.sold_price_per_sqf_high),
+    soldTransactions: asNumber(data.sold_transactions),
+    soldLatest: typeof data.sold_latest === 'string' ? data.sold_latest : null,
+    localGrossYieldPercent: asNumber(data.local_gross_yield_pct),
+    growth1YearPercent: asNumber(data.growth_1y_pct),
+    growth5YearPercent: asNumber(data.growth_5y_pct),
+    floodRisk: typeof data.flood_risk === 'string' ? data.flood_risk : null,
+    councilTaxBandD: asNumber(data.council_tax_band_d),
+    council: typeof data.council === 'string' ? data.council : null,
+  }
+}

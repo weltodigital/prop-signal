@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { developmentGdvPerSqFt, getPropertyDetail } from '@/lib/deals'
+import { developmentGdvPerSqFt, getMarketEvidence, getPropertyDetail } from '@/lib/deals'
 import { stageHistory } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { markReadAction } from '@/app/(app)/deals/mark-read'
 import { formatBedrooms, formatDate, formatListName, formatMoney, formatShortDate } from '@/lib/format'
 import { ActionAnchor, Button, Card } from '@/components/ui'
 import { RiskFlags } from '@/components/risk-flags'
+import { MarketEvidenceCard } from '@/components/market-evidence'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
 import { StackIt } from '@/components/stack-it'
@@ -35,7 +36,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   // Scoped by row level security, so another subscriber's property is not found
   // rather than forbidden.
   const property = await getPropertyDetail(id)
-  const gdvPerSqFt = await developmentGdvPerSqFt()
+  const [gdvPerSqFt, evidence] = await Promise.all([developmentGdvPerSqFt(), getMarketEvidence()])
   if (!property) notFound()
 
   const progress = await stageHistory(id)
@@ -101,7 +102,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       {reasons.length ? (
         <section className="mt-8">
           <Card>
-            <h2 className="text-base font-medium">Why it is interesting</h2>
+            <h2 className="text-h3 font-medium">Why it is interesting</h2>
             <ul className="mt-3 space-y-1.5">
               {reasons.map((reason) => (
                 <li key={reason} className="flex gap-2.5 text-body">
@@ -120,7 +121,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
 
       <section className="mt-8">
         <Card>
-          <h2 className="text-base font-medium">Where you got to</h2>
+          <h2 className="text-h3 font-medium">Where you got to</h2>
           <p className="mt-1 text-sm text-muted">
             Your own record of what you did next. Nothing here is sent anywhere.
           </p>
@@ -142,48 +143,103 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         </Card>
       </section>
 
-      <section className="mt-8">
-        <Card>
+      {/* Investment numbers — what this property costs and earns. */}
+      <section className="mt-10">
+        <h2 className="text-h3 font-medium">The numbers</h2>
+        <p className="mt-1 text-sm text-muted">
+          What we hold about this property. Anything we do not hold says so rather than being filled in.
+        </p>
+        <Card className="mt-3">
           <StackedNumbers property={property} />
-
-          {property.latest?.epc || property.latest?.councilTaxBand ? (
-            <p className="mt-3 text-sm text-muted">
-              {property.latest.epc
-                ? `EPC ${property.latest.epc.rating}${property.latest.epc.score === null ? '' : ` (${property.latest.epc.score})`}`
-                : null}
-              {property.latest.epc && property.latest.councilTaxBand ? ' · ' : null}
-              {property.latest.councilTaxBand ? `Council tax band ${property.latest.councilTaxBand}` : null}
-              <span>. Matched to this address when it was last published.</span>
-            </p>
-          ) : null}
-
-          {property.latest ? <RiskFlags risks={property.latest.risks} /> : null}
-
-          <div className="mt-5 border-t border-line pt-4 text-sm">
-            {property.listingUrl ? (
-              <ActionAnchor
-                tone="lead"
-                href={directListingUrl(property.listingUrl) ?? property.listingUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                {listingPortal(property.listingUrl)
-                  ? `View on ${listingPortal(property.listingUrl)}`
-                  : 'View the listing'}
-                <span aria-hidden="true" className="text-[11px] opacity-70">
-                  ↗
-                </span>
-              </ActionAnchor>
-            ) : (
-              <span className="text-muted">No link to the advert was held</span>
-            )}
-          </div>
         </Card>
       </section>
 
+      {/* Market evidence — whether those numbers are any good.
+          
+          Its own section because it answers a different question, and because
+          every figure in it is about the area rather than the property. Two
+          properties in one postcode share this evidence, which is worth saying
+          plainly rather than letting somebody read an area yield as this
+          house's. */}
+      {evidence ? (
+        <section className="mt-10">
+          <h2 className="text-h3 font-medium">Market evidence</h2>
+          <p className="mt-1 text-sm text-muted">
+            What the area around it is doing, and how this property compares. This is what the price and yield are
+            judged against.
+          </p>
+          <Card className="mt-3">
+            <MarketEvidenceCard evidence={evidence} property={property} />
+          </Card>
+        </section>
+      ) : null}
+
+      {/* Risks — never scored, always stated.
+          
+          Out of the numbers card and into a section of its own, because a
+          flood band buried under a yield reads as a footnote. None of these
+          adjusts a factor: working out what an EPC of F is worth against a 12%
+          reduction would mean inventing a number, and inventing numbers is the
+          thing this product refuses. */}
+      {property.latest && (property.latest.risks.length || property.latest.epc || property.latest.councilTaxBand) ? (
+        <section className="mt-10">
+          <h2 className="text-h3 font-medium">Risks and running costs</h2>
+          <p className="mt-1 text-sm text-muted">
+            Stated, never scored. Working out what an EPC of F is worth against a price cut would mean inventing a
+            number, so these are put in front of you to weigh yourself.
+          </p>
+
+          <Card className="mt-3">
+            {property.latest.risks.length ? (
+              <RiskFlags risks={property.latest.risks} />
+            ) : (
+              <p className="text-sm text-muted">Nothing flagged against this property.</p>
+            )}
+
+            {property.latest.epc || property.latest.councilTaxBand || evidence?.floodRisk ? (
+              <dl className="mt-5 space-y-3 border-t border-line pt-4 text-sm">
+                {property.latest.epc ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">EPC</dt>
+                    <dd className="font-medium">
+                      {property.latest.epc.rating}
+                      {property.latest.epc.score === null ? '' : ` (${property.latest.epc.score})`}
+                    </dd>
+                  </div>
+                ) : null}
+
+                {property.latest.councilTaxBand ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">Council tax band</dt>
+                    <dd className="font-medium">
+                      {property.latest.councilTaxBand}
+                      {evidence?.councilTaxBandD
+                        ? ` · band D here is ${formatMoney(Math.round(evidence.councilTaxBandD))} a year`
+                        : ''}
+                    </dd>
+                  </div>
+                ) : null}
+
+                {evidence?.floodRisk ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">Flood risk</dt>
+                    <dd className="font-medium">{evidence.floodRisk}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            ) : null}
+
+            <p className="mt-4 text-sm text-muted">
+              EPC and council tax are matched to this address, not to the postcode — a near miss matches nothing,
+              because a wrong EPC is worse than none. Flood risk is the area&rsquo;s.
+            </p>
+          </Card>
+        </section>
+      ) : null}
+
       <section className="mt-10">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-          <h2 className="text-h3 font-medium">Timeline</h2>
+          <h2 className="text-h3 font-medium">Price and history</h2>
           {property.watched ? (
             <form action={markReadAction}>
               <input type="hidden" name="propertyId" value={property.propertyId} />
@@ -287,6 +343,39 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             estimatedValue={property.enrichment.estimatedValue}
             internalAreaSqFt={property.internalAreaSqFt}
           />
+        </Card>
+      </section>
+
+      {/* The advert, last.
+          
+          It was buried in the numbers card, which put the one link that leaves
+          this product above everything somebody needed to read before taking
+          it. Here it is what it should be: the thing you do once you have
+          decided the property is worth pursuing. */}
+      <section className="mt-10">
+        <h2 className="text-h3 font-medium">The original listing</h2>
+        <p className="mt-1 text-sm text-muted">
+          Everything above is our own dated record. The advert is the agent&rsquo;s, and it is the only place with
+          photographs — we never reproduce one.
+        </p>
+        <Card className="mt-3">
+          {property.listingUrl ? (
+            <ActionAnchor
+              tone="lead"
+              href={directListingUrl(property.listingUrl) ?? property.listingUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {listingPortal(property.listingUrl)
+                ? `View on ${listingPortal(property.listingUrl)}`
+                : 'View the listing'}
+              <span aria-hidden="true" className="text-[11px] opacity-70">
+                ↗
+              </span>
+            </ActionAnchor>
+          ) : (
+            <p className="text-sm text-muted">No link to the advert was held for this one.</p>
+          )}
         </Card>
       </section>
     </>
