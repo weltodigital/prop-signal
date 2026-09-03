@@ -218,13 +218,14 @@ export default async function HomePage() {
         <section className="mx-auto max-w-6xl px-6">
           <div className="border-t border-rule pt-16 pb-24">
             <Reveal className="max-w-2xl">
-              <p className="label text-highlight-deep">One property, analysed</p>
+              <p className="label text-highlight-deep">A closer look at one of them</p>
               <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
-                This is what lands on a Monday.
+                Every property on your list arrives like this.
               </h2>
               <p className="mt-6 text-body text-muted">
-                Not a search result. A property we have already measured against the way you invest, with the
-                reasons stated and the figures behind them shown.
+                Not search results. Everything we put in front of you has already been measured against the way you
+                invest, with the reasons stated and the figures behind them shown. How many you get depends on your
+                area and how wide you search — here is what one of them looks like.
               </p>
             </Reveal>
 
