@@ -91,7 +91,6 @@ export function TimelinePreview() {
     { label: 'Reduced 12%', detail: '£113,600 to £100,000', date: '10 Jul 2026', material: true, figure: true },
     { label: '365 days unsold', detail: 'Passed a year on the market', date: '12 Mar 2026', material: true, figure: false },
     { label: 'Back on the market', detail: 'Returned after coming off', date: '4 Jan 2026', material: true, figure: false },
-    { label: 'Asking price raised', detail: '£146,500 to £150,000', date: '21 Sep 2025', material: false, figure: true },
   ]
 
   return (
