@@ -86,13 +86,13 @@ export function ScoreBreakdown({
         </div>
       </section>
 
-      <p className="text-sm text-muted sm:col-span-2">
+      <p className="text-sm text-muted sm:col-span-2" title={`Scoring ${version}`}>
         Quality in full and movement at half: {qualityScore.toFixed(1)} plus half of {movementScore.toFixed(1)} is{' '}
         <span className="figure">{total.toFixed(1)}</span> of 150, which is {band.label.toLowerCase()}. Whether a
         property is here at all is decided on quality alone, so a seller who has been cutting separates two good buys
         rather than earning a place for a bad one. Cashflow is scored against what the same strategy has been worth in
         your area over recent months rather than a fixed figure, because £300 a month clear means something different
-        in Salford and in Surrey. Scoring {version}.
+        in Salford and in Surrey.
       </p>
     </div>
   )

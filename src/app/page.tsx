@@ -15,43 +15,39 @@ export const metadata: Metadata = {
     'We continuously filter the property market for properties that fit how you invest, and put the ones worth a closer look in front of you. BRRR in Portsmouth, HMOs in Leeds, buy to let near home. From £29 a month.',
 }
 
+/**
+ * The whole product in three lines, immediately under the hero.
+ *
+ * Before any of the reasoning, the evidence or the pricing. Somebody who has
+ * read this far should be able to say what Prop Signal does without scrolling
+ * again, and the temptation on a product with this much machinery behind it is
+ * to lead with the machinery.
+ */
+const HOW_IT_WORKS = [
+  { step: '01', title: 'You tell us what you are looking for', body: 'Your area, how far you will travel, and how you make money from a property.' },
+  { step: '02', title: 'We monitor the market', body: 'Every week, across everything for sale in that area — not just what was listed this morning.' },
+  { step: '03', title: 'We show you what deserves a closer look', body: 'Ranked, with the numbers worked out and the reasons stated.' },
+] as const
+
 const CLAIMS = [
   {
-    title: 'The whole market, filtered',
-    body: 'Not just the ones that dropped in price. Every property in your area is measured against how you invest — a good buy on the day it is listed counts exactly as much as a seller who has been cutting for a year.',
+    title: 'We search the market',
+    body: 'Everything for sale in your area, every week. Not just what appeared this morning and not just what has come down in price.',
   },
   {
-    title: 'The maths is done',
-    body: 'Cashflow, price against nearby sales and local demand, worked out before you open it. What does not stack is obvious without a spreadsheet.',
+    title: 'We analyse the numbers',
+    body: 'Cashflow, price against nearby sold prices, local demand — worked out before you open it, so what does not stack is obvious without a spreadsheet.',
   },
   {
-    title: 'It stays until you say otherwise',
-    body: 'A good deal does not stop being one because you saw it last week. It stays until you buy it, it sells, or you say it is not for you.',
+    title: 'We rank the opportunities',
+    body: 'Ordered by what deserves your attention first, under whichever of your strategies the property actually suits.',
+  },
+  {
+    title: 'You decide what to pursue',
+    body: 'We have no stake in which one you buy, or whether you buy at all. The reasoning is in the open so you can disagree with it.',
   },
 ] as const
 
-const STEPS = [
-  {
-    step: '01',
-    title: 'Tell us where you buy',
-    body: 'A postcode, how far you will travel, and how you make your money. About a minute, and it is the last search you will ever set up.',
-  },
-  {
-    step: '02',
-    title: 'Your list is built from everything',
-    body: 'Everything standing in your area, not only what appeared this week. There is something to act on from the first Monday.',
-  },
-  {
-    step: '03',
-    title: 'It stays and it stays current',
-    body: 'Each Monday the scores are refreshed, anything new that qualifies is added, and anything that has moved since you looked is flagged.',
-  },
-  {
-    step: '04',
-    title: 'Make the call',
-    body: 'Check the history, run your own numbers through the calculator, and ring the agent knowing more than they expect.',
-  },
-] as const
 
 /**
  * The three ways somebody gets an investment property in front of them.
@@ -88,8 +84,12 @@ const COMPARISON = {
       cells: ['From £29 a month', 'A fee in the thousands, on each deal', 'A subscription, and your weekends'],
     },
     {
-      label: 'What they earn if you walk away',
-      cells: ['The same monthly fee', 'Nothing, which is the problem', 'The same subscription'],
+      label: 'What we earn if you buy',
+      cells: [
+        'The same £29. No sourcing fee, no success fee',
+        'A fee on completion, typically in the thousands',
+        'The same subscription',
+      ],
     },
   ],
 } as const
@@ -101,7 +101,7 @@ const FAQS = [
   },
   {
     q: 'How is this different from a deal sourcer?',
-    a: 'A sourcer finds one property, charges a fee in the thousands, and you buy what they picked. We show you everything in your area that moved this week, with the numbers and the reasoning in the open, and you pick. Nobody here has an interest in you buying any particular property, because we are paid the same whether you buy or not.',
+    a: 'A sourcer finds one property and is paid when you buy it. We show you everything in your area worth a closer look, with the numbers and the reasoning in the open, and you pick. There is no sourcing fee and no success fee: your subscription is the whole of what we earn, which means we have no reason to prefer one of your properties over another, or to prefer that you buy at all. The reasoning is published so you can disagree with it.',
   },
   {
     q: 'How many properties will I get?',
@@ -141,7 +141,7 @@ export default async function HomePage() {
 
   const signedIn = Boolean(user)
   const primaryHref = signedIn ? '/dashboard' : '/signup'
-  const primaryLabel = signedIn ? 'Go to your dashboard' : 'Start from £29 a month'
+  const primaryLabel = signedIn ? 'Go to your dashboard' : 'Start for £29/month'
 
   return (
     <div className="min-h-screen bg-ground">
@@ -183,15 +183,14 @@ export default async function HomePage() {
                 <p className="label text-highlight-deep">For UK landlords and property investors</p>
 
                 <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
-                  Stop hunting for deals.
+                  Find properties worth buying
                   <br />
-                  We put them in front of you.
+                  without spending hours searching.
                 </h1>
 
                 <p className="mt-7 max-w-lg text-body text-muted">
-                  Tell us where you buy and how you make your money. We filter the whole market in your area against
-                  those criteria, every week, and put what deserves a closer look in front of you with the numbers
-                  already worked out.
+                  Prop Signal searches your chosen area every week and highlights the properties that fit your
+                  investment strategy.
                 </p>
 
                 <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -217,23 +216,39 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Three claims -------------------------------------------------- */}
+        {/* What it does, in three lines ---------------------------------- */}
+        {/* Immediately under the hero and before any of the reasoning. The
+            temptation on a product with this much machinery behind it is to
+            open with the machinery. */}
         <section id="inside" className="mx-auto max-w-6xl px-6">
+          <div className="grid grid-cols-12 gap-x-6 gap-y-10 border-t border-rule pt-16 pb-20 md:gap-x-8">
+            {HOW_IT_WORKS.map((step, index) => (
+              <Reveal key={step.step} className="col-span-12 sm:col-span-4" delay={index * 0.08}>
+                <p className="figure text-sm text-highlight-deep">{step.step}</p>
+                <h2 className="mt-4 text-h3 font-medium">{step.title}</h2>
+                <p className="mt-3 text-body text-muted">{step.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        {/* What that actually involves ------------------------------------ */}
+        <section className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-12 gap-x-6 gap-y-16 border-t border-rule pt-16 pb-28 md:gap-x-8">
             <Reveal className="col-span-12 lg:col-span-7">
               <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
                 A portal can only tell you what is new.
               </h2>
               <p className="mt-6 text-body text-muted">
-                Whether a property is a good buy for the way you invest is a different question, and nothing on a
-                portal is set up to ask it. The best deal in your area might have been listed this morning or eight
-                months ago; we score both the same way.
+                Whether a property is worth your attention for the way you invest is a different question, and
+                nothing on a portal is set up to ask it. The best buy in your area might have been listed this
+                morning or eight months ago; we judge both the same way.
               </p>
             </Reveal>
 
             <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-12 md:gap-x-8">
               {CLAIMS.map((claim, index) => (
-                <Reveal key={claim.title} className="col-span-12 sm:col-span-4" delay={index * 0.08}>
+                <Reveal key={claim.title} className="col-span-12 sm:col-span-6 lg:col-span-3" delay={index * 0.08}>
                   <div aria-hidden="true" className="h-0.5 w-10 bg-highlight-deep" />
                   <h3 className="mt-5 text-h3 font-medium">{claim.title}</h3>
                   <p className="mt-3 text-body text-muted">{claim.body}</p>
@@ -307,29 +322,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* How it works --------------------------------------------------- */}
-        <section id="how" className="mx-auto max-w-6xl bg-gradient-to-b from-ground to-tint/30 px-6">
-          <div className="grid grid-cols-12 gap-x-6 gap-y-16 border-t border-rule pt-16 pb-28 md:gap-x-8">
-            <Reveal className="col-span-12 lg:col-span-7">
-              <h2 className="font-display text-h2 font-normal md:text-h2-lg">How it works</h2>
-            </Reveal>
-
-            <div className="col-span-12 grid grid-cols-12 gap-x-6 gap-y-12 md:gap-x-8">
-              {STEPS.map((step, index) => (
-                <Reveal
-                  key={step.step}
-                  className="col-span-12 sm:col-span-6 lg:col-span-3"
-                  delay={index * 0.07}
-                >
-                  <p className="figure text-sm text-highlight-deep">{step.step}</p>
-                  <h3 className="mt-4 text-h3 font-medium">{step.title}</h3>
-                  <p className="mt-3 text-body text-muted">{step.body}</p>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Pricing --------------------------------------------------------- */}
         {/* Priced on areas, because areas are what this costs us to run. One
             postcode is a couple of hundred data credits a month; five is a
@@ -339,13 +331,14 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl px-6">
             <div className="grid grid-cols-12 gap-x-6 gap-y-12 border-t border-rule pt-16 pb-28 md:gap-x-8">
               <Reveal className="col-span-12 lg:col-span-7">
-                <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
-                  A sourcer charges thousands. We start at less than £1 a day.
+                <p className="label text-highlight-deep">No sourcing fee. No success fee.</p>
+                <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
+                  Your subscription is the whole of what we earn.
                 </h2>
                 <p className="mt-6 text-body text-muted">
-                  Pick by how many areas you buy in. Every area gets its own search, its own list and its own
-                  scoring — they are never mixed, because a Manchester HMO and a Portsmouth flat cannot sensibly be
-                  ranked against each other. Change tier or cancel any time from your account page.
+                  Which means nothing here has an interest in you buying any particular property, or in you buying
+                  at all. Pick by how many areas you buy in — each one gets its own search, its own list and its own
+                  scoring, and they are never mixed. Change tier or cancel any time.
                 </p>
               </Reveal>
 

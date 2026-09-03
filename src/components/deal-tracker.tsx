@@ -2,7 +2,8 @@ import Link from 'next/link'
 import type { TrackedDeal } from '@/lib/deal-progress'
 import { FORWARD_STAGES, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
 import { StageControl } from '@/components/stage-control'
-import { formatDate, formatMoney } from '@/lib/format'
+import { formatDate, formatMoney, formatShortDate } from '@/lib/format'
+import type { WatchlistNotification } from '@/lib/watchlist'
 import { Meter } from '@/components/motion-ui'
 
 /**
@@ -13,8 +14,16 @@ import { Meter } from '@/components/motion-ui'
  * subscriber has read the ones they are already in. An empty section would be
  * furniture, so it does not render at all.
  */
-export function DealTracker({ deals }: { deals: TrackedDeal[] }) {
+export function DealTracker({
+  deals,
+  changes = [],
+}: {
+  deals: TrackedDeal[]
+  changes?: WatchlistNotification[]
+}) {
   if (deals.length === 0) return null
+
+  const byProperty = groupChanges(changes)
 
   return (
     <section className="mt-8">
@@ -30,11 +39,28 @@ export function DealTracker({ deals }: { deals: TrackedDeal[] }) {
 
       <div className="mt-4 space-y-3">
         {deals.map((deal) => (
-          <TrackedRow key={deal.propertyId} deal={deal} />
+          <TrackedRow key={deal.propertyId} deal={deal} changes={byProperty.get(deal.propertyId) ?? []} />
         ))}
       </div>
     </section>
   )
+}
+
+/** Unread events, newest first, keyed by the property they happened to. */
+export function groupChanges(changes: WatchlistNotification[]): Map<string, WatchlistNotification[]> {
+  const grouped = new Map<string, WatchlistNotification[]>()
+
+  for (const change of changes) {
+    const list = grouped.get(change.propertyId)
+    if (list) list.push(change)
+    else grouped.set(change.propertyId, [change])
+  }
+
+  for (const list of grouped.values()) {
+    list.sort((a, b) => b.observedAt.localeCompare(a.observedAt))
+  }
+
+  return grouped
 }
 
 /**
@@ -108,7 +134,16 @@ function MarketState({ state }: { state: TrackedDeal['state'] }) {
   )
 }
 
-export function TrackedRow({ deal }: { deal: TrackedDeal }) {
+export function TrackedRow({
+  deal,
+  changes = [],
+}: {
+  deal: TrackedDeal
+  /** Material events on this property since the subscriber last read it. */
+  changes?: WatchlistNotification[]
+}) {
+  const definition = STAGE_DEFINITIONS[deal.stage]
+
   return (
     <div className="rounded-xl border border-line bg-card p-4 transition-colors duration-150 hover:border-highlight-deep/40">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
@@ -122,7 +157,7 @@ export function TrackedRow({ deal }: { deal: TrackedDeal }) {
           <p className="mt-0.5 truncate text-sm text-muted">
             {[deal.postcode, deal.price === null ? null : formatMoney(deal.price)].filter(Boolean).join(' · ')}
             {' · '}
-            {STAGE_DEFINITIONS[deal.stage].happened} {formatDate(deal.enteredAt)}
+            {definition.happened} {formatDate(deal.enteredAt)}
           </p>
           <div className="mt-2">
             <StageProgress stage={deal.stage} history={deal.history} />
@@ -131,6 +166,36 @@ export function TrackedRow({ deal }: { deal: TrackedDeal }) {
 
         <StageControl propertyId={deal.propertyId} stage={deal.stage} />
       </div>
+
+      {/* What the market has done to this since they last read it.
+          
+          The most time-sensitive thing in the product: a price cut on a
+          property you have an offer in on is worth knowing today, and it was
+          previously only visible in a list at the top of the page, away from
+          the property it happened to. */}
+      {changes.length ? (
+        <ul className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
+          {changes.slice(0, 3).map((change) => (
+            <li key={`${change.observedAt}-${change.label}`} className="flex gap-2.5">
+              <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-highlight-deep" />
+              <span>
+                <span className="font-medium">{change.label}</span>
+                <span className="text-muted"> · {formatShortDate(change.observedAt)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {/* What would move it on. The stage says where a property got to; this
+          says what to do about it, which is the half a list of eleven
+          properties at eleven different stages cannot be read without. */}
+      {definition.next ? (
+        <p className="mt-3 text-sm text-muted">
+          <span className="label mr-2 text-highlight-deep">Next</span>
+          {definition.next}
+        </p>
+      ) : null}
     </div>
   )
 }

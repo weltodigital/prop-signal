@@ -42,10 +42,25 @@ export function DealPreview() {
         </div>
       </div>
 
-      <dl className="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 border-t border-rule pt-6 sm:grid-cols-3 lg:grid-cols-2">
+      {/* Why it is here, exactly as the real card says it. A demonstration
+          that leads with a number is demonstrating the wrong product. */}
+      <ul className="mt-6 space-y-1.5 border-t border-rule pt-6">
         {[
-          { label: 'Asking price', value: '£100,000', note: '12% below nearby sold prices per sq ft' },
-          { label: 'Estimated rent', value: '£725 a month', note: '£188 a month clear as a let' },
+          '12% below nearby sold prices per sq ft',
+          '£188 a month clear as a buy to let',
+          'Reduced twice, 12% off its peak',
+        ].map((reason) => (
+          <li key={reason} className="flex gap-2.5 text-body">
+            <span aria-hidden="true" className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-highlight-deep" />
+            <span>{reason}</span>
+          </li>
+        ))}
+      </ul>
+
+      <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-6 border-t border-rule pt-6 sm:grid-cols-3 lg:grid-cols-2">
+        {[
+          { label: 'Asking price', value: '£100,000', note: '£141 per sq ft' },
+          { label: 'Estimated rent', value: '£725 a month', note: '8.7% gross on the asking price' },
           { label: 'Days on the market', value: '703', note: 'Price last moved 45 days ago' },
         ].map((figure) => (
           <div key={figure.label}>

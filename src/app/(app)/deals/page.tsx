@@ -6,7 +6,7 @@ import { formatShortDate } from '@/lib/format'
 import { Button, Card } from '@/components/ui'
 import { DEAL_STAGES, isActive, STAGE_DEFINITIONS, type DealStage } from '@/lib/deal-stages'
 import { requireSubscriber } from '@/lib/require-subscriber'
-import { StageSummary, TrackedRow } from '@/components/deal-tracker'
+import { groupChanges, StageSummary, TrackedRow } from '@/components/deal-tracker'
 import { EmptyState } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -43,6 +43,8 @@ export default async function DealsPage() {
     (stage) => [stage, counts.get(stage) ?? 0] as [DealStage, number],
   )
 
+  const byProperty = groupChanges(changes)
+
   return (
     <>
       <h1 className="font-display text-h2 font-normal">Your pipeline</h1>
@@ -53,33 +55,24 @@ export default async function DealsPage() {
 
       <StageSummary counts={ordered} />
 
-      {/* What has changed, above the deals themselves. A price cut on a deal
-          you have an offer in on is the most time-sensitive thing on the page. */}
+      {/* A count and a way to clear it. The events themselves now sit on the
+          property they happened to, which is where somebody deciding what to
+          do about one will be looking — a separate list at the top made you
+          hold an address in your head while you scrolled to find it. */}
       {changes.length ? (
-        <Card className="mt-8">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-            <h2 className="text-base font-medium">
+        <div className="mt-8 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-l-2 border-highlight-deep/40 py-1 pl-4">
+          <p className="text-sm">
+            <span className="font-medium">
               {changes.length} {changes.length === 1 ? 'change' : 'changes'} since you last looked
-            </h2>
-            <form action={markReadAction}>
-              <Button type="submit" variant="quiet">
-                Mark all read
-              </Button>
-            </form>
-          </div>
-
-          <ul className="mt-3 space-y-1.5 text-sm">
-            {changes.map((change) => (
-              <li key={`${change.propertyId}-${change.observedAt}-${change.label}`} className="flex gap-3">
-                <span className="figure shrink-0 text-muted">{formatShortDate(change.observedAt)}</span>
-                <span className="min-w-0">
-                  <span className="font-medium">{change.label}</span>
-                  <span className="text-muted"> on {change.address ?? 'a property you are working'}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+            </span>
+            <span className="text-muted">, shown on the properties below.</span>
+          </p>
+          <form action={markReadAction}>
+            <Button type="submit" variant="quiet">
+              Mark all read
+            </Button>
+          </form>
+        </div>
       ) : null}
 
       {deals.length === 0 ? (
@@ -98,10 +91,15 @@ export default async function DealsPage() {
 
       {live.length ? (
         <section className="mt-8">
-          <h2 className="text-h3 font-medium">Live</h2>
+          <h2 className="text-h3 font-medium">Tracked</h2>
+          <p className="mt-1 text-sm text-muted">The properties you are actively pursuing.</p>
           <div className="mt-4 space-y-3">
             {live.map((deal) => (
-              <TrackedRow key={deal.propertyId} deal={deal} />
+              <TrackedRow
+                key={deal.propertyId}
+                deal={deal}
+                changes={byProperty.get(deal.propertyId) ?? []}
+              />
             ))}
           </div>
         </section>
@@ -111,8 +109,8 @@ export default async function DealsPage() {
         <section className="mt-10">
           <h2 className="text-h3 font-medium">Finished</h2>
           <p className="mt-1 text-sm text-muted">
-            Kept rather than deleted. A completion rate that quietly drops the ones that did not complete is not a
-            completion rate.
+            Bought, passed on, or lost. Kept rather than deleted — a completion rate that quietly drops the ones
+            that did not complete is not a completion rate.
           </p>
           <div className="mt-4 space-y-3">
             {finished.map((deal) => (

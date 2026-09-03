@@ -56,6 +56,14 @@ export type StageDefinition = {
    * chooses to have a property withdrawn from the market, so nothing offers it.
    */
   systemOnly?: boolean
+  /**
+   * What there is to do next, in the subscriber's words rather than ours.
+   *
+   * The stage says where a property got to. This says what would move it, which
+   * is the more useful half and the one a list of eleven properties at various
+   * stages cannot be read without. Null at the end of the road.
+   */
+  next: string | null
 }
 
 export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
@@ -66,6 +74,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 1,
     terminal: false,
     lost: false,
+    next: 'Ring the agent',
   },
   contacted: {
     id: 'contacted',
@@ -74,6 +83,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 2,
     terminal: false,
     lost: false,
+    next: 'Book a viewing',
   },
   viewing: {
     id: 'viewing',
@@ -82,6 +92,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 3,
     terminal: false,
     lost: false,
+    next: 'Decide on an offer',
   },
   offer: {
     id: 'offer',
@@ -90,6 +101,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 4,
     terminal: false,
     lost: false,
+    next: 'Chase the agent for an answer',
   },
   accepted: {
     id: 'accepted',
@@ -98,6 +110,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 5,
     terminal: false,
     lost: false,
+    next: 'Instruct a solicitor and get the survey moving',
   },
   completed: {
     id: 'completed',
@@ -106,6 +119,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 6,
     terminal: true,
     lost: false,
+    next: null,
   },
   passed: {
     id: 'passed',
@@ -114,6 +128,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 6,
     terminal: true,
     lost: true,
+    next: null,
   },
   fell_through: {
     id: 'fell_through',
@@ -122,6 +137,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     step: 6,
     terminal: true,
     lost: true,
+    next: null,
   },
   delisted: {
     id: 'delisted',
@@ -131,6 +147,7 @@ export const STAGE_DEFINITIONS: Record<DealStage, StageDefinition> = {
     terminal: true,
     lost: true,
     systemOnly: true,
+    next: null,
   },
 }
 

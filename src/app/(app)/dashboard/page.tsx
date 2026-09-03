@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { developmentGdvPerSqFt, getCurrentWeek } from '@/lib/deals'
+import { developmentGdvPerSqFt, getCurrentWeek, type PublishedDeal } from '@/lib/deals'
+import type { DealStage } from '@/lib/deal-stages'
 import { currentStages, listTrackedDeals } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { formatDate } from '@/lib/format'
@@ -19,6 +20,53 @@ export const dynamic = 'force-dynamic'
 
 function describeArea(postcode: string, radiusMiles: number): string {
   return `${postcode}, within ${radiusMiles} ${radiusMiles === 1 ? 'mile' : 'miles'}`
+}
+
+/**
+ * One band of the list, with a heading that says what it is.
+ *
+ * Renders nothing when empty, so a quiet week is three sections shorter rather
+ * than three empty headings claiming otherwise.
+ */
+function OpportunityGroup({
+  title,
+  note,
+  deals,
+  unseen,
+  stages,
+  gdvPerSqFt,
+}: {
+  title: string
+  note: string
+  deals: PublishedDeal[]
+  unseen: boolean
+  stages: Map<string, { stage: DealStage }>
+  gdvPerSqFt: number | null
+}) {
+  if (deals.length === 0) return null
+
+  return (
+    <section>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="text-h3 font-medium">{title}</h2>
+        <span className="figure text-sm text-muted">{deals.length}</span>
+      </div>
+      <p className="mt-1 text-sm text-muted">{note}</p>
+
+      <div className="mt-4 space-y-4">
+        {deals.map((deal, index) => (
+          <Rise key={deal.propertyId} delay={Math.min(index, 6) * 0.05}>
+            <DealCard
+              deal={deal}
+              isNew={unseen}
+              stage={stages.get(deal.propertyId)?.stage ?? null}
+              gdvPerSqFt={gdvPerSqFt}
+            />
+          </Rise>
+        ))}
+      </div>
+    </section>
+  )
 }
 
 export default async function DashboardPage({
@@ -57,8 +105,20 @@ export default async function DashboardPage({
   // The three counts the heading is about. `changedSinceSeen` marks a property
   // whose qualifying event landed since they last looked; on a week nobody has
   // opened, everything on it is new to them rather than merely changed.
-  const changedCount = week?.deals.filter((deal) => deal.changedSinceSeen).length ?? 0
-  const newCount = unseen ? (week?.deals.length ?? 0) : 0
+  //
+  // "New" is a property this run observed for the first time: `first_observed_at`
+  // and the run's `published_at` are written from the same timestamp, so they
+  // match exactly for anything that entered the payload this week. Everything
+  // else has been on the list before, and the only question about it is whether
+  // it has moved since they looked.
+  const fresh = week?.deals.filter((deal) => week && deal.firstObservedAt >= week.publishedAt) ?? []
+  const freshIds = new Set(fresh.map((deal) => deal.propertyId))
+  const changed = week?.deals.filter((deal) => !freshIds.has(deal.propertyId) && deal.changedSinceSeen) ?? []
+  const standing =
+    week?.deals.filter((deal) => !freshIds.has(deal.propertyId) && !deal.changedSinceSeen) ?? []
+
+  const changedCount = changed.length
+  const newCount = fresh.length
   const workingChanged = moved.filter((entry) => entry.working).length
 
   return (
@@ -173,39 +233,59 @@ export default async function DashboardPage({
       {/* Above the week's five, because a deal at "offer accepted" wants
           attention today and a new listing can wait. Renders nothing when
           there is nothing in it. */}
-      <DealTracker deals={tracked} />
+      <DealTracker deals={tracked} changes={notifications} />
 
-      {tracked.length ? <h2 className="mt-12 text-h3 font-medium">Your properties</h2> : null}
 
-      <div className="mt-8 space-y-4">
+
+      <div className="mt-8">
         {week && week.deals.length > 0 ? (
-          week.deals.map((deal, index) => (
-            <Rise key={deal.propertyId} delay={Math.min(index, 6) * 0.05}>
-              <DealCard
-                deal={deal}
-                isNew={unseen}
-                stage={stages.get(deal.propertyId)?.stage ?? null}
-                gdvPerSqFt={gdvPerSqFt}
-              />
-            </Rise>
-          ))
+          <div className="space-y-10">
+            {/* Three groups, because a flat list of everything that still
+                stacks grows every week and reads as a dump. The order is the
+                order somebody wants them in: what we just found, what has
+                moved since they looked, and the rest of what still stands. */}
+            <OpportunityGroup
+              title="New"
+              note="Found for the first time this week."
+              deals={fresh}
+              unseen={unseen}
+              stages={stages}
+              gdvPerSqFt={gdvPerSqFt}
+            />
+            <OpportunityGroup
+              title="Changed"
+              note="Already on your list, and something has happened since you last looked."
+              deals={changed}
+              unseen={false}
+              stages={stages}
+              gdvPerSqFt={gdvPerSqFt}
+            />
+            <OpportunityGroup
+              title="Still worth a look"
+              note="On your list and unchanged. They have not stopped being good buys."
+              deals={standing}
+              unseen={false}
+              stages={stages}
+              gdvPerSqFt={gdvPerSqFt}
+            />
+          </div>
         ) : awaitingFirstRun ? (
           // The panel above is doing it. Saying "not built yet" underneath
           // would read as a contradiction.
           null
         ) : profile.backfillCompletedAt === null ? (
-          <EmptyState title="Your first list is not built yet">
+          <EmptyState title="We have not searched your area yet">
             <p>
               We look at everything standing in your area rather than only what appeared this week, so the first
               one takes a little longer to put together.
             </p>
-            <p className="mt-3">It runs on Sunday night and the list is here on Monday morning.</p>
+            <p className="mt-3">It runs on Sunday night and your opportunities are here on Monday morning.</p>
           </EmptyState>
         ) : (
           <EmptyState title="Nothing clears the bar right now">
             <p>
-              Nothing in your area clears the bar at the moment. We would rather show you a short list than pad it out
-              with deals that do not stack.
+              Nothing in your area is worth your attention at the moment. We would rather show you a short list than
+              pad it out with properties that do not stack.
             </p>
             <p className="mt-3">
               <Link href="/archive" className="underline underline-offset-4 hover:text-ink">
