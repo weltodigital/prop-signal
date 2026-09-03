@@ -117,8 +117,20 @@ const actionBase =
   'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent'
 
 const actionTones = {
-  /** The outbound link. The one thing on a card somebody leaves to do. */
-  lead: 'border-highlight-deep/40 text-highlight-deep hover:bg-highlight-deep hover:text-white',
+  /**
+   * The outbound link to the advert — solid, and the one filled control in an
+   * action bar so it is unmistakably the thing you leave to do.
+   *
+   * It empties on hover rather than darkening. A filled button that gets more
+   * filled has nowhere to go, and the swap makes the pointer feel like it is
+   * lifting the button off the card rather than pressing it further in.
+   */
+  lead: 'border-highlight-deep bg-highlight-deep text-white hover:bg-transparent hover:text-highlight-deep',
+  /**
+   * The primary move that stays inside the product. Outlined rather than
+   * filled, so it sits beside the advert link without competing with it.
+   */
+  strong: 'border-highlight-deep/40 text-highlight-deep hover:bg-highlight-deep hover:text-white',
   plain: 'border-line text-muted hover:border-highlight-deep/40 hover:text-highlight-deep',
   /** Taking it off the list. Present, never inviting. */
   quiet: 'border-transparent text-muted hover:border-line hover:text-ink',

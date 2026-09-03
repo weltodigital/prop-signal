@@ -290,7 +290,7 @@ export function DealCard({
           {/* The property page is where the decision gets made, so it is the
               lead action. The advert is one click further on, from a page that
               has already told them whether it is worth opening. */}
-          <ActionLink href={`/property/${deal.propertyId}`} tone="lead">
+          <ActionLink href={`/property/${deal.propertyId}`} tone="strong">
             View property
             <span aria-hidden="true" className="text-[11px] opacity-70">
               →
@@ -299,6 +299,7 @@ export function DealCard({
 
           {deal.listingUrl ? (
             <ActionAnchor
+              tone="lead"
               href={directListingUrl(deal.listingUrl) ?? deal.listingUrl}
               target="_blank"
               rel="noreferrer noopener"
