@@ -30,7 +30,7 @@ export async function AppShell({ email, children }: { email: string; children: R
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
           {/* The mark, with the name in text beside it. The full lockup is
               stacked, and at header height its wordmark would be unreadable. */}
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -75,7 +75,14 @@ export async function AppShell({ email, children }: { email: string; children: R
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-12">{children}</main>
+      {/* The same measure as the front of the site. The app was two hundred
+          pixels narrower for no reason anybody could name, which on a laptop
+          left the list floating in a column with margins wider than the cards
+          and truncated figures that had room to spare.
+
+          Prose inside still carries its own `max-w-prose`, so paragraphs do not
+          stretch to the full width just because the page can. */}
+      <main className="mx-auto max-w-6xl px-6 py-12">{children}</main>
     </div>
   )
 }
