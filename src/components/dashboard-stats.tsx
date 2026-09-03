@@ -54,7 +54,7 @@ function Tile({
           className={`h-full ${tone === 'accent' ? 'bg-highlight-deep' : 'bg-ink/70'}`}
         />
       ) : null}
-      {note ? <p className="mt-2 truncate text-sm text-muted">{note}</p> : null}
+      {note ? <p className="mt-2 text-sm leading-snug text-muted">{note}</p> : null}
     </div>
   )
 }
@@ -110,9 +110,9 @@ export function DashboardStats({
         note={bestYield === null ? 'no rent held yet' : 'gross, on the asking price'}
       />
       <Tile
-        label="Being worked"
+        label="In your pipeline"
         count={tracked.length}
-        note={tracked.length ? 'in your deals' : 'nothing started'}
+        note={tracked.length ? 'in your pipeline' : 'nothing started'}
       />
     </div>
   )

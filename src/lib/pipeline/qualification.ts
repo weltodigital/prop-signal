@@ -240,9 +240,9 @@ export function thinReason(added: number, listSize: number): string | null {
 
   if (added === 0) {
     return listSize > 0
-      ? 'Nothing new in your area clears the bar this week. Everything already on your list is still there.'
-      : 'Nothing in your area clears the bar at the moment. Rather than pad the list with deals that do not stack, we have shown you none.'
+      ? 'Nothing new in your area was worth adding this week. Everything already on your list is still there and still stacks.'
+      : 'Nothing in your area is worth your attention at the moment. Rather than pad the list with properties that do not stack, we have shown you none.'
   }
 
-  return `${added} new ${added === 1 ? 'property' : 'properties'} in your area clears the bar this week. The rest do not stack, so they are not here.`
+  return `${added} new ${added === 1 ? 'property' : 'properties'} worth adding this week. The rest do not stack against your strategy, so they are not here.`
 }

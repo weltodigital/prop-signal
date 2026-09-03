@@ -219,7 +219,7 @@ export default async function DashboardPage({
 
       {week?.isThin && week.thinReason ? (
         <div className="mt-6">
-          <Notice tone="warn" title="A short list this week">
+          <Notice tone="warn" title="Nothing new this week">
             <p>{week.thinReason}</p>
           </Notice>
         </div>
