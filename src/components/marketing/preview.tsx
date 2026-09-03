@@ -11,6 +11,9 @@
  * and the blocks are separated by hairline rules rather than by borders.
  */
 
+import Image from 'next/image'
+import studio from '@/assets/studio-flat-listing.jpg'
+
 function Tag({ children }: { children: React.ReactNode }) {
   return (
     <span className="label border border-rule px-1.5 py-0.5 text-ink">{children}</span>
@@ -22,15 +25,21 @@ export function DealPreview() {
   return (
     <div>
       <div className="flex items-start justify-between gap-8">
-        <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-2">
-            <Tag>New</Tag>
-            <span className="label text-ink">Reduced 12%</span>
-          </p>
-          <h3 className="mt-3 text-h3 font-medium">Little Lever Street, Northern Quarter</h3>
-          <p className="mt-1 text-sm text-muted">
-            <span className="figure">M1 1AR</span> · Studio · Flat
-          </p>
+        <div className="flex min-w-0 gap-4">
+          <div className="relative size-14 shrink-0 overflow-hidden rounded-full ring-1 ring-rule">
+            <Image src={studio} alt="" aria-hidden="true" fill sizes="3.5rem" className="object-cover" />
+          </div>
+
+          <div className="min-w-0">
+            <p className="flex flex-wrap items-center gap-2">
+              <Tag>New</Tag>
+              <span className="label text-ink">Reduced 12%</span>
+            </p>
+            <h3 className="mt-3 text-h3 font-medium">Little Lever Street, Northern Quarter</h3>
+            <p className="mt-1 text-sm text-muted">
+              <span className="figure">M1 1AR</span> · Studio · Flat
+            </p>
+          </div>
         </div>
 
         {/* A band rather than a number, the same as the real card. A score
@@ -71,10 +80,7 @@ export function DealPreview() {
         ))}
       </dl>
 
-      <p className="mt-6 border-t border-rule pt-4 text-sm text-muted">
-        An example, not a live listing. The photograph is ours — nothing in the product ever reproduces an
-        agent&rsquo;s image, which is why every property is described in words and linked to its advert.
-      </p>
+      <p className="mt-6 border-t border-rule pt-4 text-sm text-muted">Example listing</p>
     </div>
   )
 }

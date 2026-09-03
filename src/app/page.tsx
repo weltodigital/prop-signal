@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { ButtonLink } from '@/components/ui'
 import { MarketingNav } from '@/components/marketing/nav'
@@ -7,7 +6,6 @@ import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
 import { Arrive, Press, Reveal } from '@/components/marketing/motion'
 import { PLAN_LIST } from '@/lib/plans'
-import studio from '@/assets/studio-flat-listing.jpg'
 
 export const metadata: Metadata = {
   title: 'Prop Signal. Sourced deals for how you invest',
@@ -230,27 +228,8 @@ export default async function HomePage() {
             </Reveal>
 
             <Reveal delay={0.1}>
-              <div className="mt-10 overflow-hidden rounded-xl border border-highlight-deep/25 bg-card shadow-[0_1px_3px_rgba(13,27,47,0.04)]">
-                <div className="grid grid-cols-12">
-                  {/* The photograph is ours, not an agent's. Nothing in the
-                      product reproduces a listing image, and this is an
-                      illustration of an example property rather than a
-                      reproduction of anybody's advert. */}
-                  <div className="relative col-span-12 min-h-56 lg:col-span-5 lg:min-h-full">
-                    <Image
-                      src={studio}
-                      alt="A dated studio flat of the kind this example describes"
-                      fill
-                      sizes="(min-width: 1024px) 40vw, 100vw"
-                      className="object-cover"
-                      priority
-                    />
-                  </div>
-
-                  <div className="col-span-12 p-7 lg:col-span-7 lg:p-10">
-                    <DealPreview />
-                  </div>
-                </div>
+              <div className="mt-10 rounded-xl border border-highlight-deep/25 bg-card p-7 shadow-[0_1px_3px_rgba(13,27,47,0.04)] lg:p-10">
+                <DealPreview />
               </div>
             </Reveal>
           </div>
