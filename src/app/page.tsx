@@ -320,7 +320,9 @@ export default async function HomePage() {
                 </p>
               </Reveal>
               <Reveal className="col-span-12 lg:col-span-6" delay={0.1}>
-                <TimelinePreview />
+                <div className="rounded-xl border border-highlight-deep/25 bg-card p-7 shadow-[0_1px_3px_rgba(13,27,47,0.04)] lg:p-8">
+                  <TimelinePreview />
+                </div>
               </Reveal>
             </div>
 
@@ -337,7 +339,9 @@ export default async function HomePage() {
                 </p>
               </Reveal>
               <Reveal className="col-span-12 lg:col-span-6 lg:col-start-1 lg:row-start-1" delay={0.1}>
-                <ScorePreview />
+                <div className="rounded-xl border border-highlight-deep/25 bg-card p-7 shadow-[0_1px_3px_rgba(13,27,47,0.04)] lg:p-8">
+                  <ScorePreview />
+                </div>
               </Reveal>
             </div>
 
@@ -354,13 +358,15 @@ export default async function HomePage() {
               </Reveal>
 
               <Reveal className="col-span-12 lg:col-span-6" delay={0.1}>
-                <div className="border-l-2 border-highlight-deep/40 py-1 pl-6">
-                  <p className="label text-muted">A short list this week</p>
+                <div className="rounded-xl border border-highlight-deep/25 bg-card p-7 shadow-[0_1px_3px_rgba(13,27,47,0.04)] lg:p-8">
+                  <p className="label text-highlight-deep">Nothing new this week</p>
                   <p className="mt-4 text-h3 font-medium">
-                    Only two properties in your area clear the bar at the moment. The rest do not stack against your
-                    strategy, so they are not here.
+                    Nothing new in your area was worth adding this week. Everything already on your list is still
+                    there and still stacks.
                   </p>
-                  <p className="mt-5 text-sm text-muted">An example of a thin week, stated rather than padded.</p>
+                  <p className="mt-5 border-t border-rule pt-4 text-sm text-muted">
+                    Example message. A quiet week says so rather than padding the list.
+                  </p>
                 </div>
               </Reveal>
               </div>

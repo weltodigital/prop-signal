@@ -118,6 +118,8 @@ export function TimelinePreview() {
           </li>
         ))}
       </ol>
+
+      <p className="mt-6 border-t border-rule pt-4 text-sm text-muted">Example history</p>
     </div>
   )
 }
@@ -166,7 +168,7 @@ export function ScorePreview() {
 
       <p className="mt-5 border-t border-rule pt-4 text-sm leading-relaxed text-muted">
         A factor with nothing behind it is left out rather than scored zero, and never stands in for an assumed
-        average. The score is the share of what was actually held.
+        average. The score is the share of what was actually held. Example figures.
       </p>
     </div>
   )
