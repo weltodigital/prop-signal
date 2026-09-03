@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
+import listings from '@/assets/multiple-listings.jpg'
 import { createClient } from '@/lib/supabase/server'
 import { ButtonLink } from '@/components/ui'
 import { MarketingNav } from '@/components/marketing/nav'
@@ -158,8 +160,8 @@ export default async function HomePage() {
           />
 
           <div className="relative mx-auto max-w-6xl px-6">
-            <div className="grid grid-cols-12 gap-x-6 pt-16 pb-24 md:gap-x-8">
-              <Arrive className="col-span-12 lg:col-span-8">
+            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-16 pt-16 pb-24 md:gap-x-8">
+              <Arrive className="col-span-12 lg:col-span-7">
                 <p className="label text-highlight-deep">For UK landlords and property investors</p>
 
                 <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
@@ -187,6 +189,47 @@ export default async function HomePage() {
                 </div>
 
                 <p className="mt-6 text-sm text-muted">From £29 a month, by how many areas you buy in. Cancel any time.</p>
+              </Arrive>
+
+              {/* The market, as a stack.
+                  
+                  Three layers on a shared perspective rather than one flat
+                  picture: the two tinted plates behind carry the depth and the
+                  contact sheet sits on top of them, which says "there is a
+                  great deal of this and we go through all of it" without a
+                  caption having to. The tilt is small — enough to read as a
+                  physical stack, not enough to look like a mistake.
+                  
+                  Hidden below large screens. On a phone it would be a wall of
+                  postage stamps under the one thing worth reading. */}
+              <Arrive className="col-span-12 hidden lg:col-span-5 lg:block" delay={0.12}>
+                <div className="relative [perspective:1400px]">
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 translate-x-6 translate-y-6 rounded-xl bg-tint-deep/70 [transform:rotate(4deg)]"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 translate-x-3 translate-y-3 rounded-xl bg-card/80 ring-1 ring-rule [transform:rotate(2deg)]"
+                  />
+
+                  <div className="relative overflow-hidden rounded-xl bg-card p-1.5 ring-1 ring-rule/80 shadow-[0_18px_40px_-16px_rgba(13,27,47,0.28)] [transform:rotateX(6deg)_rotateY(-8deg)_rotate(-1.5deg)]">
+                    <Image
+                      src={listings}
+                      alt="A sheet of nine properties of the kind Prop Signal searches through"
+                      className="h-auto w-full rounded-lg"
+                      sizes="(min-width: 1024px) 40vw, 100vw"
+                      priority
+                    />
+                    {/* The sheet fades into the band it sits on rather than
+                        stopping at a hard edge, so it reads as part of the
+                        page and not as a screenshot dropped onto it. */}
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-tr from-tint/45 via-transparent to-transparent"
+                    />
+                  </div>
+                </div>
               </Arrive>
             </div>
           </div>
