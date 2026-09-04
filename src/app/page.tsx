@@ -6,7 +6,7 @@ import { ButtonLink } from '@/components/ui'
 import { MarketingNav } from '@/components/marketing/nav'
 import { MarketingFooter } from '@/components/marketing/footer'
 import { DealPreview, ScorePreview, TimelinePreview } from '@/components/marketing/preview'
-import { Arrive, Press, Reveal } from '@/components/marketing/motion'
+import { Arrive, HeroWash, Press, Reveal } from '@/components/marketing/motion'
 import { PLAN_LIST } from '@/lib/plans'
 
 export const metadata: Metadata = {
@@ -150,13 +150,21 @@ export default async function HomePage() {
       <main>
         {/* Hero ---------------------------------------------------------- */}
         {/* The one place the accent covers a whole band, so the page opens on
-            something other than a sheet of off-white. */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-tint via-tint/50 to-ground">
+            something other than a sheet of off-white.
+
+            Deeper than the rest of the page by two steps, and deliberately: the
+            wash is doing the work an image would otherwise do, and at the old
+            strength it read as a printing artefact rather than as a decision.
+            `tint-strong` still holds ink at better than 13:1, so nothing here
+            is paid for in legibility.
+
+            `HeroWash` renders this section and lights it under the pointer. */}
+        <HeroWash className="relative overflow-hidden bg-gradient-to-b from-tint-strong via-tint to-ground">
           {/* A glow rather than a band: the colour is strongest behind the
               example deal and gone by the time the page starts reading. */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-40 right-[-10%] h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle,var(--color-tint-deep)_0%,transparent_65%)] opacity-70"
+            className="pointer-events-none absolute -top-48 right-[-12%] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle,var(--color-tint-strong)_0%,transparent_68%)]"
           />
 
           <div className="relative mx-auto max-w-6xl px-6">
@@ -234,7 +242,7 @@ export default async function HomePage() {
               </Arrive>
             </div>
           </div>
-        </section>
+        </HeroWash>
 
         {/* What it does, in three lines ---------------------------------- */}
         {/* Immediately under the hero and before any of the reasoning. The
