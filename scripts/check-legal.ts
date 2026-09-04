@@ -28,10 +28,10 @@ if (unapproved.length > 0) {
       ...lines,
       '',
       'These routes exist, are linked from the footer and from checkout, and render',
-      'a scaffold. They must not ship with it.',
+      'a written but unapproved draft. Read it, get it reviewed, then release it.',
       '',
-      'To release: put the real wording in src/lib/legal.ts, set `lastUpdated` to the',
-      'date it was approved, and set `placeholder: false` on that document.',
+      'To release: resolve every CONFIRM_ marker in src/lib/legal.ts, set `lastUpdated`',
+      'to the date it was approved, and set `placeholder: false` on that document.',
       '',
     ].join('\n'),
   )

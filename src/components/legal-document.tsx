@@ -34,9 +34,9 @@ export function LegalDocumentPage({ document }: { document: LegalDocument }) {
           <div className="mt-8 border-l-2 border-warn bg-warn-soft px-4 py-3" role="alert">
             <p className="text-sm font-medium">{PLACEHOLDER_MARKER}</p>
             <p className="mt-1 text-sm">
-              This page is a scaffold. The wording below has not been written or approved and must not be relied
-              on. The build is configured to fail while this notice is present, so this should never be reachable
-              in production.
+              This is a draft. The wording below has been written but not approved, has not been reviewed by a
+              solicitor, and must not be relied on. The build is configured to fail while this notice is present,
+              so it should never be reachable in production.
             </p>
           </div>
         ) : null}
