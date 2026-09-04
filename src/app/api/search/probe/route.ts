@@ -1,7 +1,10 @@
+import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdminEnv } from '@/lib/env'
 import { getSearchProfile } from '@/lib/search-profile'
-import { runSearchProbe } from '@/lib/search-probe'
+import { getSubscriptionState } from '@/lib/subscription'
+import { clientIp, originKey, runSearchProbe } from '@/lib/search-probe'
 import { CreditRefusal, PropertyDataError } from '@/lib/propertydata'
 
 export const runtime = 'nodejs'
@@ -21,6 +24,9 @@ export const maxDuration = 60
  *     security, so nobody can probe an area they have not saved
  *   - a quota, counted with the service role in the caller's own allowance
  *     period, so this cannot become a free search tool
+ *   - two limits that are not the account, because an account is free and a
+ *     quota counted in a thing somebody can mint by the hundred is not a quota:
+ *     a daily limit per origin, and a daily ceiling on unpaid probes overall
  *   - a repeat of the same search costs nothing, because the answer is stored
  *     and handed back rather than bought again
  *   - a credit ceiling on the call itself, so a dense area cannot surprise us
@@ -41,8 +47,35 @@ export async function POST() {
     return NextResponse.json({ error: 'No search set up yet', status: 'no_profile' }, { status: 409 })
   }
 
+  const [requestHeaders, subscription] = await Promise.all([headers(), getSubscriptionState()])
+
+  // Salted with the service role key, so what is stored counts requests
+  // without being a table of the addresses they came from.
+  const originHash = originKey(clientIp(requestHeaders), supabaseAdminEnv().SUPABASE_SERVICE_ROLE_KEY)
+
   try {
-    const outcome = await runSearchProbe(user.id, profile)
+    const outcome = await runSearchProbe(user.id, profile, {
+      originHash,
+      subscribed: subscription.active,
+    })
+
+    if (outcome.status === 'rate_limited') {
+      // Deliberately not itemised. Somebody probing the ceiling should not be
+      // told which one they hit or how far off it they are, and for everybody
+      // else the useful part is that their account is fine and this will pass.
+      console.error(
+        JSON.stringify({ at: 'search.probe', event: 'rate_limited', scope: outcome.scope, owner_id: user.id }),
+      )
+
+      return NextResponse.json(
+        {
+          status: 'rate_limited',
+          error:
+            'We are checking more areas than usual just now. Nothing is wrong with your account — try again shortly, or subscribe and your first list will source the whole area anyway.',
+        },
+        { status: 429, headers: { 'retry-after': '3600' } },
+      )
+    }
 
     if (outcome.status === 'quota_exhausted') {
       return NextResponse.json(

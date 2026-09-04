@@ -424,7 +424,7 @@ export default async function HomePage() {
                         <p className="label text-highlight-deep">{plan.label}</p>
                         {plan.recommended ? (
                           <span className="label border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
-                            Most take this
+                            Best For Growing Investors
                           </span>
                         ) : null}
                       </div>

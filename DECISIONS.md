@@ -1088,6 +1088,13 @@ plots quietly narrows everything else. Splitting the run into one call per cap g
 fix it and would cost a credit per group per run, which is not worth it until somebody
 actually hits it.
 
+> **Superseded 4 September 2026.** Two claims above are wrong. "The run has clamped
+> since" was never true — `allowedRadius()` read a table renamed by `0008` and had
+> been silently returning the unclamped radius since 26 August. And the costing is
+> wrong: the endpoint charges per result, not per call, so the tiers share one page
+> rather than buying one each. See "Splitting the sourcing call, and three floors that
+> were set wrong".
+
 ### The list is what qualifies, not a number we promised
 
 The site said five, in the footer, on the sign-up page, in the metadata and twice on the
@@ -1293,7 +1300,9 @@ profile before the subscription for the same reason.
 - **A repeat of the same search is free.** The answer is stored and handed back,
   so a refresh, a back button or a second tab buys nothing.
 - **Three per allowance period**, so it cannot become a free market search for
-  somebody who never intends to subscribe.
+  somebody who never intends to subscribe. *(Not sufficient on its own — accounts
+  are free, so this is three per email address. Two limits that are not the account
+  were added on 4 September.)*
 - **It never blocks the subscription.** A failed check says so and offers the way
   on. Somebody who wants to subscribe without the number is entitled to.
 - **The wording refuses to let a stock count read as a promise.** It says plainly
@@ -1330,3 +1339,187 @@ in this product. One row per property, or the count above it would be a lie.
 
 Both come from rows the run already wrote. Nothing here costs a credit and there
 is still no notifications table.
+
+## Splitting the sourcing call, and three floors that were set wrong — 4 September 2026
+
+### `allowedRadius()` had never once run
+
+The clamp described in the 1 September entry above — "the run has clamped since" —
+was not true and had not been true since 26 August. `allowedRadius()` read
+`strategy_lists`. `0008` renamed that table to `sourcing_lists`. The query has
+returned an error ever since, and the line under it was
+
+```ts
+if (error || !data?.length) return profile.radius_miles
+```
+
+which reads a missing table and a list with no cap as the same thing: no clamp
+needed. So the guard reported success by returning the unclamped radius, every
+time, for three weeks.
+
+What that cost: any profile above thirty miles with `unmodernised-properties` or
+`slow-to-sell-properties` ticked — or above twenty with `large-plot` — sent a
+radius the API rejects. `/sourced-properties` answers 1103, which is
+`call_failed` rather than fatal, so the run for that subscriber ended at step one
+and the batch walked on. No list that week. No list the following week either,
+because nothing about the profile had changed. The subscriber saw an empty
+dashboard and the only signal anywhere was a `pipeline_runs` row with status
+`failed`.
+
+Two things are worth taking from this beyond the fix. The first is that a
+fallback which returns *the value that means "no problem"* cannot report a
+problem, and this one was three lines long and looked defensive. The second is
+that a rename in a migration is not finished when the SQL is: `0008` renamed the
+table in Postgres and in `validate_search_profile()`, `0011` found and fixed a
+second function it had missed, and this was the third caller — in TypeScript,
+where no migration was ever going to find it. Grep for the old name across the
+repo, not across the schema.
+
+### The call is split by cap, not clamped to the narrowest
+
+This supersedes the trade recorded on 1 September, which was "splitting the run
+into one call per cap group would cost a credit per group per run, which is not
+worth it until somebody actually hits it". The costing was wrong, and once the
+clamp was actually working the behaviour would have been bad anyway.
+
+The costing first. `/sourced-properties` charges one credit per ten *results*,
+not per call, so three calls only cost three times as much if you ask each of
+them for a full page. `planSourcingTiers` splits one page between the tiers
+instead, in proportion to how many lists each carries — at forty miles that is
+60 results across the five uncapped lists, 30 across the two capped at thirty,
+and 10 for `large-plot`. Same page size, same credits, three calls instead of
+one. Shares are rounded to whole tens because a tier asking for seven results is
+charged the same credit as one asking for ten.
+
+The behaviour second. Clamping means one ticked box silently changes the radius
+of every other box: tick `large-plot` at forty miles and the seven lists that
+would happily have searched forty are searched at twenty. The form said so, which
+is better than not saying so, but "your search will run at 20 miles, not 40" is a
+strange thing to make somebody accept when only one eighth of it needed to.
+
+Each list is now searched at the widest radius it accepts and the results are
+merged on `listing.key`, unioning the `lists` arrays — a house that comes back
+from two tiers is one candidate that was found in two situations, and dropping
+half of that would both under-describe it on the card and under-score it on
+`Room to add value`. A subscriber whose lists all reach their radius is one call,
+exactly as before. Three is the worst case there is.
+
+### The data floor is a weight, not a count
+
+`MIN_QUALITY_FACTORS = 3` meant three of the four quality factors had to have data
+behind them. The trouble is that the fourth factor is not equally available to
+everybody. `Room to add value` scores a property against the value-add lists its
+owner did *not* ask for, so for a subscriber who ticked all three it can never
+discriminate and is normalised out of every score they ever see. Three of four
+then quietly became three of three — for that subscriber only.
+
+The effect is that one missing floor area dropped their property entirely rather
+than ranking it on what was held, which is precisely the outcome normalising over
+the factors held exists to prevent. The strictness of the gate moved with a
+checkbox on the onboarding form, and nothing about that checkbox suggested it
+would.
+
+`MIN_QUALITY_WEIGHT = 45` does not move. In practice it is one of cashflow or
+comparables plus the area-level demand figure — the same bar the count was
+reaching for, stated in something that means the same thing for every subscriber
+whatever they ticked. Demand is area-level and held for every property in a run
+or none of them, so the real content of the rule is "cashflow or comparables",
+which is what the old comment claimed the count meant.
+
+### A percentile needs a cohort, and below thirty values there isn't one
+
+Forty of the hundred quality points are a percentile: where this property's
+cashflow sits against the same measure taken in the same area. `return-window.ts`
+supplies ninety days of history for that and falls back to the run's own
+candidates where the area has less than `MIN_WINDOW_SAMPLE` of it.
+
+That fallback is fine on a backfill, which draws five hundred properties and is a
+large cohort by itself — so the cold start is not, as it first looks, a problem
+with everybody's first run. It is a problem with thin ones. A weekly run in a
+quiet market can produce four scorable candidates, and `percentile` over four
+values is not a measurement: it is one property's rank among three others, worth
+up to forty of a hundred points, deciding which of them clears the quality floor.
+A single property arriving or leaving moved everyone else's score.
+
+Below `MIN_RANKING_COHORT = 30` combined values the factor is no longer ranked.
+It scores evenly and the detail line says why, so the breakdown cannot imply a
+precision that was not there. Three properties in that order:
+
+- **It keeps its availability.** Withholding the factor instead would cost the
+  property forty points of available weight and push it under the floor above,
+  which is the opposite of not penalising a thin area.
+- **A property below water still scores zero.** Losing money is a fact about the
+  property; no amount of missing company makes it half true.
+- **The run is then ordered by comparables, demand and movement**, which is
+  honest — those are the factors that actually have data behind them that week.
+
+### The top band was empty rather than rare
+
+`Exceptional` began at 120 of 150. Movement counts for half, so it contributes at
+most 50 — and a movement score of 100 needs a property cut by a fifth, returned
+from a fall-through, unsold for over a year *and* moved this week, all at once.
+120 therefore asked for a near-flawless property with every one of those true. A
+five-band scale that behaves like four is worse than a four-band scale, because
+the band that never appears is the one people look for.
+
+`Strong` had the same problem one step down. A flawless property that nothing has
+happened to scores 100 — the best thing this product can find in a quiet week —
+and sat five points inside a band starting at 95.
+
+Strong now starts at 90 and Exceptional at 112, so a flawless-and-settled property
+is comfortably Strong, and Exceptional is that property with a seller who has
+genuinely moved: quality in the mid-eighties with a movement score around 55.
+Rare, and reachable. The arithmetic behind the total has not changed and the
+breakdown still shows every point of it; only the words over it moved.
+
+### A quota counted per account is not a quota when accounts are free
+
+The area check spends a credit before anybody has paid. It is capped at 25 credits
+a call and three calls per account per allowance period, and the 1 September entry
+recorded that as sufficient. It is not: accounts are free, unlimited, and need
+nothing but an email address, so "three per account" is three per email address. A
+hundred throwaway signups is 7,500 credits — more than the subscription the
+exercise was pretending to consider. Counting a quota in the one unit an attacker
+mints for nothing is a unit conversion, not a limit.
+
+Two bounds that are not the account, then:
+
+- **`PROBE_IP_DAILY_LIMIT = 6`**, per origin per rolling day. Catches the cheap
+  version — one script, one machine, many addresses — and is loose enough that a
+  household or an office behind one address is never the one it stops.
+- **`PROBE_DAILY_CEILING = 60`** unpaid probes across the whole product per
+  rolling day. The backstop, which does not care how the probes were spread. Worst
+  case is about 1,500 credits a day and the realistic case is far below it,
+  because a sparse area — the case the feature exists for — returns almost nothing
+  and is charged for almost nothing.
+
+Both count only probes that actually spent something, so a repeat of the same
+search, which is served from the stored answer, is never rate limited. A
+subscriber skips both: they have paid, and the ceiling exists to bound what people
+who have not can spend. Origins are stored as SHA-256 salted with the service role
+key — enough to tell two requests apart, and not a table of IP addresses.
+Rotating the key rotates the counter, which is a fair price. The 429 does not say
+which limit was hit, because that tells somebody probing it exactly what to spread
+their signups across.
+
+### Considered and reversed: dropping the fourth question
+
+The fourth onboarding question — which situations to look for — was removed for
+about an hour, on the argument that it makes people narrow their own pool before
+they have seen a property, and that the answer is more useful on the card than on
+the form. It is written down because the argument is a reasonable one and will be
+made again.
+
+It was reversed. The question stays. What survived from the attempt is the part
+that was never contingent on it: each property now carries the situations it was
+found in as badges on the card, ordered by how much they say about the seller
+rather than alphabetically — repossession and auction before price reduced — with
+the full set on the property page. The reasons underneath say why a property
+scored well; the badges say why it was looked at, and on a list built from four
+ticked boxes those are different questions.
+
+Note for anyone reviving the removal: `Room to add value` scores a property
+against the lists its owner did *not* tick, so searching every list for everybody
+makes that factor carry no information for anybody and normalises it out of every
+score in the product. The data floor above already survives that. It was written
+that way for this reason.

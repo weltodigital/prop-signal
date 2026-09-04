@@ -4,7 +4,7 @@ import { developmentGdvPerSqFt, getMarketEvidence, getPropertyDetail } from '@/l
 import { stageHistory } from '@/lib/deal-progress'
 import { requireSubscriber } from '@/lib/require-subscriber'
 import { markReadAction } from '@/app/(app)/deals/mark-read'
-import { formatBedrooms, formatDate, formatListName, formatMoney, formatShortDate } from '@/lib/format'
+import { formatBedrooms, formatDate, formatMoney, formatShortDate, situationsFor } from '@/lib/format'
 import { ActionAnchor, Button, Card } from '@/components/ui'
 import { RiskFlags } from '@/components/risk-flags'
 import { MarketEvidenceCard } from '@/components/market-evidence'
@@ -83,11 +83,15 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
           : ''}
       </p>
 
+      {/* The situations this was found in, most telling first — the same
+          ordering the card uses, so a property reads the same in both places.
+          All of them here rather than the card's two: somebody on this page
+          has already stopped and has room for the full answer. */}
       {property.lists.length ? (
         <p className="mt-3 flex flex-wrap gap-2">
-          {property.lists.map((list) => (
-            <span key={list} className="rounded-full border border-line px-2.5 py-0.5 text-sm text-muted">
-              {formatListName(list)}
+          {situationsFor(property.lists).map((situation) => (
+            <span key={situation} className="rounded-full border border-line px-2.5 py-0.5 text-sm text-muted">
+              {situation}
             </span>
           ))}
         </p>

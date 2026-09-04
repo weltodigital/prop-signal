@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { PublishedDeal } from '@/lib/deals'
-import { formatBedrooms, formatListName, formatMoney, NOT_HELD } from '@/lib/format'
+import { formatBedrooms, formatMoney, NOT_HELD, situationsFor } from '@/lib/format'
 import { isInvestmentStrategy, STRATEGY_DEFINITIONS } from '@/lib/strategies'
 import { ScoreBreakdown } from '@/components/score-breakdown'
 import { StackedNumbers } from '@/components/stacked-numbers'
@@ -99,6 +99,11 @@ export function DealCard({
 
   const reasons = reasonsFor(deal)
 
+  // Which of the situations the subscriber asked for this one came out of.
+  // The reasons below say why it scored well; this says why it was looked at,
+  // and on a list built from four ticked boxes they are different questions.
+  const situations = situationsFor(deal.lists)
+
   const perSqFt =
     deal.price && deal.internalAreaSqFt ? `£${Math.round(deal.price / deal.internalAreaSqFt)} per sq ft` : null
 
@@ -121,6 +126,28 @@ export function DealCard({
             {!isNew && deal.changedSinceSeen ? (
               <span className="label border border-highlight-deep/40 px-1.5 py-0.5 text-highlight-deep">
                 Changed
+              </span>
+            ) : null}
+            {/* The situation it was found in, strongest first. Two at most:
+                a property on five lists is common and a row of five badges
+                reads as decoration rather than as information, so the rest
+                are named in the title and counted. */}
+            {situations.slice(0, 2).map((situation) => (
+              <span
+                key={situation}
+                className="label border border-line px-1.5 py-0.5 text-muted"
+                title={
+                  situations.length > 2
+                    ? `Found in: ${situations.join(', ')}`
+                    : `Found in the ${situation.toLowerCase()} search`
+                }
+              >
+                {situation}
+              </span>
+            ))}
+            {situations.length > 2 ? (
+              <span className="label text-muted" title={`Found in: ${situations.join(', ')}`}>
+                +{situations.length - 2}
               </span>
             ) : null}
             <span className="truncate">{deal.headline}</span>
@@ -201,11 +228,6 @@ export function DealCard({
               </span>
             )
           })}
-          {deal.lists.length > 1 ? (
-            <span className="text-xs text-muted">
-              found in {deal.lists.map((list) => formatListName(list).toLowerCase()).join(' and ')}
-            </span>
-          ) : null}
         </p>
       ) : null}
 

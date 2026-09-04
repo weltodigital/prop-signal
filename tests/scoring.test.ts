@@ -4,11 +4,13 @@ import {
   cumulativeReduction,
   DEFAULT_WEIGHTS,
   factorsHeld,
+  weightHeld,
   isCapped,
   isExcluded,
   measureQuality,
   MAX_TOTAL,
-  MIN_QUALITY_FACTORS,
+  MIN_QUALITY_WEIGHT,
+  MIN_RANKING_COHORT,
   movement,
   MOVEMENT_SHARE,
   percentile,
@@ -22,6 +24,7 @@ import {
   type Enrichment,
   type Score,
 } from '@/lib/pipeline/scoring'
+import { BAND_COUNT, scoreBand } from '@/lib/score-band'
 import { normaliseListing, type Listing } from '@/lib/pipeline/listing'
 import { EMPTY_ASSUMPTIONS, type InvestmentStrategy, type StrategyAssumptions } from '@/lib/strategies'
 import { EMPTY_STRATEGY_AREA, type StrategyAreaContext } from '@/lib/pipeline/strategy-return'
@@ -122,21 +125,67 @@ describe('quality', () => {
     expect(scoreOne().version).toBe(SCORE_VERSION)
   })
 
+  /** A cohort big enough that a place in it means something. Cheapest first. */
+  function priceLadder(size = MIN_RANKING_COHORT) {
+    return Array.from({ length: size }, (_, i) =>
+      measureQuality('btl', listing({ price: 120_000 + i * 10_000 }), enrichment(), area()),
+    )
+  }
+
   it('scores cashflow against the rest of the run, not an absolute scale', () => {
     // The same property is worth most of the factor in a weak field and none of
     // it in a strong one. An absolute band could not do both.
-    const cheap = listing({ price: 120_000 })
-    const middling = listing({ price: 200_000 })
-    const dear = listing({ price: 400_000 })
-
-    const scores = qualityScores(
-      [cheap, middling, dear].map((l) => measureQuality('btl', l, enrichment(), area())),
-      DEFAULT_WEIGHTS,
-    )
+    const scores = qualityScores(priceLadder(), DEFAULT_WEIGHTS)
 
     expect(pointsFor(scores[0]!, 'Monthly cashflow')).toBe(DEFAULT_WEIGHTS.quality.strategyReturn)
     expect(pointsFor(scores[1]!, 'Monthly cashflow')).toBeGreaterThan(0)
-    expect(pointsFor(scores[2]!, 'Monthly cashflow')).toBe(0)
+    expect(pointsFor(scores.at(-1)!, 'Monthly cashflow')).toBe(0)
+  })
+
+  it('will not rank a property against a cohort too small to be one', () => {
+    // Three candidates in a quiet week is not a percentile, it is a rank among
+    // two others — worth forty of a hundred points and deciding which of them
+    // clears the quality floor. Scored evenly instead, and it says so, so the
+    // run is ordered by the factors that do have data behind them.
+    const thin = qualityScores(priceLadder(3), DEFAULT_WEIGHTS)
+    const half = DEFAULT_WEIGHTS.quality.strategyReturn / 2
+
+    expect(thin.map((score) => pointsFor(score, 'Monthly cashflow'))).toEqual([half, half, half])
+    expect(thin[0]!.factors.find((f) => f.label === 'Monthly cashflow')?.detail).toMatch(
+      /not yet offered enough to rank it against/i,
+    )
+  })
+
+  it('keeps the factor available in a thin cohort, so nothing is dropped for it', () => {
+    // Scoring it evenly must not also withhold it: that would cost the property
+    // forty points of availability and push it under the data floor, which is
+    // the opposite of not penalising a thin area.
+    const [thin] = qualityScores(priceLadder(3), DEFAULT_WEIGHTS)
+
+    expect(availableFor(thin!, 'Monthly cashflow')).toBe(DEFAULT_WEIGHTS.quality.strategyReturn)
+    expect(weightHeld(thin!)).toBeGreaterThanOrEqual(MIN_QUALITY_WEIGHT)
+  })
+
+  it('gives a thin cohort nothing at all for a property that loses money', () => {
+    // Even is not the same as neutral about a loss. Losing money is a fact
+    // about the property, not about how much company it has.
+    const losing = Array.from({ length: 3 }, (_, i) =>
+      measureQuality('btl', listing({ price: 500_000 + i * 50_000 }), enrichment({ estimatedRent: 900 }), area()),
+    )
+
+    for (const score of qualityScores(losing, DEFAULT_WEIGHTS)) {
+      expect(pointsFor(score, 'Monthly cashflow')).toBe(0)
+    }
+  })
+
+  it('ranks against the area\'s own history where there is enough of it', () => {
+    // The window is what makes a score mean the same thing two weeks running.
+    const window = Array.from({ length: MIN_RANKING_COHORT }, (_, i) => i * 20)
+    const [score] = qualityScores(priceLadder(1), DEFAULT_WEIGHTS, window)
+
+    expect(score!.factors.find((f) => f.label === 'Monthly cashflow')?.detail).toMatch(
+      /last three months/i,
+    )
   })
 
   it('will not give a loss-making property the whole factor for ranking best', () => {
@@ -163,9 +212,40 @@ describe('quality', () => {
     expect(withoutArea.score).toBeGreaterThan(0)
   })
 
-  it('counts how many factors are held, so a property short of data can be dropped', () => {
+  it('weighs how much data is held, so a property short of it can be dropped', () => {
     const bare = scoreOne(listing({ sqf: null }), enrichment({ estimatedRent: null, areaDemandRating: null }))
-    expect(factorsHeld(bare)).toBeLessThan(MIN_QUALITY_FACTORS)
+    expect(weightHeld(bare)).toBeLessThan(MIN_QUALITY_WEIGHT)
+  })
+
+  it('keeps a property whose only missing factor is one nobody can be scored on', () => {
+    // A subscriber who ticked every value-add list can never be told which
+    // property has room to add value, so the factor is normalised out of all
+    // their scores. The old three-of-four count then meant three of three for
+    // them alone, and a flat with no floor area was dropped rather than ranked
+    // on what it had — a stricter gate, earned by ticking a box that said
+    // nothing about strictness.
+    const noFloorArea = scoreOne(
+      listing({ sqf: null }),
+      enrichment(),
+      area(),
+      [...CONDITION_LISTS],
+    )
+
+    expect(availableFor(noFloorArea, 'Room to add value')).toBe(0)
+    expect(availableFor(noFloorArea, 'Price against nearby sales')).toBe(0)
+    expect(factorsHeld(noFloorArea)).toBe(2)
+    expect(weightHeld(noFloorArea)).toBeGreaterThanOrEqual(MIN_QUALITY_WEIGHT)
+  })
+
+  it('still drops one with nothing but the area figure behind it', () => {
+    const demandOnly = scoreOne(
+      listing({ sqf: null }),
+      enrichment({ estimatedRent: null }),
+      area(),
+      [...CONDITION_LISTS],
+    )
+
+    expect(weightHeld(demandOnly)).toBeLessThan(MIN_QUALITY_WEIGHT)
   })
 
   it('scores a factor with no data at zero available rather than zero points', () => {
@@ -400,5 +480,43 @@ describe('an implausible yield', () => {
 
   it('says nothing where there is no yield to judge', () => {
     expect(risks(listing(), area(), null, [], null)).toHaveLength(0)
+  })
+})
+
+describe('the bands a total is reported in', () => {
+  /** The best total a property can reach with a given movement score. */
+  const totalWith = (quality: number, movementScore: number) => quality + movementScore * MOVEMENT_SHARE
+
+  it('puts a flawless property that nothing has happened to well inside Strong', () => {
+    // 100 of 150 is the ceiling for a property with no history — it is the
+    // best thing this product can find in a quiet week, and it sat five points
+    // inside Strong when the boundary was 95.
+    const band = scoreBand(totalWith(100, 0))
+
+    expect(band.label).toBe('Strong')
+    expect(totalWith(100, 0) - 90).toBeGreaterThanOrEqual(10)
+  })
+
+  it('has a top band a real property can actually reach', () => {
+    // The failure this boundary was moved for. Movement counts for half, so it
+    // contributes at most 50 of the 150 — and Exceptional at 120 needed a
+    // near-flawless property whose seller had cut by a fifth, come back from a
+    // fall-through, sat unsold a year and moved this week, all at once. That
+    // is not a rare band, it is an empty one.
+    expect(scoreBand(totalWith(85, 55)).label).toBe('Exceptional')
+  })
+
+  it('does not hand the top band to a good property with a settled seller', () => {
+    // Rare has to still mean rare. Quality alone cannot reach it.
+    expect(scoreBand(totalWith(100, 20)).label).not.toBe('Exceptional')
+    expect(scoreBand(totalWith(85, 0)).label).not.toBe('Exceptional')
+  })
+
+  it('keeps every band reachable within the scale', () => {
+    const reached = new Set(
+      Array.from({ length: MAX_TOTAL + 1 }, (_, total) => scoreBand(total).label),
+    )
+
+    expect(reached.size).toBe(BAND_COUNT)
   })
 })

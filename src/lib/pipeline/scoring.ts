@@ -65,18 +65,30 @@ export const DEFAULT_WEIGHTS: Weights = {
 const MOVEMENT_TOTAL = 85
 
 /**
- * How many of the four quality factors must have data behind them before a
- * property can be ranked at all.
+ * How much of the quality weighting must have data behind it before a property
+ * can be ranked at all.
  *
  * Normalising over the factors held stops a flat with no floor area being
  * punished for a gap in the data. On its own it would also let a property top
  * the list on two factors, so the two rules come as a pair.
  *
- * In practice this means at least one of cashflow or comparables: demand is
- * area-level and held for every property in a run or none of them, and
- * condition is held unless the subscriber has ticked every value-add list.
+ * This used to be a count — three of the four factors — and a count meant
+ * different things to different subscribers. `Room to add value` scores a
+ * property against the value-add lists its owner did *not* ask for, so for a
+ * subscriber who ticked all three it can never discriminate and is normalised
+ * out of every score. Three of four then quietly became three of three for
+ * exactly that subscriber: one missing floor area and their property was
+ * dropped entirely rather than ranked on what was held, which is the opposite
+ * of what normalising over the factors held is for. The strictness of the gate
+ * moved with a box on the onboarding form, which is not a thing anybody
+ * ticking that box could have known.
+ *
+ * Weight does not move. Forty-five of the hundred points is, in practice, one
+ * of cashflow or comparables plus the area-level demand figure — the same bar
+ * the count was reaching for, stated in something that means the same thing for
+ * every subscriber whatever they asked for.
  */
-export const MIN_QUALITY_FACTORS = 3
+export const MIN_QUALITY_WEIGHT = 45
 
 /**
  * What a property capped by a risk can reach, out of 150.
@@ -84,6 +96,30 @@ export const MIN_QUALITY_FACTORS = 3
  * Enough to appear on a thin week, not enough to lead a real one.
  */
 export const RISK_CAPPED_TOTAL = 90
+
+/**
+ * Values a cohort needs before a place in it is worth forty points.
+ *
+ * The strategy return is the largest single factor and it is scored as a
+ * percentile — where this property's cashflow sits against the same measure
+ * taken in the same area. `return-window.ts` supplies ninety days of history
+ * for that, and falls back to the run's own candidates where an area has too
+ * little of it.
+ *
+ * The fallback is sound on a backfill, which draws five hundred properties and
+ * is a large cohort by itself. It is not sound on a thin one. A weekly run in a
+ * quiet market can produce four scorable candidates, and a percentile over four
+ * values is not a measurement — it is one property's rank among three others,
+ * worth up to forty of a hundred points, and it decides which of them clears
+ * the quality floor.
+ *
+ * So below this the factor is not ranked at all. It is scored neutrally and
+ * says so: the property keeps the factor's availability, so the gate above is
+ * unaffected and the run is ordered by the factors that do have data behind
+ * them. A property that loses money still scores nothing here, because that is
+ * a fact about the property rather than about the cohort.
+ */
+export const MIN_RANKING_COHORT = 30
 
 export type Factor = {
   /** Plain English, shown to the user. */
@@ -396,6 +432,8 @@ const RETURN_LABELS: Record<InvestmentStrategy, string> = {
  *
  * An area with no history yet passes an empty window and is ranked against the
  * run, exactly as before. That is also what every test of the mechanic does.
+ * Where even the run is too small to rank against, the factor is scored
+ * neutrally rather than on a rank among three — see MIN_RANKING_COHORT.
  *
  * The price of a percentile at all: it ranks within a filtered, list-driven
  * cohort that is not a sample of the local market. The one place that matters
@@ -417,6 +455,8 @@ export function qualityScores(
 
   const cohort = window.length ? [...window, ...fromRun] : fromRun
   const rankedAgainstHistory = window.length > 0
+  // Too few values to be a percentile. See MIN_RANKING_COHORT.
+  const rankable = cohort.length >= MIN_RANKING_COHORT
 
   return measurements.map((m) => {
     const factors: Factor[] = []
@@ -425,16 +465,22 @@ export function qualityScores(
     // --- What this strategy is judged on, against the rest of the run -------
     if (m.strategyReturn.value === null) {
       factors.push({ label, points: 0, available: 0, detail: m.strategyReturn.detail })
+    } else if (!rankable) {
+      // No cohort worth ranking against. Neutral rather than invented, and
+      // still nothing at all for a property that loses money.
+      factors.push({
+        label,
+        points: m.strategyReturn.belowWater ? 0 : round(0.5 * w.strategyReturn),
+        available: w.strategyReturn,
+        detail: `${m.strategyReturn.detail}, scored evenly because your area has not yet offered enough to rank it against`,
+      })
     } else {
       const place = percentile(m.strategyReturn.value, cohort)
       // Losing money is losing money however the rest of the cohort is doing.
       const share = m.strategyReturn.belowWater ? Math.min(place, 0.5) : place
-      const standing =
-        cohort.length < 2
-          ? 'the only one that could be scored this way'
-          : rankedAgainstHistory
-            ? `better than ${Math.round(place * 100)}% of what your area has offered in the last three months`
-            : `better than ${Math.round(place * 100)}% of this week's candidates`
+      const standing = rankedAgainstHistory
+        ? `better than ${Math.round(place * 100)}% of what your area has offered in the last three months`
+        : `better than ${Math.round(place * 100)}% of this week's candidates`
 
       factors.push({
         label,
@@ -515,6 +561,11 @@ function normalise(factors: readonly Factor[]): number {
 /** How many quality factors had data behind them. */
 export function factorsHeld(score: Score): number {
   return score.factors.filter((factor) => factor.available > 0).length
+}
+
+/** Quality points that had data behind them, out of 100. */
+export function weightHeld(score: Score): number {
+  return score.factors.reduce((total, factor) => total + factor.available, 0)
 }
 
 /**

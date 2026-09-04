@@ -18,6 +18,22 @@
  * 100 is a property with nothing wrong with it and nothing having happened;
  * and everything above that is a good buy whose seller is also moving.
  *
+ * The top two boundaries have moved down, because they were set against the
+ * scale's arithmetic ceiling rather than against what it produces. Movement
+ * counts for half, so it contributes at most 50 of the 150 — and reaching a
+ * movement score of 100 needs a property that has been cut by a fifth, has come
+ * back from a fall-through, has sat unsold for a year *and* moved this week.
+ * Exceptional at 120 therefore asked for a near-flawless property with all four
+ * of those true at once, which is not a rare band but an empty one: a five-band
+ * scale behaving like four. Strong at 95 had the matching problem one step
+ * down, leaving a flawless property with a settled seller — 100, and the best
+ * thing this product can find in a quiet week — sitting five points inside the
+ * band rather than comfortably within it.
+ *
+ * So: a perfect property that nothing has happened to is Strong, and
+ * Exceptional is that property with a seller who has genuinely moved — quality
+ * in the mid-eighties with a movement score around 55. Rare, and reachable.
+ *
  * Deliberately not `server-only`: the card renders these.
  */
 
@@ -56,13 +72,13 @@ export const SCORE_BANDS: Array<ScoreBand & { from: number }> = [
     note: 'Stacks comfortably against your strategy.',
   },
   {
-    from: 95,
+    from: 90,
     rank: 4,
     label: 'Strong',
     note: 'Among the best in your area on the numbers.',
   },
   {
-    from: 120,
+    from: 112,
     rank: 5,
     label: 'Exceptional',
     note: 'A good buy whose seller is moving as well.',

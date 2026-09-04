@@ -51,15 +51,18 @@ export function SearchForm({
   subscribed: boolean
 }) {
   const [state, formAction] = useActionState<OnboardingState, FormData>(saveSearch, { status: 'idle' })
-  // Some lists will not search as wide as others, and one call carries all of
-  // them, so the narrowest holds the whole search. That is worth saying plainly
-  // rather than refusing to save, which is what it used to do.
+
+  // Some lists will not search as wide as others. That used to hold the whole
+  // search to the narrowest of them, because one call carried every list. The
+  // run splits the call by cap now, so a narrow list is searched at its own
+  // maximum and the rest still go the full distance — which is worth saying,
+  // because it is the difference between a shorter answer from one list and a
+  // shorter answer from all of them.
   const [chosen, setChosen] = useState<string[]>(profile?.sourcingLists ?? [])
   const [radius, setRadius] = useState<number>(profile?.radiusMiles ?? 10)
-  const capping =
-    sourcingLists
-      .filter((list) => chosen.includes(list.id) && list.maxRadiusMiles < radius)
-      .sort((a, b) => a.maxRadiusMiles - b.maxRadiusMiles)[0] ?? null
+  const capped = sourcingLists
+    .filter((list) => chosen.includes(list.id) && list.maxRadiusMiles < radius)
+    .sort((a, b) => a.maxRadiusMiles - b.maxRadiusMiles)
 
   // Which strategies are ticked no longer changes what we ask for. A flip is
   // scored at a full refurbishment and the figure is moved on the property
@@ -129,10 +132,12 @@ export function SearchForm({
               time; forty miles of the same market holds far more. Widen it if your list is short — that has its own
               allowance and never uses one of your area changes.
             </p>
-            {capping ? (
+            {capped.length ? (
               <p className="mt-1.5 text-sm">
-                Your search will run at {capping.maxRadiusMiles} miles, not {radius}, because {capping.label} will
-                not go wider and one search covers every list you tick. Untick it to search the full {radius}.
+                {capped.map((list) => `${list.label} (${list.maxRadiusMiles} miles)`).join(', ')}{' '}
+                {capped.length === 1 ? 'does' : 'do'} not search as wide as {radius}, so{' '}
+                {capped.length === 1 ? 'it is' : 'they are'} searched at {capped.length === 1 ? 'that' : 'those'}{' '}
+                limit{capped.length === 1 ? '' : 's'} instead. Everything else still goes the full {radius}.
               </p>
             ) : null}
           </div>
@@ -277,7 +282,7 @@ export function SearchForm({
         <p className="mt-1 text-sm text-muted">
           Situations worth a closer look. These are how we find properties, not what makes them good — a property
           still has to stack against your strategy before it reaches you. Pick as many as apply: the more you tick,
-          the more of the market we search.
+          the more of the market we search, and each property on your list says which of these it came from.
         </p>
 
         <fieldset className="mt-6 space-y-3">
@@ -304,7 +309,8 @@ export function SearchForm({
                 <span className="block text-sm text-muted">{list.description}</span>
                 {list.maxRadiusMiles < Math.max(...RADIUS_OPTIONS) ? (
                   <span className="mt-0.5 block text-sm text-muted">
-                    Searches up to {list.maxRadiusMiles} miles.
+                    Searches up to {list.maxRadiusMiles} miles. Ticking it no longer holds the rest of your
+                    search to that — it is searched at its own limit and the others go as wide as you asked.
                   </span>
                 ) : null}
               </span>

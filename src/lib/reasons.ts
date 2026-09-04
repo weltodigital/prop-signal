@@ -41,11 +41,17 @@ function firstNumber(detail: string): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-/** The money figure a strategy return detail opens with, kept verbatim. */
+/**
+ * The money figure a strategy return detail opens with, kept verbatim.
+ *
+ * The scorer appends where the figure placed in its cohort — useful in the
+ * breakdown, noise in a one-line reason. Every suffix it can append is cut
+ * here, so a reason is the figure and nothing else.
+ */
 function leadClause(detail: string): string {
-  // The scorer appends ", better than N% of…" — useful in the breakdown,
-  // noise in a one-line reason.
-  return detail.split(', better than')[0]!.split(', the only one')[0]!.trim()
+  const suffixes = [', better than', ', the only one', ', scored evenly']
+
+  return suffixes.reduce((text, suffix) => text.split(suffix)[0]!, detail).trim()
 }
 
 /**

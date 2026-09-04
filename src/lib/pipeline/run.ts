@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkAccount, createPropertyDataClient, CreditRefusal, PropertyDataError } from '@/lib/propertydata'
 import { applyFilter, listingsFromPayload, type Listing } from './listing'
+import { mergeTierListings, planSourcingTiers, sourcingListRadii } from './sourcing-tiers'
 import {
   DEFAULT_THRESHOLDS,
   diffListing,
@@ -28,10 +29,10 @@ import {
 } from './area'
 import {
   DEFAULT_WEIGHTS,
-  factorsHeld,
+  weightHeld,
   isExcluded,
   measureQuality,
-  MIN_QUALITY_FACTORS,
+  MIN_QUALITY_WEIGHT,
   movement,
   qualityScores,
   rank,
@@ -320,28 +321,46 @@ export async function runProfile(options: {
 
   try {
     // --- 1. Pull the area --------------------------------------------------
-    // Some lists reject a radius over 30 or 20 miles with error 1103, and one
-    // call carries every list, so it is clamped to the smallest maximum across
-    // them. Nothing stops a profile being saved wider than that — the form says
-    // what the search will run at, and this is where it happens.
-    const radius = await allowedRadius(supabase, profile)
-    if (radius < profile.radius_miles) {
-      log('radius_clamped', {
+    // Every list is searched, and three of them reject a radius over 30 or 20
+    // miles with error 1103. One call carries every list it is given and is
+    // rejected outright if the radius exceeds any of them, so the call is split
+    // by cap: each list searched at the widest radius it accepts, one page
+    // shared between the tiers, and the results merged.
+    //
+    // Splitting rather than clamping is the point. Clamping to the narrowest
+    // would hold every subscriber to twenty miles, which narrows the pool that
+    // searching every list exists to widen.
+    const tiers = planSourcingTiers(
+      await sourcingListRadii(supabase, profile.sourcing_lists),
+      profile.radius_miles,
+      isBackfill ? BACKFILL_PAGE_SIZE : WEEKLY_PAGE_SIZE,
+    )
+
+    if (tiers.length === 0) throw new Error(`No sourcing lists resolved for profile ${profile.id}`)
+
+    if (tiers.length > 1) {
+      log('sourcing_tiered', {
         run_id: run.id,
         requested: profile.radius_miles,
-        used: radius,
-        sourcing_lists: profile.sourcing_lists,
+        tiers: tiers.map((tier) => ({ radius: tier.radius, lists: tier.lists.length, results: tier.results })),
       })
     }
 
-    const sourced = await client.call<unknown>('sourced-properties', {
-      list: profile.sourcing_lists.join(','),
-      postcode: profile.postcode,
-      radius,
-      results: isBackfill ? BACKFILL_PAGE_SIZE : WEEKLY_PAGE_SIZE,
-    })
+    // In series rather than in parallel. The client is rate limited and shares
+    // one credit budget across the run, and three calls racing each other past
+    // the same ceiling is how a budget gets overspent.
+    const pages: Listing[][] = []
+    for (const tier of tiers) {
+      const sourced = await client.call<unknown>('sourced-properties', {
+        list: tier.lists.join(','),
+        postcode: profile.postcode,
+        radius: tier.radius,
+        results: tier.results,
+      })
+      pages.push(listingsFromPayload(sourced.data))
+    }
 
-    const listings = listingsFromPayload(sourced.data)
+    const listings = mergeTierListings(pages)
     summary.candidatesSeen = listings.length
 
     // --- 2. The optional third question, applied at no cost ----------------
@@ -579,7 +598,7 @@ export async function runProfile(options: {
         // Normalising over the factors held stops a flat with no floor area
         // being punished for it. Without a floor it would also let a property
         // top the list on two factors, so the two rules come as a pair.
-        if (factorsHeld(q) < MIN_QUALITY_FACTORS) return []
+        if (weightHeld(q) < MIN_QUALITY_WEIGHT) return []
 
         return [{ strategy, quality: q, total: Number((q.score + m.score).toFixed(2)) }]
       })
@@ -961,23 +980,6 @@ export function cycleStart(now: Date): Date {
   return start
 }
 
-/**
- * The widest radius every chosen list will accept.
- *
- * PropertyData enforce a maximum per list and reject the whole call when it is
- * exceeded, so one narrow list caps the search rather than failing it.
- */
-async function allowedRadius(supabase: SupabaseClient, profile: ProfileRow): Promise<number> {
-  const { data, error } = await supabase
-    .from('strategy_lists')
-    .select('max_radius_miles')
-    .in('id', profile.sourcing_lists)
-
-  if (error || !data?.length) return profile.radius_miles
-
-  const smallest = Math.min(...data.map((row) => row.max_radius_miles))
-  return Math.min(profile.radius_miles, smallest)
-}
 
 // ---------------------------------------------------------------------------
 // Persistence
