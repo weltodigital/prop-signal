@@ -57,8 +57,8 @@ export async function saveSearch(_prev: OnboardingState, formData: FormData): Pr
       status: 'error',
       message:
         outcome.kind === 'radius_widened'
-          ? `You have widened your radius ${outcome.used} times this month, which is the limit of ${outcome.limit}. Widening means sourcing the new ground from scratch, which is why there is one at all. It resets with your next billing period, and the price and type filters below can still be changed as often as you like.`
-          : `You have changed your area or strategy ${outcome.used} times this month, which is the limit of ${outcome.limit}. Each change means sourcing a new area from scratch. It resets with your next billing period. Widening your radius does not come out of this allowance, and the price and type filters below can still be changed as often as you like.`,
+          ? `You have widened your radius ${outcome.used} times this month, which is the limit of ${outcome.limit}. Widening means searching the new ground from scratch, which is why there is one at all. It resets with your next billing period, and the price and type filters below can still be changed as often as you like.`
+          : `You have changed your area or strategy ${outcome.used} times this month, which is the limit of ${outcome.limit}. Each change means searching a new area from scratch. It resets with your next billing period. Widening your radius does not come out of this allowance, and the price and type filters below can still be changed as often as you like.`,
     }
   }
 

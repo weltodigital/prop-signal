@@ -97,7 +97,7 @@ export default async function OnboardingPage({
       <p className="mt-2 max-w-prose text-muted">
         {isNew
           ? 'Answer these and we will tell you how many properties your area holds, before you pay anything.'
-          : 'Change what you are looking for. Moving the area or the strategy means sourcing somewhere new from scratch, so those changes are limited.'}
+          : 'Change what you are looking for. Moving the area or the strategy means searching somewhere new from scratch, so those changes are limited.'}
       </p>
 
       {isNew ? (

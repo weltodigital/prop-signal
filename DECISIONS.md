@@ -1523,3 +1523,120 @@ against the lists its owner did *not* tick, so searching every list for everybod
 makes that factor carry no information for anybody and normalises it out of every
 score in the product. The data floor above already survives that. It was written
 that way for this reason.
+
+## Trading disclosures, legal routes and the cancellation acknowledgement — 4 September 2026
+
+### The product is research, not an introduction
+
+A deal sourcer introduces a specific property to a specific buyer and is paid
+when that buyer completes. That is estate agency work under the Estate Agents
+Act 1979, and it brings anti-money-laundering supervision, redress scheme
+membership and a set of disclosure duties with it. None of which we have, and
+none of which we need — because it is not what this does.
+
+What this does is analyse everything publicly listed in an area against the way
+somebody invests, publish the arithmetic, and charge the same £29 whether they
+buy four properties or none. Nobody is introduced to anybody. No fee ever turns
+on a completion.
+
+The trouble was that the site said otherwise in a handful of places, and the
+thing a regulator reads is the website. The page title was "Sourced deals for
+how you invest". The README opened "a £29/month deal sourcing subscription".
+Those describe an activity we do not carry out and are not registered for, and
+the fix costs nothing because the accurate description is also the better sales
+copy: we sell research, and research you can check.
+
+Kept deliberately: the comparison table and the FAQ both name a deal sourcer, in
+order to say we are not one. Those are protective, and removing them would
+remove the clearest statement on the site of what we are not. `tests/positioning.test.ts`
+encodes that distinction — it fails on a self-description and ignores a line that
+is drawing the contrast.
+
+Also kept: `sourcingLists` and its relatives, which are the internal name for
+which PropertyData endpoints a search draws on. That is a variable name, not a
+claim about what the business does.
+
+### The disclosures are a component, not a page
+
+Companies Act 2006 trading disclosures and the E-Commerce Regulations 2002 both
+require the registered name, number, registered office and a contact address on
+the website. "On the website" means every page, which is why `LegalFooter` is a
+component rendered by all three frames — the marketing footer, the signed-in
+`AppShell`, and the signed-out `AuthShell` — rather than a `/legal` page somebody
+can find if they look. `/legal` exists as well, because the footer is a line and
+the disclosures deserve to be stated properly once.
+
+The values live in `src/lib/company.ts` and not in the environment. None of it is
+secret — publication is the entire point — and a legal requirement that must
+appear on every page of a live site should not be able to vanish because a
+variable was not copied into a new deployment.
+
+`Prop Signal` is a trading name. `Welto Limited` is the company, and the
+disclosures name the company. That distinction is the one the rules exist to
+make, so the constants keep the two apart and a test fails if they are ever
+collapsed into one.
+
+### The legal routes block the build while they are scaffolds
+
+`/terms` and `/privacy` exist, are linked from every footer and from checkout,
+and render placeholder content. The wording is coming from the business owner.
+
+A terms page reading "sample text" in production is worse than no terms page,
+because it looks like the question was answered. So `scripts/check-legal.ts` runs
+as `prebuild` and exits non-zero while either document has `placeholder: true`.
+`next build` therefore cannot complete and Vercel cannot deploy.
+
+**This is a deliberate deploy block and it is currently active.** Until the real
+wording lands, production stays on whatever was last deployed. That is the
+intended trade — it is better to sit still than to publish an unapproved
+agreement — but it does mean the trading disclosures above are also waiting
+behind it. To release: put the wording in `src/lib/legal.ts`, set `lastUpdated`,
+set `placeholder: false`.
+
+The check reads a flag the documents set about themselves rather than grepping
+for a phrase, so it cannot be defeated by rewording the placeholder.
+`tests/legal.test.ts` pins the same rule for anybody who removes the prebuild
+step.
+
+### The cancellation acknowledgement is stored as words, not as a boolean
+
+Under the Consumer Contracts Regulations 2013 a consumer buying at a distance has
+fourteen days to cancel. The right survives the service starting *unless* they
+expressly requested it start inside those fourteen days and acknowledged what
+that costs them.
+
+That is not a technicality here. The opening list is built within minutes of
+payment, draws on the whole standing inventory of an area, and is the most
+expensive thing this product does — a 150 credit backfill ceiling against a £29
+subscription. Without the acknowledgement on record, somebody can take delivery
+of the entire first month's value and unwind the purchase, and we have already
+spent the money producing it.
+
+Three choices in how it is recorded, each of which is the difference between
+evidence and a flag:
+
+- **The exact wording is stored, not just a timestamp.** What matters in a
+  dispute is what the person was shown. "They ticked a box" is not an answer to
+  that. Wording changes get a new version and old records keep saying what they
+  said, so `ACKNOWLEDGEMENT_WORDING` is append-only.
+- **The wording is resolved on the server from a posted version**, never read out
+  of the form. A form that carries its own wording can be edited before it is
+  submitted, and an acknowledgement the customer could have authored is worth
+  nothing.
+- **It is written before the Stripe session and with the service role.** Before,
+  so the evidence exists even if Stripe fails afterwards; service role, because
+  0001 revoked column updates on `accounts` from `authenticated` and nobody
+  should be able to back-date their own acknowledgement. A failed write refuses
+  the checkout rather than selling the plan anyway — the record is the reason we
+  are allowed to keep the money.
+
+The tick lives above the three plan cards rather than beside each button,
+because a term discovered after the decision is a term nobody really made. The
+buttons disable without it, but that is a courtesy: the rule that holds is in
+`/api/stripe/checkout`, which refuses a POST that does not carry a valid
+acknowledgement — and a POST does not have to come from a page that has the
+checkbox on it.
+
+Stored on `accounts` rather than `subscriptions` because the tick happens before
+Stripe has created anything. The version is also written into the Stripe
+subscription metadata, so the two records can be reconciled.

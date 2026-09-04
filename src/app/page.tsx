@@ -10,7 +10,7 @@ import { Arrive, HeroWash, Press, Reveal } from '@/components/marketing/motion'
 import { PLAN_LIST } from '@/lib/plans'
 
 export const metadata: Metadata = {
-  title: 'Prop Signal. Sourced deals for how you invest',
+  title: 'Prop Signal. Property market analysis for how you invest',
   description:
     'We continuously filter the property market for properties that fit how you invest, and put the ones worth a closer look in front of you. BRRR in Portsmouth, HMOs in Leeds, buy to let near home. From £29 a month.',
 }
@@ -55,9 +55,17 @@ const CLAIMS = [
  * Nobody is named. What separates them is the model rather than the brand: who
  * does the filtering, who picks, and what the money buys — and those are facts
  * about how each one works rather than claims about how well they work.
+ *
+ * The two columns beside ours name what we are *not*. That distinction is the
+ * point of the table and it is also a regulatory one: a deal sourcer introduces
+ * a specific property to a specific buyer for a fee, which is estate agency
+ * work under the Estate Agents Act 1979 and brings anti-money-laundering
+ * supervision with it. We publish analysis of a market and are paid the same
+ * whether anybody buys anything. Nothing here should ever read as though we do
+ * the other thing.
  */
 const COMPARISON = {
-  columns: ['Prop Signal', 'A deal sourcer', 'A deal-sourcing site'],
+  columns: ['Prop Signal', 'A deal sourcer', 'A property search site'],
   rows: [
     {
       label: 'What you get',
@@ -86,7 +94,7 @@ const COMPARISON = {
     {
       label: 'What we earn if you buy',
       cells: [
-        'The same £29. No sourcing fee, no success fee',
+        'The same £29. No finder\u2019s fee, no success fee',
         'A fee on completion, typically in the thousands',
         'The same subscription',
       ],
@@ -100,8 +108,8 @@ const FAQS = [
     a: 'A portal answers one question, which is what went up this morning. Whether something is worth your attention for the way you invest is a different question and nothing on a portal asks it. We filter every property in your area against your strategy, keep the ones that deserve a closer look, and rank them. A property listed eight months ago and one listed this morning are judged the same way.',
   },
   {
-    q: 'How is this different from a deal sourcer?',
-    a: 'A sourcer finds one property and is paid when you buy it. We show you everything in your area worth a closer look, with the numbers and the reasoning in the open, and you pick. There is no sourcing fee and no success fee: your subscription is the whole of what we earn, which means we have no reason to prefer one of your properties over another, or to prefer that you buy at all. The reasoning is published so you can disagree with it.',
+    q: 'Are you a deal sourcer?',
+    a: 'No, and the difference is not a technicality. A sourcer finds one property, introduces it to one buyer, and is paid when that buyer completes. We do not introduce properties to anybody, do not act for you in a transaction, and are never paid by a seller, an agent or you on completion — the subscription is the whole of what we earn, whether you buy nothing or buy four. What we sell is research: we analyse everything publicly listed in your area against the way you invest, publish the arithmetic, and you decide. Nothing we produce is advice or a recommendation to buy.',
   },
   {
     q: 'How many properties will I get?',
@@ -399,7 +407,7 @@ export default async function HomePage() {
           <div className="mx-auto max-w-6xl px-6">
             <div className="grid grid-cols-12 gap-x-6 gap-y-12 border-t border-rule pt-16 pb-28 md:gap-x-8">
               <Reveal className="col-span-12 lg:col-span-7">
-                <p className="label text-highlight-deep">No sourcing fee. No success fee.</p>
+                <p className="label text-highlight-deep">No finder&rsquo;s fee. No success fee.</p>
                 <h2 className="font-display mt-4 text-h2 font-normal text-balance md:text-h2-lg">
                   Your subscription is the whole of what we earn.
                 </h2>
@@ -514,7 +522,7 @@ export default async function HomePage() {
             <Reveal className="col-span-12 hidden overflow-x-auto sm:block">
               <table className="w-full min-w-[44rem] border-collapse text-left">
                 <caption className="sr-only">
-                  How Prop Signal compares with a deal sourcer and a deal-sourcing site
+                  How Prop Signal compares with a deal sourcer and a property search site
                 </caption>
                 <thead>
                   <tr>

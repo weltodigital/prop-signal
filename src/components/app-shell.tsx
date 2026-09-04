@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import mark from '@/assets/prop-signal-mark.png'
 import { hasUnseenWeek } from '@/lib/deals'
 import { countUnread } from '@/lib/watchlist'
+import { LegalFooter } from '@/components/legal-footer'
 
 /**
  * Three destinations, and none of them named after the machinery.
@@ -28,7 +29,7 @@ export async function AppShell({ email, children }: { email: string; children: R
   const [unread, unseenWeek] = await Promise.all([countUnread(), hasUnseenWeek()])
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
           {/* The mark, with the name in text beside it. The full lockup is
@@ -83,6 +84,14 @@ export async function AppShell({ email, children }: { email: string; children: R
           Prose inside still carries its own `max-w-prose`, so paragraphs do not
           stretch to the full width just because the page can. */}
       <main className="mx-auto max-w-6xl px-6 py-12">{children}</main>
+
+      {/* The disclosures are required on every page of the site, and the
+          signed-in half is most of the pages. */}
+      <footer className="mt-auto border-t border-line">
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <LegalFooter compact />
+        </div>
+      </footer>
     </div>
   )
 }

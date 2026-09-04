@@ -21,7 +21,7 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: 'Prop Signal',
   description:
-    'We search your area for the deals that stack against the way you invest, score them, and keep them on your list. How many you get depends on how wide you search and how tight your criteria are, with the numbers already worked out.',
+    'We analyse every property publicly listed in your area against the way you invest, score them, and keep the ones that stack on your list. How many you get depends on how wide you search and how tight your criteria are, with the numbers already worked out. Research and analysis, not advice.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

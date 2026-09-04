@@ -1,6 +1,9 @@
 # Prop Signal
 
-A £29/month deal sourcing subscription for UK landlords and property investors. Tell it
+A £29/month property market research subscription for UK landlords and property investors.
+Not a deal sourcer: we introduce nothing to anybody, act for nobody in a transaction, and
+are paid the same whether you buy or not. See DECISIONS.md, "The product is research, not
+an introduction". Tell it
 where you buy and how you make your money, and it sources the best deals in that area
 against those criteria, scores them, and keeps them in front of you.
 
@@ -639,7 +642,7 @@ band for the same reason: a bar two-thirds full is a percentage by another route
 
 At parity the two used to be equal, which meant a mediocre property that had dropped
 twelve per cent beat an excellent one listed yesterday. That is the wrong answer for a
-product that sources deals rather than reports news.
+product that finds properties rather than reporting news.
 
 **Whether a property appears is decided on quality alone**, against the floor in
 `DEFAULT_QUALIFICATION.qualityFloor`, currently 50 of 100. Movement takes no part in it.

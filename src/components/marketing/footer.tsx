@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import mark from '@/assets/prop-signal-mark.png'
+import { LegalFooter } from '@/components/legal-footer'
 
 const COLUMNS = [
   {
@@ -58,6 +59,10 @@ export function MarketingFooter() {
             Every figure carries the date it was observed. Listings link to the original agent advert, and we never
             reproduce a listing photograph.
           </p>
+
+          <div className="mt-6 border-t border-rule pt-6">
+            <LegalFooter />
+          </div>
         </div>
       </div>
     </footer>

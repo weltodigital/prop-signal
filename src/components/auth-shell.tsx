@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Card } from '@/components/ui'
 import logo from '@/assets/prop-signal-logo.png'
+import { LegalFooter } from '@/components/legal-footer'
 
 /**
  * The frame the four signed-out pages share — sign in, sign up, forgotten
@@ -35,6 +36,10 @@ export function AuthShell({
       <Card className="mt-6">{children}</Card>
 
       {footer ? <div className="mt-6 text-center text-sm text-muted">{footer}</div> : null}
+
+      <div className="mt-10 border-t border-line pt-6">
+        <LegalFooter compact />
+      </div>
     </main>
   )
 }

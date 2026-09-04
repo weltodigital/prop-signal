@@ -4,8 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
 import { getSearchProfile } from '@/lib/search-profile'
 import { latestProbeFor } from '@/lib/search-probe'
-import { Button, Card, Notice } from '@/components/ui'
-import { PLAN_LIST } from '@/lib/plans'
+import { Card, Notice } from '@/components/ui'
+import { ACKNOWLEDGEMENT_WORDING, CURRENT_ACKNOWLEDGEMENT } from '@/lib/consumer-rights'
+import { PlanChoice } from './plan-choice'
 
 const MESSAGES: Record<string, { tone: 'info' | 'warn'; title: string; body: string }> = {
   cancelled: {
@@ -22,6 +23,12 @@ const MESSAGES: Record<string, { tone: 'info' | 'warn'; title: string; body: str
     tone: 'warn',
     title: 'Stripe did not return a checkout page',
     body: 'Nothing was charged. Try again, and if it keeps happening reply to the newsletter and I will look at it.',
+  },
+  acknowledgement_required: {
+    tone: 'warn',
+    title: 'We still need the acknowledgement',
+    body:
+      'Nothing was charged. Because your first list is built straight away, we have to record that you asked for it before we can take a payment. Tick the box below and choose your plan again.',
   },
 }
 
@@ -108,42 +115,15 @@ export default async function SubscribePage({
       {/* One card per tier, each its own form, so the tier is a real choice
           rather than a hidden field somebody has to trust. The price itself is
           resolved from the environment on the server — a tier name in a form
-          can only ask for a plan we sell. */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        {PLAN_LIST.map((plan) => {
-          const chosen = params.tier === plan.id || (!params.tier && plan.recommended)
+          can only ask for a plan we sell.
 
-          return (
-            <Card
-              key={plan.id}
-              className={chosen ? 'border-highlight-deep/40 bg-tint' : undefined}
-            >
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="label text-highlight-deep">{plan.label}</p>
-                {plan.recommended ? <span className="label text-muted">Common</span> : null}
-              </div>
-
-              <p className="mt-3 flex items-baseline gap-1.5">
-                <span className="figure text-3xl font-semibold">£{plan.monthlyPrice}</span>
-                <span className="text-sm text-muted">/mo</span>
-              </p>
-
-              <p className="mt-3 text-sm">
-                <span className="figure font-medium">{plan.areas}</span>{' '}
-                {plan.areas === 1 ? 'area' : 'separate areas'}
-              </p>
-              <p className="mt-1 text-sm text-muted">{plan.summary}</p>
-
-              <form action="/api/stripe/checkout" method="post" className="mt-6">
-                <input type="hidden" name="tier" value={plan.id} />
-                <Button type="submit" variant={chosen ? 'primary' : 'secondary'}>
-                  Choose {plan.label}
-                </Button>
-              </form>
-            </Card>
-          )
-        })}
-      </div>
+          The acknowledgement above them is required before any of the three,
+          and enforced in the route rather than here. */}
+      <PlanChoice
+        wording={ACKNOWLEDGEMENT_WORDING[CURRENT_ACKNOWLEDGEMENT]}
+        version={CURRENT_ACKNOWLEDGEMENT}
+        chosenTier={params.tier ?? null}
+      />
 
       <Card className="mt-6">
         <p className="text-sm font-medium">Every plan includes all of it</p>

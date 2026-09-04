@@ -19,7 +19,9 @@
     "propertydata:sample": "tsx --conditions=react-server scripts/propertydata-sample.ts",
     "vercel:env": "bash scripts/vercel-env.sh",
     "propertydata:area": "tsx --conditions=react-server scripts/propertydata-area.ts",
-    "stripe:check": "tsx scripts/stripe-check.ts"
+    "stripe:check": "tsx scripts/stripe-check.ts",
+    "prebuild": "tsx scripts/check-legal.ts",
+    "check:legal": "tsx scripts/check-legal.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
