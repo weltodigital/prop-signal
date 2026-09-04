@@ -114,7 +114,12 @@ export function Press({ children, className = '' }: { children: ReactNode; class
  * smear that appears where you tapped, which is worse than nothing.
  */
 
-const WASH_RADIUS = 340
+/**
+ * Tight rather than broad. A wide pool lit most of the band at once and read as
+ * the background being wrong; a small one reads as a light being carried across
+ * it, which is the thing worth having.
+ */
+const WASH_RADIUS = 190
 
 /**
  * Slow and heavy on purpose. The pool trails the cursor rather than being

@@ -159,7 +159,7 @@ export default async function HomePage() {
             is paid for in legibility.
 
             `HeroWash` renders this section and lights it under the pointer. */}
-        <HeroWash className="relative overflow-hidden bg-gradient-to-b from-tint-strong via-tint to-ground">
+        <HeroWash className="relative overflow-hidden bg-gradient-to-b from-tint-strong from-0% via-tint-deep via-55% to-ground to-100%">
           {/* A glow rather than a band: the colour is strongest behind the
               example deal and gone by the time the page starts reading. */}
           <div
@@ -168,9 +168,9 @@ export default async function HomePage() {
           />
 
           <div className="relative mx-auto max-w-6xl px-6">
-            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-16 pt-16 pb-24 md:gap-x-8">
+            <div className="grid grid-cols-12 items-center gap-x-6 gap-y-16 pt-28 pb-24 md:gap-x-8">
               <Arrive className="col-span-12 lg:col-span-7">
-                <p className="label text-highlight-deep">For UK landlords and property investors</p>
+                <p className="label text-accent">For UK landlords and property investors</p>
 
                 <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
                   A portal can only tell you
@@ -242,23 +242,29 @@ export default async function HomePage() {
               </Arrive>
             </div>
           </div>
-        </HeroWash>
 
-        {/* What it does, in three lines ---------------------------------- */}
-        {/* Immediately under the hero and before any of the reasoning. The
-            temptation on a product with this much machinery behind it is to
-            open with the machinery. */}
-        <section id="how" className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-12 gap-x-6 gap-y-10 border-t border-rule pt-16 pb-20 md:gap-x-8">
-            {HOW_IT_WORKS.map((step, index) => (
-              <Reveal key={step.step} className="col-span-12 sm:col-span-4" delay={index * 0.08}>
-                <p className="figure text-sm text-highlight-deep">{step.step}</p>
-                <h2 className="mt-4 text-h3 font-medium">{step.title}</h2>
-                <p className="mt-3 text-body text-muted">{step.body}</p>
-              </Reveal>
-            ))}
+          {/* What it does, in three lines ------------------------------- */}
+          {/* Immediately under the hero and before any of the reasoning. The
+              temptation on a product with this much machinery behind it is to
+              open with the machinery.
+
+              Inside the wash rather than below it. The band used to stop at the
+              fold, which made the colour a decoration on the headline; carrying
+              it through the three steps makes it the surface the whole opening
+              argument is written on, and the gradient reaches the ground at the
+              point the page starts showing evidence instead of making claims. */}
+          <div id="how" className="relative mx-auto max-w-6xl px-6">
+            <div className="grid grid-cols-12 gap-x-6 gap-y-10 border-t border-rule pt-16 pb-24 md:gap-x-8">
+              {HOW_IT_WORKS.map((step, index) => (
+                <Reveal key={step.step} className="col-span-12 sm:col-span-4" delay={index * 0.08}>
+                  <p className="figure text-sm text-accent">{step.step}</p>
+                  <h2 className="mt-4 text-h3 font-medium">{step.title}</h2>
+                  <p className="mt-3 text-body text-muted">{step.body}</p>
+                </Reveal>
+              ))}
+            </div>
           </div>
-        </section>
+        </HeroWash>
 
         {/* One property, analysed -------------------------------------------- */}
         {/* Its own band with a hard edge, rather than floating beside the

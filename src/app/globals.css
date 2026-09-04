@@ -70,19 +70,32 @@
   /* Three washes of the accent, for the places the page would otherwise be a
      sheet of off-white: behind the hero, under the price, and down the column
      of the comparison that is ours. Pale enough to hold ink at full contrast —
-     `tint-strong` is the deepest of them and still runs better than 13:1
-     against `ink`, so the headline sitting on it loses nothing.
+     `tint-strong` is the deepest of them and still runs 11.6:1 against `ink`,
+     so the headline sitting on it loses nothing.
+
+     It is as dark as this wash can go. The binding constraint is not the
+     headline but the paragraph under it: `muted` on `tint-strong` is 4.5:1,
+     exactly the floor for body text, and one step further down would put the
+     hero's own subheading below it. The eyebrow moved to `accent` for the same
+     reason — `highlight-deep` is a marker colour and was never going to hold
+     twelve-pixel text on a wash this deep.
 
      `tint-strong` is the hero's alone. The rest of the page is quiet on
      purpose and a wash this saturated repeated down it would stop reading as
      emphasis. */
   --color-tint: #edf5f7;
   --color-tint-deep: #dceef2;
-  --color-tint-strong: #cfe7ee;
+  --color-tint-strong: #b3dae6;
 }
 
 :root {
   color-scheme: light;
+}
+
+html {
+  /* The marketing header floats free of the top edge, so an anchor that
+     scrolled to the exact top of its section would land it under the bubble. */
+  scroll-padding-top: 6.5rem;
 }
 
 body {
