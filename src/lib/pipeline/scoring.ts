@@ -266,8 +266,14 @@ export function isCapped(risks: readonly Risk[]): boolean {
   return risks.some((risk) => risk.severity === 'cap')
 }
 
-/** Maps a value onto 0..1 between a floor and a ceiling. */
-function band(value: number, floor: number, ceiling: number): number {
+/**
+ * Maps a value onto 0..1 between a floor and a ceiling.
+ *
+ * Exported because the marketing page works its example property out with the
+ * same arithmetic the pipeline uses. A landing page that quotes a score it
+ * arrived at some other way is a landing page whose figures will not add up.
+ */
+export function band(value: number, floor: number, ceiling: number): number {
   if (ceiling === floor) return 0
   return Math.min(1, Math.max(0, (value - floor) / (ceiling - floor)))
 }

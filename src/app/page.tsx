@@ -165,14 +165,15 @@ export default async function HomePage() {
                 <p className="label text-highlight-deep">For UK landlords and property investors</p>
 
                 <h1 className="font-display mt-5 text-h1 font-normal text-pretty md:text-h1-lg">
-                  Find properties worth buying
+                  A portal can only tell you
                   <br />
-                  without spending hours searching.
+                  what is new.
                 </h1>
 
                 <p className="mt-7 max-w-xl text-body text-muted">
-                  Prop Signal searches your chosen area every week and highlights the properties that fit your
-                  investment strategy.
+                  New is not the same as worth buying. Prop Signal scores every property in your area against the
+                  way you invest, keeps the ones that stack in front of you, and looks again every week — whether
+                  it was listed this morning or eight months ago.
                 </p>
 
                 <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -182,7 +183,7 @@ export default async function HomePage() {
                     </ButtonLink>
                   </Press>
                   <Press>
-                    <ButtonLink href="#inside" variant="secondary" className="px-5 py-3 text-base">
+                    <ButtonLink href="#how" variant="secondary" className="px-5 py-3 text-base">
                       See how it works
                     </ButtonLink>
                   </Press>
@@ -239,7 +240,7 @@ export default async function HomePage() {
         {/* Immediately under the hero and before any of the reasoning. The
             temptation on a product with this much machinery behind it is to
             open with the machinery. */}
-        <section id="inside" className="mx-auto max-w-6xl px-6">
+        <section id="how" className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-12 gap-x-6 gap-y-10 border-t border-rule pt-16 pb-20 md:gap-x-8">
             {HOW_IT_WORKS.map((step, index) => (
               <Reveal key={step.step} className="col-span-12 sm:col-span-4" delay={index * 0.08}>
@@ -256,7 +257,7 @@ export default async function HomePage() {
             headline where it read as decoration. This is the product: one
             property, why it is here, and the figures behind that. It earns a
             section. */}
-        <section className="mx-auto max-w-6xl px-6">
+        <section id="inside" className="mx-auto max-w-6xl px-6">
           <div className="border-t border-rule pt-16 pb-24">
             <Reveal className="max-w-2xl">
               <p className="label text-highlight-deep">A closer look at one of them</p>
@@ -283,12 +284,12 @@ export default async function HomePage() {
           <div className="grid grid-cols-12 gap-x-6 gap-y-16 border-t border-rule pt-16 pb-28 md:gap-x-8">
             <Reveal className="col-span-12 lg:col-span-7">
               <h2 className="font-display text-h2 font-normal text-balance md:text-h2-lg">
-                A portal can only tell you what is new.
+                The best buy in your area may have been listed eight months ago.
               </h2>
               <p className="mt-6 text-body text-muted">
-                Whether a property is worth your attention for the way you invest is a different question, and
-                nothing on a portal is set up to ask it. The best buy in your area might have been listed this
-                morning or eight months ago; we judge both the same way.
+                Nothing on a portal is set up to notice it. A saved search answers one question, which is what went
+                up this morning, and a property that has sat there since February has already fallen off the bottom
+                of it. We judge the whole area every week, on the same four measures, whatever the listing date.
               </p>
             </Reveal>
 
@@ -333,9 +334,10 @@ export default async function HomePage() {
                   Nothing reaches you until it has been through the numbers.
                 </h2>
                 <p className="mt-6 text-body text-muted">
-                  Cashflow, price against nearby sales and local demand, shown with the figures behind them. You can
-                  see why something scored what it did and disagree with it. Where we hold nothing, it says so and
-                  scores nothing.
+                  Cashflow, price against nearby sales and local demand, shown with the figures behind them and the
+                  points each one earned. You can see why something scored what it did and disagree with it. Where a
+                  factor cannot be worked out it says so and is left out, rather than being scored zero or filled in
+                  with an average.
                 </p>
               </Reveal>
               <Reveal className="col-span-12 lg:col-span-7 lg:col-start-1 lg:row-start-1" delay={0.1}>
