@@ -5,6 +5,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   authErrorMessage,
+  GENERIC_AUTH_ERROR,
+  meansAlreadyRegistered,
   emailField,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
@@ -84,11 +86,49 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage('Email rate limit exceeded')).toMatch(/wait a minute/i)
   })
 
-  it('sends a taken address to the sign-in page', () => {
-    expect(authErrorMessage('User already registered')).toMatch(/sign in instead/i)
+  it('never tells a visitor that an address is already registered', () => {
+    // This used to answer "that address already has an account, sign in
+    // instead", which is the same disclosure the login form is careful to
+    // avoid, arriving by the other door. Sign-up now answers identically
+    // whether or not we know the address, so the mapper has no wording for it.
+    for (const raw of ['User already registered', 'Email address has already been registered']) {
+      const message = authErrorMessage(raw)
+      expect(message).toBe(GENERIC_AUTH_ERROR)
+      expect(message).not.toMatch(/already|exist|sign in instead|taken/i)
+    }
   })
 
-  it('passes anything it does not recognise straight through', () => {
-    expect(authErrorMessage('Database connection lost')).toBe('Database connection lost')
+  it('still recognises that state, so sign-up can decline to act on it', () => {
+    // The fact has to be detectable — sign-up needs to know in order to return
+    // the same screen it returns for a new address. It just must not be said.
+    expect(meansAlreadyRegistered('User already registered')).toBe(true)
+    expect(meansAlreadyRegistered('Email address has already been registered')).toBe(true)
+    expect(meansAlreadyRegistered('Invalid login credentials')).toBe(false)
+  })
+
+  it('does not hand Supabase\'s own error text to the user', () => {
+    // Vendor error strings are written for developers, change without notice,
+    // and occasionally name internals. Unknown errors get one generic line and
+    // the real text goes to the server log.
+    expect(authErrorMessage('Database connection lost')).toBe(GENERIC_AUTH_ERROR)
+    expect(authErrorMessage('relation "public.accounts" does not exist')).toBe(GENERIC_AUTH_ERROR)
+    expect(authErrorMessage('unexpected failure')).not.toMatch(/relation|public\.|postgres/i)
+  })
+
+  it('still has real wording for the errors it does recognise', () => {
+    // The generic fallback must not swallow the cases that were translated for
+    // a reason. If this ever goes quiet, the fallback has eaten the mapper.
+    const translated = [
+      'Invalid login credentials',
+      'Email not confirmed',
+      'Email rate limit exceeded',
+      'New password should be different from the old password',
+      'Password should be at least 8 characters',
+      'Auth session missing!',
+    ]
+
+    for (const raw of translated) {
+      expect(authErrorMessage(raw), raw).not.toBe(GENERIC_AUTH_ERROR)
+    }
   })
 })

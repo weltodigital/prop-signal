@@ -50,12 +50,32 @@ export function safeRedirect(next: unknown, fallback = '/dashboard'): string {
   return next
 }
 
+/** Shown when Supabase says something this function has no wording for. */
+export const GENERIC_AUTH_ERROR = 'Something went wrong. Try again, and tell us if it keeps happening.'
+
 /**
  * Supabase's auth errors, in this product's register.
  *
  * "Invalid login credentials" is deliberately not split into "no account here"
  * and "wrong password". Which of the two it was tells an anonymous visitor
  * whether an email address has an account, and that is not theirs to learn.
+ *
+ * Two things this used to do and no longer does.
+ *
+ * It used to translate "user already registered" into "that address already
+ * has an account, sign in instead", which is the same disclosure by another
+ * door: the sign-in form was careful and the sign-up form gave it away, so an
+ * anonymous visitor could test any address they liked. Sign-up now answers
+ * identically whether or not the address is known — see `signup/actions.ts`.
+ *
+ * It used to end `return raw`, handing Supabase's own error text to the user
+ * for anything it did not recognise. A vendor's error strings are written for
+ * developers, change without notice, and occasionally name internals. Unknown
+ * errors get one generic line now; the caller logs the real thing server-side,
+ * which is where it is useful and where the user cannot read it.
+ *
+ * Still pure, and still imported by client components for MIN_PASSWORD_LENGTH,
+ * so nothing here may log or touch a request.
  */
 export function authErrorMessage(raw: string): string {
   const message = raw.toLowerCase()
@@ -65,9 +85,6 @@ export function authErrorMessage(raw: string): string {
   }
   if (message.includes('email not confirmed')) {
     return 'Confirm your email address first. The link is in your inbox.'
-  }
-  if (message.includes('user already registered') || message.includes('already been registered')) {
-    return 'That email address already has an account. Sign in instead.'
   }
   // Supabase phrases its throttle as "For security purposes, you can only
   // request this after N seconds", which reads as an accusation. It is a queue.
@@ -84,5 +101,17 @@ export function authErrorMessage(raw: string): string {
     return 'That link has expired. Ask for a new one.'
   }
 
-  return raw
+  return GENERIC_AUTH_ERROR
+}
+
+/**
+ * True where Supabase is saying the address is already registered.
+ *
+ * Exported so sign-up can recognise it and deliberately *not* act on it. It is
+ * a fact about our user table, and the only correct thing to do with it in a
+ * response to an anonymous visitor is nothing.
+ */
+export function meansAlreadyRegistered(raw: string): boolean {
+  const message = raw.toLowerCase()
+  return message.includes('user already registered') || message.includes('already been registered')
 }

@@ -1640,3 +1640,61 @@ checkbox on it.
 Stored on `accounts` rather than `subscriptions` because the tick happens before
 Stripe has created anything. The version is also written into the Stripe
 subscription metadata, so the two records can be reconciled.
+
+## Sign-up stops confirming who has an account — 5 September 2026
+
+### The careful login form was undone by one line on sign-up
+
+`authErrorMessage` has always mapped "invalid login credentials" to a single
+message covering both a wrong password and an address we have never seen,
+because which of the two it was tells an anonymous visitor whether an address
+has an account. That was right, and it was pointless, because `/signup`
+answered the same question directly:
+
+```ts
+if (data.user && data.user.identities?.length === 0) {
+  return { message: 'That email address already has an account. Sign in instead.' }
+}
+```
+
+The comment above it even explained that Supabase withholds this on purpose —
+that with confirmations on it returns a user with no identities *so that* the
+application need not disclose anything — and then disclosed it. Anybody could
+POST addresses at the sign-up form and read back a membership list. A customer
+list is exactly the thing worth harvesting from a product whose customers are
+identifiable property investors.
+
+Sign-up now returns the same screen whether or not the address is known. Both
+of the ways Supabase reports it are folded into one branch: the explicit
+"user already registered" error, and the user with no identities.
+
+**The UX cost is real and is the reason this was written the other way.**
+Somebody who has forgotten they already signed up used to be told plainly. Now
+they get "check your email", and the email they receive is Supabase's, which is
+not the one they expected. So the confirm screen carries a second paragraph
+pointing at sign-in and password reset, phrased so it does not imply which case
+the reader is in. That is the best available trade: the person who forgot has a
+way forward on the same screen, and the person harvesting addresses learns
+nothing.
+
+**This depends on email confirmation staying switched on in Supabase.** With it
+off, a genuine sign-up returns a session and redirects while an existing address
+returns the confirm screen, and the two are distinguishable again. There is a
+comment at that branch saying so, because it is a setting in a dashboard that
+nothing in this repository can enforce.
+
+`meansAlreadyRegistered` is exported and tested. The fact has to remain
+detectable — sign-up needs to know in order to decline to act on it — it just
+must never reach a response.
+
+### Supabase's error text no longer reaches the user
+
+`authErrorMessage` ended `return raw`, so any error it had no wording for was
+handed to the visitor verbatim. Vendor error strings are written for developers,
+change without notice between releases, and occasionally name internals — a
+table, a constraint, a relation. None of that belongs on a sign-in form.
+
+Unknown errors now get one generic line, and every caller logs the real text
+server-side, which is where it is useful and where the visitor cannot read it.
+A test asserts that the errors which *were* translated deliberately still are,
+so the fallback cannot quietly eat the mapper.

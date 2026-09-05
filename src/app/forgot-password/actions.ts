@@ -44,6 +44,9 @@ export async function requestPasswordReset(
       error.message.toLowerCase().includes('for security purposes'))
 
   if (throttled) {
+    // Logged rather than shown: authErrorMessage returns one generic line
+    // for anything it does not recognise, and the real text belongs here.
+    console.error(JSON.stringify({ at: 'forgot_password', event: 'failed', message: error.message }))
     return { status: 'error', message: authErrorMessage(error.message), email }
   }
 

@@ -36,6 +36,9 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
+    // Logged rather than shown: authErrorMessage returns one generic line
+    // for anything it does not recognise, and the real text belongs here.
+    console.error(JSON.stringify({ at: 'login', event: 'failed', message: error.message }))
     return { status: 'error', message: authErrorMessage(error.message), email }
   }
 

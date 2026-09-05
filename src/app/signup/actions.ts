@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requestOrigin } from '@/lib/origin'
-import { authErrorMessage, emailField, firstIssue, passwordField, safeRedirect } from '@/lib/auth'
+import { authErrorMessage, emailField, firstIssue, meansAlreadyRegistered, passwordField, safeRedirect } from '@/lib/auth'
 
 export type SignUpState = { status: 'idle' | 'error' | 'confirm'; message?: string; email?: string }
 
@@ -60,21 +60,43 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
     },
   })
 
+  // An address that already has an account must produce exactly the same
+  // response as one that does not. Otherwise /signup is a membership oracle:
+  // an anonymous visitor posts an address and reads whether we know it. The
+  // sign-in form has always been careful about this; the sign-up form used to
+  // give it away in one line, which made the care on the other form pointless.
+  //
+  // Supabase reports it two ways depending on how the project is configured —
+  // an explicit "user already registered" error, or a user with no identities —
+  // and both are handled the same way here: say nothing, and answer as though
+  // the sign-up worked.
+  //
+  // What the real owner of the address gets is Supabase's own email, which is
+  // the right channel for the news. What the person at the keyboard gets is a
+  // screen that reads identically either way, and which points at sign-in and
+  // password reset so somebody who has simply forgotten is not stuck.
+  const alreadyRegistered =
+    (error !== null && meansAlreadyRegistered(error.message)) ||
+    (data.user !== null && data.user.identities?.length === 0)
+
+  if (alreadyRegistered) {
+    // Logged, because it is worth knowing how often it happens, and because
+    // this is the one place the fact is allowed to exist.
+    console.info(JSON.stringify({ at: 'signup', event: 'existing_address' }))
+    return { status: 'confirm', email }
+  }
+
   if (error) {
+    // The raw text goes to the log, not to the visitor. Supabase's error
+    // strings are written for developers and change without notice.
+    console.error(JSON.stringify({ at: 'signup', event: 'failed', message: error.message }))
     return { status: 'error', message: authErrorMessage(error.message), email }
   }
 
-  // With confirmations on, Supabase will not say an address is taken — that
-  // would let anyone test emails against the user table. It returns a user with
-  // no identities instead. Treat it as the sign-in prompt it is.
-  if (data.user && data.user.identities?.length === 0) {
-    return {
-      status: 'error',
-      message: 'That email address already has an account. Sign in instead.',
-      email,
-    }
-  }
-
+  // Deliberately the same branch as an existing address above. A project with
+  // email confirmation switched off would return a session here and redirect,
+  // which would make the two cases distinguishable again — so confirmation
+  // must stay on for this to hold, and this comment is the reminder.
   if (!data.session) {
     return { status: 'confirm', email }
   }

@@ -63,6 +63,9 @@ export async function changePassword(
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
 
   if (error) {
+    // Logged rather than shown: authErrorMessage returns one generic line
+    // for anything it does not recognise, and the real text belongs here.
+    console.error(JSON.stringify({ at: 'change_password', event: 'failed', message: error.message }))
     return { status: 'error', message: authErrorMessage(error.message) }
   }
 
